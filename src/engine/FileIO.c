@@ -155,8 +155,8 @@ static int writeTSDate( int fd, Timespec *);
  * of account type.  These numbers are used (are to be
  * used) no where else but here, precisely because they
  * are non-portable.  The values of these defines MUST
- * NOT BE CHANGED; andy changes WILL BREAK FILE COMPATIBILITY.
- * YOu HAve BEen WARNed!!!!
+ * NOT BE CHANGED; ANY CHANGES WILL BREAK FILE COMPATIBILITY.
+ * YOU HAVE BEEN WARNED!!!!
  */
 
 #define FF_BANK 	0
@@ -1598,7 +1598,7 @@ writeAccount( int fd, Account *acc )
   
   DEBUG ("writeAccount(): will write %d trans\n", numUnwrittenTrans);
 
-  if(!xaccAccountStagedTransactionTraversal(acc, 2,
+  if (0 != xaccAccountStagedTransactionTraversal(acc, 2,
                                             _write_transaction_wrapper_, &fd)) {
     return -1;
   }

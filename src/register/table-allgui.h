@@ -31,8 +31,49 @@
  * infrastructure.  Additional, GUI-dependent parts are implemented
  * in table-gtk.c and table-motif.c
  *
+ * CONCEPTS:
+ * The following apply to the rows in a table:
+ * -- a phys row can belong to only one virt row at a time.
+ * -- a cursor is always the same size as the virt row its on,
+ * -- there is only one cursor for a given virt row.
+ * -- there is no overlap; a phys row can only belong to one virt row.
+ *
+ * Lets say there are three cursors T(rans),S(plit), and B(lank).  
+ * Lets say that these are used to 'print' the following table layout:
+ * 
+ *       virt row 1   T
+ *       virt row 2   S
+ *       virt row 3   B
+ *       virt row 4   T
+ *       virt row 5   S
+ *       virt row 6   S
+ *       virt row 7   S
+ *       virt row 8   S
+ *       virt row 9   B
+ *
+ * You can see there is only one cursor per virt row.  There is no overlap
+ * between cursors and virt rows, the correspondence is one to one.  Note
+ * that the three cursors T,S and B may consist of one, or more phys rows,
+ * e.g. B and S may be one line each, but T may be two lines.  Thus, we 
+ * have the following physical layout:
+ *
+ *      phys row 1    virt row 1   T
+ *      phys row 2    virt row 1   T
+ *      phys row 3    virt row 2   S
+ *      phys row 4    virt row 3   B
+ *      phys row 5    virt row 4   T
+ *      phys row 6    virt row 4   T
+ *      phys row 7    virt row 5   S
+ *      phys row 8    virt row 6   S
+ *      phys row 9    virt row 7   S
+ *      phys row 10   virt row 8   S
+ *      phys row 11   virt row 9   B
+ *
+ * This layout remains static until the next time that the table is 
+ * re-'printed'.
+ *
  * HISTORY:
- * Copyright (c) 1998 Linas Vepstas
+ * Copyright (c) 1998,1999 Linas Vepstas
  */
 
 /********************************************************************\
@@ -268,17 +309,6 @@ void * xaccGetUserData (Table *table, int phys_row, int phys_col);
 /* ==================================================== */
 /* these are used internally by table-{motif,gtk}.c
    perhaps these should go in a table-allguiP.h  
-
-   They were also ripped more or less straight out of table-motif.c
-   and just made UI independent.  In the long run, they should
-   probably be rewritten to have even clearer interfaces/semantics.
-   For now, though, this will do.
-
-   Function bodies may also be a little contorted, but that's because
-   I had to be careful to only make changes that preserved all the
-   previous invariants.  Sometimes the most careful change may not
-   have been the clearest.
-   
 */
 
 int
@@ -296,13 +326,24 @@ doRefreshCursorGUI (Table * table, CellBlock *curs, int from_row, int from_col);
 void        
 xaccRefreshCursorGUI (Table * table);
 
-void
-gnc_table_enter_update(Table *table, int row, int col, char **new_text);
+/* 
+ * gnc_table_enter_update() is a utility function used to determine
+ * how the gui will respond.  If it returns NULL, then the GUI will
+ * map an editing widget onto this cell, and allow user input. If 
+ * it returns non-null, then the returned value will be used as the 
+ * new cell value, and an editor for the cell will not be mapped
+ * (viz, the user will be prevented from updating the cell)
+ *
+ * Note: since this is an internal-use-only routine, if you do not 
+ * like this semantic, cut&paste this code and change it to suit you. 
+ * However, don't just change it, because it will break functional code.
+ */
+const char *
+gnc_table_enter_update(Table *table, int row, int col);
 
-void
+const char *
 gnc_table_leave_update(Table *table, int row, int col,
-                       const char* old_text,
-                       char **new_text);
+                       const char* old_text);
 
 const char *
 gnc_table_modify_update(Table *table, int row, int col,

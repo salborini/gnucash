@@ -46,9 +46,31 @@
  * lines in the transaction display, not just to one line (one split) at a
  * time.
  * 
+ * =====================================================================
+ * Some notes on Reloads & Redraws:
+ * 
+ * Reloads and redraws tend to be heavyweight. We try to use change flags
+ * as much as possible in this code, but imagine the following senario:
+ *
+ * Create two bank accounts.  Transfer money from one to the other.
+ * Open two registers, showing each account. Change the amount in one window.
+ * Note that the other window also redraws, to show the new correct amount.
+ * 
+ * Since you changed an amount value, potentially *all* displayed balances change
+ * in *both* register windows (as well as the leger balance in the main window).
+ * Three or more windows may be involved if you have e.g. windows open for bank,
+ * employer, taxes and your entering a paycheck...  (or correcting a typo in an
+ * old paycheck)... changing a date might even cause all entries in all three
+ * windows to be re-ordered.
+ * 
+ * The only thing I can think of is a bit stored with every table entry, stating
+ * 'this entry has changed since lst time, redraw it'.  But that still doesn't
+ * avoid the overhead of reloading the table from the engine.
+ * 
+ * 
  *
  * HISTORY:
- * Copyright (c) 1998 Linas Vepstas
+ * Copyright (c) 1998,1999 Linas Vepstas
  */
 
 /********************************************************************\
@@ -172,7 +194,7 @@ LedgerMoveCursor  (Table *table,
          reg->user_hack = (void *) xaccSplitGetParent (oldsplit);
       }
       xaccRegisterRefresh (reg);
-      refreshMainWindow();
+      gnc_refresh_main_window();
 
       /* indicate what row we *should* have gone to */
       *p_new_phys_row = table->current_cursor_phys_row;
@@ -309,7 +331,7 @@ xaccSRRedrawRegEntry (SplitRegister *reg)
     * of the splits.
     */
    xaccTransDisplayRefresh (trans);
-   refreshMainWindow();
+   gnc_refresh_main_window();
 }
 
 /* ======================================================== */
@@ -409,18 +431,22 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    }
 
    if (MOD_NUM & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_NUM: %s\n", reg->numCell->value);
       xaccTransSetNum (trans, reg->numCell->value);
    }
    
    if (MOD_DESC & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_DESC: %s\n", reg->descCell->cell.value);
       xaccTransSetDescription (trans, reg->descCell->cell.value);
    }
 
    if (MOD_RECN & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_RECN: %c\n", reg->recnCell->value[0]);
       xaccSplitSetReconcile (split, reg->recnCell->value[0]);
    }
 
    if (MOD_ACTN & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_ACTN: %s\n", reg->actionCell->cell.value);
       xaccSplitSetAction (split, reg->actionCell->cell.value);
    }
 
@@ -434,6 +460,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
     */
    if (MOD_XFRM & changed) {
       Account *old_acc=NULL, *new_acc=NULL;
+      DEBUG ("xaccSRSaveRegEntry(): MOD_XFRM: %s\n", reg->xfrmCell->cell.value);
 
       /* do some reparenting. Insertion into new account will automatically
        * delete this split from the old account */
@@ -443,11 +470,12 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    
       /* make sure any open windows of the old account get redrawn */
       xaccAccountDisplayRefresh (old_acc);
-      refreshMainWindow();
+      gnc_refresh_main_window();
    }
 
    if (MOD_MXFRM & changed) {
       Split *other_split = NULL;
+      DEBUG ("xaccSRSaveRegEntry(): MOD_MXFRM: %s\n", reg->mxfrmCell->cell.value);
 
       other_split = xaccGetOtherSplit(split);
 
@@ -458,13 +486,18 @@ xaccSRSaveRegEntry (SplitRegister *reg)
        *     and "other" is null because there is no other.
        *
        * In the case (2), we want to create the other split, so that 
-       * the user's request to transfer actually woprks out.
+       * the user's request to transfer actually works out.
        */
 
       if (!other_split) {
          other_split = xaccTransGetSplit (trans, 1);
          if (!other_split) {
+            double  amt = xaccSplitGetShareAmount (split);
+            double  prc = xaccSplitGetSharePrice (split);
             other_split = xaccMallocSplit ();
+            xaccSplitSetMemo (other_split, xaccSplitGetMemo (split));
+            xaccSplitSetAction (other_split, xaccSplitGetAction (split));
+            xaccSplitSetSharePriceAndAmount (other_split, prc, -amt);
             xaccTransAppendSplit (trans, other_split);
          }
       }
@@ -480,7 +513,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    
          /* make sure any open windows of the old account get redrawn */
          xaccAccountDisplayRefresh (old_acc);
-         refreshMainWindow();
+         gnc_refresh_main_window();
       }
    }
 
@@ -489,6 +522,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    }
 
    if (MOD_MEMO & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_MEMO: %s\n", reg->memoCell->value);
       xaccSplitSetMemo (split, reg->memoCell->value);
    }
 
@@ -504,6 +538,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
       } else {
          new_amount = (reg->ndebitCell->amount) - (reg->ncreditCell->amount);
       }
+      DEBUG ("xaccSRSaveRegEntry(): MOD_AMNT: %f\n", new_amount);
       if ((EQUITY_REGISTER   == (reg->type & REG_TYPE_MASK)) ||
           (STOCK_REGISTER    == (reg->type & REG_TYPE_MASK)) ||
           (CURRENCY_REGISTER == (reg->type & REG_TYPE_MASK)) ||
@@ -518,6 +553,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    if (MOD_PRIC & changed) {
       Account *acc;
       int n;
+      DEBUG ("xaccSRSaveRegEntry(): MOD_PRIC: %f\n", reg->priceCell->amount);
       xaccSplitSetSharePrice (split, reg->priceCell->amount);
 
       /* Here we handle a very special case: the user just created 
@@ -551,6 +587,7 @@ xaccSRSaveRegEntry (SplitRegister *reg)
    }
 
    if (MOD_VALU & changed) {
+      DEBUG ("xaccSRSaveRegEntry(): MOD_VALU: %f\n", reg->valueCell->amount);
       xaccSplitSetValue (split, (reg->valueCell->amount));
    }
 
@@ -1103,6 +1140,8 @@ LoadXferCell (ComboCell *cell,
    Account * acc;
    int n;
 
+   ENTER ("LoadXferCell(): curr=%s secu=%s\n", base_currency, base_security);
+
    if (!grp) return;
 
    /* Build the xfer menu out of account names.
@@ -1119,6 +1158,8 @@ LoadXferCell (ComboCell *cell,
       secu = xaccAccountGetSecurity (acc);
       if (secu && (0x0 == secu[0])) secu = 0x0;
 
+      DEBUG ("LoadXferCell(): curr=%s secu=%s acct=%s\n", 
+        curr, secu, xaccAccountGetName (acc));
       if ( (!safe_strcmp(curr,base_currency)) ||
            (!safe_strcmp(curr,base_security)) ||
            (secu && (!safe_strcmp(secu,base_currency))) ||
@@ -1131,6 +1172,7 @@ LoadXferCell (ComboCell *cell,
       n++;
       acc = xaccGroupGetAccount (grp, n);
    }
+   LEAVE ("LoadXferCell()\n");
 }
 
 /* ======================================================== */

@@ -24,6 +24,8 @@
  *           Huntington Beach, CA 92648-4632                        *
 \********************************************************************/
 
+#include <malloc.h>
+#include <math.h>
 #include <string.h>
 
 #include "config.h"
@@ -43,14 +45,14 @@ char * stpcpy (char *dest, const char *src);
  */
 int loglevel[MODULE_MAX] =
 {0,      /* DUMMY */
- 2,      /* ENGINE */
- 2,      /* IO */
- 4,      /* REGISTER */
- 2,      /* LEDGER */
- 4,      /* HTML */
- 2,      /* GUI */
- 4,      /* SCRUB */
- 4,      /* GTK_REG */
+ 1,      /* ENGINE */
+ 1,      /* IO */
+ 1,      /* REGISTER */
+ 1,      /* LEDGER */
+ 1,      /* HTML */
+ 1,      /* GUI */
+ 1,      /* SCRUB */
+ 1,      /* GTK_REG */
 };
 
 /********************************************************************\
@@ -147,6 +149,19 @@ ultostr (unsigned long val, int base)
 
   return strdup (buf);
 }
+  
+/********************************************************************\
+ * stpcpy for those platforms that don't have it.
+\********************************************************************/
+
+#if !HAVE_STPCPY
+char *
+stpcpy (char *dest, const char *src)
+{
+   strcpy(dest, src);
+   return(dest + strlen(src));
+}
+#endif
 
 /********************************************************************\
  * currency & locale related stuff.
@@ -168,6 +183,12 @@ PrtAmtComma (char * buf, double val, int prec)
    int i, ival, ncommas = 0;
    double tmp, amt=0.0;
    char *start = buf;
+
+   /* check if we're printing infinity */
+   if (!finite(val)) {
+      strcpy (buf, "inf");
+      return 3;
+   }
 
    /* count number of commas */
    tmp = val;
