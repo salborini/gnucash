@@ -81,7 +81,7 @@ void gnc_file_ofx_import (void)
   extern int ofx_INFO_msg;
   extern int ofx_STATUS_msg;
   char *filenames[3];
-  const char *selected_filename;
+  char *selected_filename;
   char *default_dir;
 
   ofx_PARSER_msg = false;
@@ -91,7 +91,6 @@ void gnc_file_ofx_import (void)
   ofx_INFO_msg = true;
   ofx_STATUS_msg = false;
 
-  gnc_set_log_level(MOD_IMPORT, GNC_LOG_TRACE);
   ENTER(" ");
 
   default_dir = gnc_lookup_string_option("__paths", "Import OFX", NULL);
@@ -120,6 +119,7 @@ void gnc_file_ofx_import (void)
 
       DEBUG("Opening selected file");
       ofx_proc_file(2, filenames);
+      g_free(selected_filename);
     }
 
 }

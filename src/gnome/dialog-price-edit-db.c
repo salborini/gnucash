@@ -46,8 +46,16 @@
 
 #define DIALOG_PRICE_DB_CM_CLASS "dialog-price-edit-db"
 
-#define COMMODITY_COLUMN 0
-#define DATE_COLUMN      2
+enum {
+  COMMODITY_COLUMN = 0,
+  CURRENCY_COLUMN,
+  DATE_COLUMN,
+  SOURCE_COLUMN,
+  TYPE_COLUMN,
+  PRICE_COLUMN,
+  POINTER_COLUMN,
+  N_COLUMNS
+};
 
 /* This static indicates the debugging module that this .o belongs to.  */
 /* static short module = MOD_GUI; */
@@ -61,7 +69,8 @@ typedef struct
   GtkWidget * commodity_arrow;
   GtkWidget * date_arrow;
 
-  GtkWidget * price_list;
+  GtkTreeStore * tree_store;
+  GtkWidget * price_tree;
   GtkWidget * edit_button;
   GtkWidget * remove_button;
   GtkWidget * remove_old_button;
@@ -91,6 +100,7 @@ load_price_helper (GNCPrice *price, gpointer data)
   return TRUE;
 }
 
+#if 0
 static int
 price_compare (gconstpointer a, gconstpointer b)
 {
@@ -159,66 +169,65 @@ price_date_compare (gconstpointer a, gconstpointer b)
 
   return price_compare (a, b);
 }
+#endif
 
 static int
 gnc_prices_load_prices (PricesDialog *pdb_dialog)
 {
   gnc_commodity *current_commodity;
   GNCPrintAmountInfo print_info;
-  gboolean sort_commodity;
-  GtkArrowType arrow_dir;
-  GtkWidget *show, *hide;
-  GCompareFunc sort_fn;
-  gboolean sort_ascending;
   GNCPrice *old_price;
   GNCBook *book;
   GList *prices;
   GList *node;
   int new_row;
+  GtkTreeIter iter;
 
   book = gnc_get_current_book ();
   old_price = pdb_dialog->price;
   prices = NULL;
   new_row = 0;
 
+  /* Build an unsorted glist of all prices. */
   gnc_pricedb_foreach_price (gnc_book_get_pricedb (book),
                              load_price_helper, &prices, FALSE);
 
-  sort_commodity = (pdb_dialog->sort_column == COMMODITY_COLUMN);
-
-  if (sort_commodity) {
-    show = pdb_dialog->commodity_arrow;
-    hide = pdb_dialog->date_arrow;
-    sort_fn = price_compare;
-    sort_ascending = pdb_dialog->ascending;
-  } else {
-    show = pdb_dialog->date_arrow;
-    hide = pdb_dialog->commodity_arrow;
-    sort_fn = price_date_compare;
-    sort_ascending = !pdb_dialog->ascending; /* Aren't date sorts fun */
-  }
-
-  prices = g_list_sort (prices, sort_fn);
-  if (!sort_ascending)
-    prices = g_list_reverse (prices);
-
-  arrow_dir = pdb_dialog->ascending ? GTK_ARROW_DOWN: GTK_ARROW_UP;
-  gtk_arrow_set(GTK_ARROW(show), arrow_dir, GTK_SHADOW_ETCHED_IN);
-  gtk_widget_show(show);
-  gtk_widget_hide(hide);
-
-  gtk_clist_freeze (GTK_CLIST (pdb_dialog->price_list));
-
-  gtk_clist_clear (GTK_CLIST (pdb_dialog->price_list));
+//  sort_commodity = (pdb_dialog->sort_column == COMMODITY_COLUMN);
+//
+//  if (sort_commodity) {
+//    show = pdb_dialog->commodity_arrow;
+//    hide = pdb_dialog->date_arrow;
+//    sort_fn = price_compare;
+//    sort_ascending = pdb_dialog->ascending;
+//  } else {
+//    show = pdb_dialog->date_arrow;
+//    hide = pdb_dialog->commodity_arrow;
+//    sort_fn = price_date_compare;
+//    sort_ascending = !pdb_dialog->ascending; /* Aren't date sorts fun */
+//  }
+//
+//  prices = g_list_sort (prices, sort_fn);
+//  if (!sort_ascending)
+//    prices = g_list_reverse (prices);
+//
+//  arrow_dir = pdb_dialog->ascending ? GTK_ARROW_DOWN: GTK_ARROW_UP;
+//  gtk_arrow_set(GTK_ARROW(show), arrow_dir, GTK_SHADOW_ETCHED_IN);
+//  gtk_widget_show(show);
+//  gtk_widget_hide(hide);
+//
+//  gtk_clist_freeze (GTK_CLIST (pdb_dialog->price_list));
+//
+//  gtk_clist_clear (GTK_CLIST (pdb_dialog->price_list));
 
   current_commodity = NULL;
   print_info = gnc_default_price_print_info ();
+
+  gtk_tree_store_append(pdb_dialog->tree_store, &iter, NULL);
 
   for (node = prices; node; node = node->next)
   {
     GNCPrice *price = node->data;
     const char *text[6];
-    gint row;
 
     text[0] = gnc_commodity_get_printname (gnc_price_get_commodity (price));
     text[1] = gnc_commodity_get_printname (gnc_price_get_currency (price));
@@ -227,18 +236,22 @@ gnc_prices_load_prices (PricesDialog *pdb_dialog)
     text[4] = gnc_price_get_type (price);
     text[5] = xaccPrintAmount (gnc_price_get_value (price), print_info);
 
-    row = gtk_clist_append (GTK_CLIST (pdb_dialog->price_list), (char **)text);
-
-    gtk_clist_set_row_data (GTK_CLIST (pdb_dialog->price_list), row, price);
-
-    if (price == old_price)
-      new_row = row;
+    gtk_tree_store_set(pdb_dialog->tree_store, &iter,
+		       COMMODITY_COLUMN, text[0],
+		       CURRENCY_COLUMN,  text[1],
+		       DATE_COLUMN,      text[2],
+		       SOURCE_COLUMN,    text[3],
+		       TYPE_COLUMN,      text[4],
+		       PRICE_COLUMN,     text[5],
+		       POINTER_COLUMN,   price,
+		       -1);
   }
 
-  gtk_clist_thaw (GTK_CLIST (pdb_dialog->price_list));
+//  gtk_clist_thaw (GTK_CLIST (pdb_dialog->price_list));
+//
+//  gtk_clist_columns_autosize (GTK_CLIST (pdb_dialog->price_list));
 
-  gtk_clist_columns_autosize (GTK_CLIST (pdb_dialog->price_list));
-
+/* Is any of this necessary since the TreeModel handles sorting? */
   for (node = pdb_dialog->prices; node; node = node->next)
   {
     GNCPrice *price = node->data;
@@ -249,11 +262,11 @@ gnc_prices_load_prices (PricesDialog *pdb_dialog)
   g_list_free (pdb_dialog->prices);
   pdb_dialog->prices = prices;
 
-  gtk_clist_select_row (GTK_CLIST (pdb_dialog->price_list), new_row, 0);
-  if (gtk_clist_row_is_visible (GTK_CLIST (pdb_dialog->price_list), new_row)
-      != GTK_VISIBILITY_FULL)
-    gtk_clist_moveto (GTK_CLIST (pdb_dialog->price_list),
-                      new_row, 0, 0.5, 0.0);
+//  gtk_clist_select_row (GTK_CLIST (pdb_dialog->price_list), new_row, 0);
+//  if (gtk_clist_row_is_visible (GTK_CLIST (pdb_dialog->price_list), new_row)
+//      != GTK_VISIBILITY_FULL)
+//    gtk_clist_moveto (GTK_CLIST (pdb_dialog->price_list),
+//                      new_row, 0, 0.5, 0.0);
 
   gtk_widget_set_sensitive (pdb_dialog->edit_button, prices != NULL);
   gtk_widget_set_sensitive (pdb_dialog->remove_button, prices != NULL);
@@ -290,11 +303,13 @@ window_destroy_cb (GtkObject *object, gpointer data)
 }
 
 static void
-prices_close_clicked (GtkWidget *widget, gpointer data)
+prices_response (GtkDialog *dialog, gint response_id, gpointer data)
 {
   PricesDialog *pdb_dialog = data;
 
-  gnc_close_gui_component_by_data (DIALOG_PRICE_DB_CM_CLASS, pdb_dialog);
+  if (response_id == GTK_RESPONSE_CLOSE) {
+    gnc_close_gui_component_by_data (DIALOG_PRICE_DB_CM_CLASS, pdb_dialog);
+  }
 }
 
 static void
@@ -339,16 +354,16 @@ remove_old_clicked (GtkWidget *widget, gpointer data)
   GtkWidget *vbox;
   gint result;
 
-  dialog = gnome_dialog_new (_("Remove old prices"),
-                             GNOME_STOCK_BUTTON_OK,
-                             GNOME_STOCK_BUTTON_CANCEL,
-                             NULL);
+  dialog = gtk_dialog_new_with_buttons (_("Remove old prices"),
+		  			GTK_WINDOW (pdb_dialog->dialog),
+					GTK_DIALOG_DESTROY_WITH_PARENT,
+					GTK_STOCK_OK,
+					GTK_RESPONSE_ACCEPT,
+					GTK_STOCK_CANCEL,
+					GTK_RESPONSE_REJECT,
+					NULL);	    
 
-  gnome_dialog_set_parent (GNOME_DIALOG (dialog),
-                           GTK_WINDOW (pdb_dialog->dialog));
-  gnome_dialog_close_hides (GNOME_DIALOG (dialog), FALSE);
-
-  vbox = GNOME_DIALOG (dialog)->vbox;
+  vbox = GTK_DIALOG (dialog)->vbox;
 
   gtk_box_set_spacing (GTK_BOX (vbox), 3);
   gtk_container_set_border_width (GTK_CONTAINER (vbox), 3);
@@ -360,14 +375,14 @@ remove_old_clicked (GtkWidget *widget, gpointer data)
   gtk_widget_show (label);
 
   date = gnc_date_edit_new (time (NULL), FALSE, FALSE);
-  gtk_object_ref (GTK_OBJECT (date));
+  g_object_ref (date);
   gtk_object_sink (GTK_OBJECT (date));
 
   gtk_box_pack_start (GTK_BOX (vbox), date, FALSE, FALSE, 0);
   gtk_widget_show (date);
 
-  result = gnome_dialog_run_and_close (GNOME_DIALOG (dialog));
-  if (result == 0)
+  result = gtk_dialog_run (GTK_DIALOG (dialog));
+  if (result == GTK_RESPONSE_ACCEPT)
   {
     GNCBook *book = gnc_get_current_book ();
     GNCPriceDB *pdb = gnc_book_get_pricedb (book);
@@ -380,7 +395,7 @@ remove_old_clicked (GtkWidget *widget, gpointer data)
     for (node = pdb_dialog->prices; node; node = node->next)
     {
       GNCPrice *price = node->data;
-      Timespec pt = gnc_price_get_time (price);;
+      Timespec pt = gnc_price_get_time (price);
 
       if (timespec_cmp (&pt, &ts) < 0)
         gnc_pricedb_remove_price (pdb, price);
@@ -389,7 +404,7 @@ remove_old_clicked (GtkWidget *widget, gpointer data)
     gnc_gui_refresh_all ();
   }
 
-  gtk_object_unref (GTK_OBJECT (date));
+  g_object_unref (date);
 }
 
 static void
@@ -422,6 +437,7 @@ get_quotes_clicked (GtkWidget *widget, gpointer data)
   gnc_gui_refresh_all ();
 }
 
+#if 0
 /**
  * gnc_prices_click_column_cb
  *
@@ -509,7 +525,7 @@ prices_set_min_widths (PricesDialog *pdb_dialog)
   gint i;
 
   if (style != NULL)
-    font = style->font;
+    font = gdk_font_from_description (style->font_desc);
 
   if (font != NULL)
     for (i = 0; i < 6; i++)
@@ -519,6 +535,7 @@ prices_set_min_widths (PricesDialog *pdb_dialog)
                                       i, width + 5);
     }
 }
+#endif
 
 static void
 gnc_prices_dialog_create (GtkWidget * parent, PricesDialog *pdb_dialog)
@@ -531,44 +548,105 @@ gnc_prices_dialog_create (GtkWidget * parent, PricesDialog *pdb_dialog)
   dialog = glade_xml_get_widget (xml, "Prices Dialog");
   pdb_dialog->dialog = dialog;
 
-  gnome_dialog_button_connect (GNOME_DIALOG (dialog), 0,
-                               GTK_SIGNAL_FUNC (prices_close_clicked),
-                               pdb_dialog);
+  g_signal_connect (G_OBJECT (dialog), "response",
+                    G_CALLBACK (prices_response), pdb_dialog);
 
-  gtk_signal_connect (GTK_OBJECT (dialog), "destroy",
-                      GTK_SIGNAL_FUNC (window_destroy_cb), pdb_dialog);
+  g_signal_connect (G_OBJECT (dialog), "destroy",
+                      G_CALLBACK (window_destroy_cb), pdb_dialog);
 
   /* parent */
   if (parent != NULL)
-    gnome_dialog_set_parent (GNOME_DIALOG (dialog), GTK_WINDOW (parent));
+    gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (parent));
 
   /* default to 'close' button */
-  gnome_dialog_set_default (GNOME_DIALOG(dialog), 0);
+  gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_CLOSE);
 
   /* price tree */
   {
-    GtkWidget *list;
+    GtkTreeStore *store;
+    GtkWidget *tree;
+    GtkTreeViewColumn *column;
+    GtkCellRenderer *renderer;
 
-    list = glade_xml_get_widget (xml, "price_list");
-    pdb_dialog->price_list = list;
-    pdb_dialog->sort_column = COMMODITY_COLUMN;
-    pdb_dialog->ascending = TRUE;
+    tree = glade_xml_get_widget (xml, "price_list");
+    printf("DRH: Tree is %p\n", tree);
+    pdb_dialog->price_tree = tree;
+//    pdb_dialog->sort_column = COMMODITY_COLUMN;
+//    pdb_dialog->ascending = TRUE;
 
-    gtk_clist_column_titles_passive(GTK_CLIST(list));
-    gtk_clist_column_title_active(GTK_CLIST(list), COMMODITY_COLUMN);
-    gtk_clist_column_title_active(GTK_CLIST(list), DATE_COLUMN);
+    store = gtk_tree_store_new (N_COLUMNS,
+                               G_TYPE_STRING,
+                               G_TYPE_STRING,
+                               G_TYPE_STRING, 
+                               G_TYPE_STRING,
+                               G_TYPE_STRING,
+                               G_TYPE_STRING,
+			       G_TYPE_POINTER);
+    pdb_dialog->tree_store = store;
+    printf("DRH: Tree store is %p\n", store);
+    gtk_tree_view_set_model(GTK_TREE_VIEW(tree), GTK_TREE_MODEL(store));
 
-    gtk_signal_connect (GTK_OBJECT(list), "select_row",
-                        GTK_SIGNAL_FUNC(gnc_prices_select_price_cb),
-                        pdb_dialog);
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Commodity", renderer,
+						       "text", COMMODITY_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 1 is %p, renderer %p\n", column, renderer);
 
-    gtk_signal_connect (GTK_OBJECT(list), "unselect_row",
-                        GTK_SIGNAL_FUNC(gnc_prices_unselect_price_cb),
-                        pdb_dialog);
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Currency", renderer,
+						       "text", CURRENCY_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 2 is %p, renderer %p\n", column, renderer);
 
-    gtk_signal_connect (GTK_OBJECT(list), "click_column",
-			GTK_SIGNAL_FUNC(gnc_prices_click_column_cb),
-			pdb_dialog);
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Date", renderer,
+						       "text", DATE_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 3 is %p, renderer %p\n", column, renderer);
+
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Source", renderer,
+						       "text", SOURCE_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 4 is %p, renderer %p\n", column, renderer);
+
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Type", renderer,
+						       "text", TYPE_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 5 is %p, renderer %p\n", column, renderer);
+
+    renderer = gtk_cell_renderer_text_new ();
+    column = gtk_tree_view_column_new_with_attributes ("Price", renderer,
+						       "text", PRICE_COLUMN,
+						       NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+    printf("DRH: Column 6 is %p, renderer %p\n", column, renderer);
+
+//    column = gtk_tree_view_column_new_with_attributes ("Pointer", NULL,
+//						       "text", POINTER_COLUMN,
+//						       NULL);
+//    gtk_tree_view_append_column (GTK_TREE_VIEW (tree), column);
+//    printf("DRH: Column 7 is %p, renderer %p\n", column, renderer);
+
+/* */
+
+//    g_signal_connect (G_OBJECT(list), "select_row",
+//                        G_CALLBACK(gnc_prices_select_price_cb),
+//                        pdb_dialog);
+//
+//    g_signal_connect (G_OBJECT(list), "unselect_row",
+//                        G_CALLBACK(gnc_prices_unselect_price_cb),
+//                        pdb_dialog);
+//
+//    g_signal_connect (G_OBJECT(list), "click_column",
+//			G_CALLBACK(gnc_prices_click_column_cb),
+//			pdb_dialog);
   }
 
   /* buttons */
@@ -578,45 +656,46 @@ gnc_prices_dialog_create (GtkWidget * parent, PricesDialog *pdb_dialog)
     button = glade_xml_get_widget (xml, "edit_button");
     pdb_dialog->edit_button = button;
 
-    gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                        GTK_SIGNAL_FUNC (edit_clicked), pdb_dialog);
+    g_signal_connect (G_OBJECT (button), "clicked",
+                        G_CALLBACK (edit_clicked), pdb_dialog);
 
     button = glade_xml_get_widget (xml, "remove_button");
     pdb_dialog->remove_button = button;
 
-    gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                        GTK_SIGNAL_FUNC (remove_clicked), pdb_dialog);
+    g_signal_connect (G_OBJECT (button), "clicked",
+                        G_CALLBACK (remove_clicked), pdb_dialog);
 
     button = glade_xml_get_widget (xml, "remove_old_button");
     pdb_dialog->remove_old_button = button;
 
-    gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                        GTK_SIGNAL_FUNC (remove_old_clicked), pdb_dialog);
+    g_signal_connect (G_OBJECT (button), "clicked",
+                        G_CALLBACK (remove_old_clicked), pdb_dialog);
 
     button = glade_xml_get_widget (xml, "add_button");
 
-    gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                        GTK_SIGNAL_FUNC (add_clicked), pdb_dialog);
+    g_signal_connect (G_OBJECT (button), "clicked",
+                        G_CALLBACK (add_clicked), pdb_dialog);
 
     button = glade_xml_get_widget (xml, "get_quotes_button");
 
-    gtk_signal_connect (GTK_OBJECT (button), "clicked",
-                        GTK_SIGNAL_FUNC (get_quotes_clicked), pdb_dialog);
+    g_signal_connect (G_OBJECT (button), "clicked",
+                        G_CALLBACK (get_quotes_clicked), pdb_dialog);
   }
+
+    gnc_prices_load_prices (pdb_dialog);
 
   /* arrows */
-  {
-    GtkWidget *arrow;
+//  {
+//    GtkWidget *arrow;
+//
+//    arrow = glade_xml_get_widget (xml, "commodity_arrow");
+//    pdb_dialog->commodity_arrow = arrow;
+//
+//    arrow = glade_xml_get_widget (xml, "date_arrow");
+//    pdb_dialog->date_arrow = arrow;
+//  }
 
-    arrow = glade_xml_get_widget (xml, "commodity_arrow");
-    pdb_dialog->commodity_arrow = arrow;
-
-    arrow = glade_xml_get_widget (xml, "date_arrow");
-    pdb_dialog->date_arrow = arrow;
-  }
-
-  gnc_prices_load_prices (pdb_dialog);
-  prices_set_min_widths (pdb_dialog);
+//  prices_set_min_widths (pdb_dialog);
 
   if (last_width == 0)
     gnc_get_window_size ("prices_win", &last_width, &last_height);
@@ -638,7 +717,7 @@ close_handler (gpointer user_data)
 
   gnc_save_window_size ("prices_win", last_width, last_height);
 
-  gnome_dialog_close (GNOME_DIALOG (pdb_dialog->dialog));
+  gtk_widget_destroy (GTK_WIDGET (pdb_dialog->dialog));
 }
 
 static void
@@ -686,7 +765,7 @@ gnc_prices_dialog (GtkWidget * parent)
                                              refresh_handler, close_handler,
                                              pdb_dialog);
 
-  gtk_widget_grab_focus (pdb_dialog->price_list);
+//  gtk_widget_grab_focus (pdb_dialog->price_list);
 
   gtk_widget_show (pdb_dialog->dialog);
 }

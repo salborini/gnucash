@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <gnome.h>
+#include <gconf/gconf-client.h>
 #include <libguile.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,7 +40,6 @@
 #include "dialog-options.h"
 #include "dialog-scheduledxaction.h"
 #include "dialog-sxsincelast.h"
-#include "dialog-totd.h"
 #include "dialog-transfer.h"
 #include "dialog-utils.h"
 #include "druid-acct-period.h"
@@ -49,8 +49,6 @@
 #include "gnc-engine.h"
 #include "gnc-engine-util.h"
 #include "gnc-file-dialog.h"
-#include "gnc-file-history.h"
-#include "gnc-file-history-gnome.h"
 #include "gnc-file.h"
 #include "gnc-gui-query.h"
 #include "gnc-menu-extensions.h"
@@ -58,11 +56,8 @@
 #include "gnc-ui.h"
 #include "gnc-version.h"
 #include "guile-util.h"
-#include "mainwindow-account-tree.h"
 #include "option-util.h"
 #include "top-level.h"
-#include "window-acct-tree.h"
-#include "window-help.h"
 #include "window-main-summarybar.h"
 #include "window-main.h"
 #include "window-reconcile.h"
@@ -71,8 +66,9 @@
 #include "messages.h"
 #include "guile-mappings.h"
 
-static short module = MOD_GUI;
+/* static short module = MOD_GUI; */
 
+#if INCLUDE_GNOME1_BASED_ROUTINES
 static void gnc_main_window_create_menus(GNCMDIInfo * maininfo);
 static GnomeUIInfo * gnc_main_window_toolbar_prefix (void);
 static GnomeUIInfo * gnc_main_window_toolbar_suffix (void);
@@ -113,6 +109,7 @@ gnc_main_window_get_mdi_child (void)
 
   child = gnome_mdi_get_active_child(mdi);
   if (child) {
+//    child_info = return g_object_get_data (G_OBJECT (mdi->active_child), "gnc-mdi-child-info");
     child_info = gtk_object_get_user_data(GTK_OBJECT(child));
     LEAVE("child=%p", child_info);
     return(child_info);
@@ -138,6 +135,7 @@ gnc_main_window_get_mdi_child (void)
   LEAVE("oops. No valid no child or app");
   return(NULL);
 }
+#endif
 
 /********************************************************************
  * gnc_shutdown
@@ -163,6 +161,7 @@ gnc_shutdown (int exit_status)
   }
 }
 
+#if 0
 /********************************************************************
  * gnc_main_window_app_created_cb()
  * called when a new top-level GnomeApp is created.  
@@ -173,13 +172,14 @@ gnc_main_window_app_created_cb(GnomeMDI * mdi, GnomeApp * app,
                                gpointer data) {
   GtkWidget * summarybar;
   GtkWidget * statusbar;
+  GConfClient * client;
 
   /* add the summarybar */
   ENTER(" ");
   summarybar = gnc_main_window_summary_new();
 
   {
-    GnomeDockItemBehavior behavior;
+    BonoboDockItemBehavior behavior;
     GtkWidget *item;
 
     /* This is essentially gnome_app_add_docked, but without using
@@ -188,24 +188,25 @@ gnc_main_window_app_created_cb(GnomeMDI * mdi, GnomeApp * app,
      * layout config before we've had a chance to read it.
      */
 
-    behavior = (GNOME_DOCK_ITEM_BEH_EXCLUSIVE |
-                GNOME_DOCK_ITEM_BEH_NEVER_VERTICAL);
-    if (!gnome_preferences_get_toolbar_detachable ())
-      behavior |= GNOME_DOCK_ITEM_BEH_LOCKED;
+    behavior = (BONOBO_DOCK_ITEM_BEH_EXCLUSIVE |
+                BONOBO_DOCK_ITEM_BEH_NEVER_VERTICAL);
+    client = gconf_client_get_default ();
+    if (!gconf_client_get_bool (client, "/desktop/gnome/interface/toolbar_detachable", NULL))
+      behavior |= BONOBO_DOCK_ITEM_BEH_LOCKED;
 
-    item = gnome_dock_item_new("Summary Bar", behavior);
+    item = bonobo_dock_item_new("Summary Bar", behavior);
     gtk_container_add( GTK_CONTAINER (item), summarybar );
 
     if (app->layout) {
-      gnome_dock_layout_add_item( app->layout,
-                                  GNOME_DOCK_ITEM(item),
-                                  GNOME_DOCK_TOP,
+      bonobo_dock_layout_add_item( app->layout,
+                                  BONOBO_DOCK_ITEM(item),
+                                  BONOBO_DOCK_TOP,
                                   2, 0, 0 );
     }
     else {
-      gnome_dock_add_item( GNOME_DOCK(app->dock),
-                           GNOME_DOCK_ITEM(item),
-                           GNOME_DOCK_TOP,
+      bonobo_dock_add_item( BONOBO_DOCK(app->dock),
+                           BONOBO_DOCK_ITEM(item),
+                           BONOBO_DOCK_TOP,
                            2, 0, 0, FALSE );
     }
   }
@@ -225,7 +226,8 @@ gnc_main_window_app_created_cb(GnomeMDI * mdi, GnomeApp * app,
 static void
 gnc_refresh_main_window_info (void)
 {
-  GList *containers = gtk_container_get_toplevels ();
+  GList *containers = gtk_window_list_toplevels ();
+  GList *containerstop = containers;
 
   ENTER(" ");
   while (containers)
@@ -240,6 +242,7 @@ gnc_refresh_main_window_info (void)
 
     containers = containers->next;
   }
+  g_list_free (containerstop);
   LEAVE(" ");
 }
 
@@ -261,7 +264,6 @@ gnc_main_window_create_child(const gchar * configstring)
   ENTER(" ");
   if (!configstring)
   {
-    gnc_main_window_open_accounts (FALSE);
     LEAVE("no configstring");
     return NULL;
   }
@@ -272,9 +274,6 @@ gnc_main_window_create_child(const gchar * configstring)
 
   if (!safe_strcmp (type, URL_TYPE_REPORT)) {
     child = gnc_report_window_create_child(configstring);
-
-  } else if (!safe_strcmp (type, URL_TYPE_ACCTTREE)) {
-    child = gnc_acct_tree_window_create_child(configstring);
 
   } else {
     child = NULL;
@@ -386,6 +385,19 @@ gnc_main_window_flip_summary_bar_cb(GtkWidget * widget, gpointer data)
   LEAVE("flipped");
 }
 
+/* GNOME 2 Port */
+static gboolean
+gnc_main_window_add_child_cb (GnomeMDI *mdi, GnomeMDIChild *child, gpointer data)
+{
+	return TRUE;
+}
+
+static gboolean
+gnc_main_window_add_view_cb (GnomeMDI *mdi, GtkWidget *widget, gpointer data)
+{
+	return TRUE;
+}
+
 /********************************************************************
  * gnc_main_window_new()
  * initialize the Gnome MDI system
@@ -417,21 +429,30 @@ gnc_main_window_new (void)
   gnome_mdi_set_child_list_path(GNOME_MDI(retval->mdi),
                                 "_Windows/");
 
+  /* GNOME 2 Port (tmp fix) */
+  g_signal_connect (G_OBJECT(retval->mdi), "add-child",
+                    G_CALLBACK(gnc_main_window_add_child_cb),
+                     retval);
+  g_signal_connect (G_OBJECT(retval->mdi), "add-view",
+                    G_CALLBACK(gnc_main_window_add_view_cb),
+                     retval);
+
   /* handle top-level signals */
-  gtk_signal_connect(GTK_OBJECT(retval->mdi), "app_created",
-                     GTK_SIGNAL_FUNC(gnc_main_window_app_created_cb),
+  g_signal_connect (G_OBJECT(retval->mdi), "app-created",
+                    G_CALLBACK(gnc_main_window_app_created_cb),
                      retval);
 
   LEAVE(" ");
   return retval;
 }
+#endif
 
 /********************************************************************
  * menu/toolbar data structures and callbacks 
  * these are the "templates" that are installed in every top level
  * MDI window
  ********************************************************************/
-
+#if INCLUDE_GNOME1_BASED_ROUTINES
 static void
 gnc_main_window_options_cb(GtkWidget *widget, gpointer data)
 {
@@ -461,7 +482,6 @@ gnc_main_window_file_new_window_cb(GtkWidget * widget, gpointer data)
   {
     if (!strcmp(mdi->active_child->name, _("Accounts")))
     {
-      gnc_main_window_open_accounts (TRUE);
     }
     else
     {
@@ -533,7 +553,7 @@ gnc_main_window_dispatch_cb(GtkWidget * widget, gpointer data)
   gpointer *uidata;
 
   /* How annoying. MDI overrides the user data. Get it the hard way. */
-  uidata = gtk_object_get_data(GTK_OBJECT(widget), GNOMEUIINFO_KEY_UIDATA);
+  uidata = g_object_get_data (G_OBJECT(widget), GNOMEUIINFO_KEY_UIDATA);
   type = (GNCMDIDispatchType)GPOINTER_TO_UINT(uidata);
   g_return_if_fail(type < GNC_DISP_LAST);
 
@@ -702,8 +722,9 @@ gnc_main_window_about_cb (GtkWidget *widget, gpointer data)
 #else
   ver_string = strdup(VERSION);
 #endif
-  about = gnome_about_new ("GnuCash", ver_string, copyright,
-                           authors, message, NULL);
+  /* GNOME 2 Port (Add Documenters and Translators) */
+  about = gnome_about_new ("GnuCash", ver_string, copyright, message,
+                           authors, NULL, NULL, NULL);
   g_free(ver_string);
 
   gnome_dialog_set_parent (GNOME_DIALOG(about),
@@ -722,21 +743,20 @@ gnc_main_window_commodities_cb(GtkWidget *widget, gpointer data)
 void
 gnc_main_window_tutorial_cb (GtkWidget *widget, gpointer data)
 {
-  helpWindow(NULL, NULL, HH_MAIN);
+  gnc_gnome_help(HF_GUIDE, NULL);
 }
 
 void
 gnc_main_window_totd_cb (GtkWidget *widget, gpointer data)
 
 {
-  gnc_ui_totd_dialog_create_and_run();
   return;
 }
 
 void
 gnc_main_window_help_cb (GtkWidget *widget, gpointer data)
 {
-  helpWindow(NULL, NULL, HH_HELP);
+  gnc_gnome_help(HF_HELP, NULL);
 }
 
 void
@@ -748,8 +768,8 @@ gnc_main_window_exit_cb (GtkWidget *widget, gpointer data)
 static void
 gnc_main_window_file_new_account_tree_cb(GtkWidget * w, gpointer data)
 {
-  gnc_main_window_open_accounts(FALSE);
 }
+
 
 static void
 gnc_main_window_create_menus(GNCMDIInfo * maininfo)
@@ -1008,8 +1028,6 @@ gnc_main_window_create_menus(GNCMDIInfo * maininfo)
   ENTER(" ");
   gnome_mdi_set_menubar_template(GNOME_MDI(maininfo->mdi),
                                  gnc_main_menu_template);
-
-  gnc_file_history_add_after ("Open _Recent/");
   LEAVE(" ");
 }
 
@@ -1066,3 +1084,5 @@ gnc_main_window_toolbar_suffix (void)
 
   return suffix;
 }
+
+#endif

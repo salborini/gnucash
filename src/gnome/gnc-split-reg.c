@@ -31,6 +31,7 @@
 
 #include <gnome.h>
 #include <time.h>
+#include <gconf/gconf-client.h>
 
 #include "gnc-split-reg.h"
 
@@ -89,10 +90,10 @@ void gnc_split_reg_raise( GNCSplitReg *gsr );
 static GtkWidget* add_summary_label( GtkWidget *summarybar,
                                      const char *label_str );
 
+#if 0
 static void gnc_toolbar_change_cb( void *data );
+#endif
 static void gnc_split_reg_determine_read_only( GNCSplitReg *gsr );
-
-static void gnc_split_reg_change_style (GNCSplitReg *gsr, SplitRegisterStyle style);
 
 static GNCPlaceholderType gnc_split_reg_get_placeholder( GNCSplitReg *gsr );
 static gncUIWidget gnc_split_reg_get_parent( GNCLedgerDisplay *ledger );
@@ -294,7 +295,7 @@ gnc_split_reg_class_init( GNCSplitRegClass *class )
     gnc_split_reg_signals[ signals[i].s ] =
       gtk_signal_new( signals[i].signal_name,
                       GTK_RUN_LAST,
-                      object_class->type, signals[i].defaultOffset,
+                      GTK_CLASS_TYPE(object_class), signals[i].defaultOffset,
                       gtk_signal_default_marshaller, GTK_TYPE_NONE, 0 );
   }
   /* Setup the non-default-marshalled signals; 'i' is still valid, here. */
@@ -302,14 +303,12 @@ gnc_split_reg_class_init( GNCSplitRegClass *class )
   gnc_split_reg_signals[ INCLUDE_DATE_SIGNAL ] =
     gtk_signal_new( "include-date",
                     GTK_RUN_LAST,
-                    object_class->type,
+                    GTK_CLASS_TYPE(object_class),
                     signals[i++].defaultOffset,
                     gtk_marshal_NONE__INT, /* time_t == int */
                     GTK_TYPE_NONE, 1, GTK_TYPE_INT );
 
   g_assert( i == LAST_SIGNAL );
-
-  gtk_object_class_add_signals (object_class, gnc_split_reg_signals, LAST_SIGNAL);
 
   /* Setup the default handlers. */
   class->enter_ent_cb    = gsr_default_enter_handler;
@@ -376,7 +375,11 @@ gnc_split_reg_init( GNCSplitReg *gsr )
    * iterations of the Druid resizing without bound.  Contact
    * jsled@asynchronous.org for details. -- 2002.04.15
    */
-  gtk_container_set_resize_mode( GTK_CONTAINER(gsr), GTK_RESIZE_QUEUE );
+  /* This function call causes several problems in gnome2 port.  I do
+   * not see any problems with the code when it is removed.
+   * hampton@employees.org -- 2003-10-06
+   */
+  //gtk_container_set_resize_mode( GTK_CONTAINER(gsr), GTK_RESIZE_QUEUE );
 
   gtk_signal_connect( GTK_OBJECT(gsr), "destroy",
                       GTK_SIGNAL_FUNC (gnc_split_reg_destroy_cb), gsr );
@@ -444,12 +447,12 @@ gsr_create_menus( GNCSplitReg *gsr )
   gtk_widget_hide( mbar );
 
   gsr->edit_menu = glade_xml_get_widget( xml, "menu_edit_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->edit_menu) );
+  g_object_ref( gsr->edit_menu );
   mi = glade_xml_get_widget( xml, "menu_edit" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM( mi ) );
 
   gsr->view_menu = glade_xml_get_widget( xml, "menu_view_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->view_menu) );
+  g_object_ref( gsr->view_menu );
   mi = glade_xml_get_widget( xml, "menu_view" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(mi) );
 
@@ -457,7 +460,7 @@ gsr_create_menus( GNCSplitReg *gsr )
   gsr->sort_submenu = glade_xml_get_widget( xml, "menu_sort_order_menu" );
 
   gsr->action_menu = glade_xml_get_widget( xml, "menu_actions_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->action_menu) );
+  g_object_ref( gsr->action_menu );
   mi = glade_xml_get_widget( xml, "menu_actions" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(mi) );
 
@@ -476,6 +479,7 @@ static
 void
 gsr_create_toolbar( GNCSplitReg *gsr )
 {
+#if 0
   GladeXML *xml;
   GtkWidget *widget;
   SCM id;
@@ -514,6 +518,7 @@ gsr_create_toolbar( GNCSplitReg *gsr )
     widget = glade_xml_get_widget (xml, "toolbar_duplicate");
     gtk_widget_set_sensitive(widget, FALSE);
   }
+#endif
 }
 
 static
@@ -535,9 +540,9 @@ gsr_create_table( GNCSplitReg *gsr )
   gsr->reg = GNUCASH_REGISTER( register_widget );
   gnc_table_init_gui( GTK_WIDGET(gsr->reg), sr );
 
-  gtk_container_add( GTK_CONTAINER(gsr), GTK_WIDGET(gsr->reg) );
+  gtk_box_pack_start (GTK_BOX (gsr), GTK_WIDGET(gsr->reg), TRUE, TRUE, 0);
   GNUCASH_SHEET(gsr->reg->sheet)->window = gsr->window;
-  gtk_widget_show_all( GTK_WIDGET(gsr->reg) );
+  gtk_widget_show ( GTK_WIDGET(gsr->reg) );
   gtk_signal_connect (GTK_OBJECT(gsr->reg), "activate_cursor",
                       GTK_SIGNAL_FUNC(gnc_split_reg_record_cb), gsr);
   gtk_signal_connect (GTK_OBJECT(gsr->reg), "redraw_all",
@@ -847,6 +852,7 @@ gsr_redraw_all_cb (GnucashRegister *g_reg, gpointer data)
     expand = gnc_split_register_current_trans_expanded (reg);
     sensitive = (reg->style == REG_STYLE_LEDGER);
 
+#if 0
     if ( gsr->createFlags & CREATE_TOOLBAR ) {
       gtk_signal_handler_block_by_data
         (GTK_OBJECT(gsr->split_button), gsr);
@@ -856,6 +862,7 @@ gsr_redraw_all_cb (GnucashRegister *g_reg, gpointer data)
         (GTK_OBJECT (gsr->split_button), gsr);
       gtk_widget_set_sensitive( gsr->split_button, sensitive );
     }
+#endif
 
     if ( gsr->createFlags & CREATE_MENUS ) {
       gtk_signal_handler_block_by_data
@@ -905,8 +912,10 @@ gnc_split_reg_ld_destroy( GNCLedgerDisplay *ledger )
     if (reg && reg->table)
       gnc_table_save_state (reg->table);
 
-    gtk_widget_hide_all( gsr->window );
-    gtk_widget_destroy( gsr->window );
+    /*
+     * Don't destroy the window here any more.  The register no longer
+     * owns it.
+     */
   }
   gnc_ledger_display_set_user_data (ledger, NULL);
 }
@@ -914,7 +923,7 @@ gnc_split_reg_ld_destroy( GNCLedgerDisplay *ledger )
 gboolean
 gnc_split_reg_check_close( GNCSplitReg *gsr )
 {
-  GNCVerifyResult result;
+  gint result;
   gboolean pending_changes;
   SplitRegister *reg;
   const char *message = _("The current transaction has been changed.\n"
@@ -1138,10 +1147,6 @@ gnc_split_reg_reverse_trans_cb (GtkWidget *w, gpointer data)
   GNCSplitReg *gsr = data;
   gsr_emit_simple_signal( gsr, "reverse_txn" );
 }
-
-/* Remove when porting to gtk2.0 */
-#define GTK_STOCK_CANCEL           GNOME_STOCK_BUTTON_CANCEL
-#define GTK_STOCK_DELETE           "Delete"
 
 void
 gsr_default_reinit_handler( GNCSplitReg *gsr, gpointer data )
@@ -1573,49 +1578,7 @@ gnc_split_reg_new_trans_cb (GtkWidget *widget, gpointer data)
 void
 gsr_default_jump_handler( GNCSplitReg *gsr, gpointer data )
 {
-  SplitRegister *reg;
-  Account *account;
-  Account *leader;
-  Split *split;
-
-  reg = gnc_ledger_display_get_split_register (gsr->ledger);
-
-  split = gnc_split_register_get_current_split (reg);
-  if (split == NULL)
-    return;
-
-  account = xaccSplitGetAccount(split);
-  if (account == NULL)
-    return;
-
-  leader = gnc_ledger_display_leader( gsr->ledger );
-
-  if (account == leader)
-  {
-    split = xaccSplitGetOtherSplit(split);
-    if (split == NULL)
-      return;
-
-    account = xaccSplitGetAccount(split);
-    if (account == NULL)
-      return;
-    if (account == leader)
-      return;
-  }
-
-  {
-    GNCLedgerDisplay *ld;
-    GNCSplitReg *gsr;
-
-    ld = gnc_ledger_display_simple( account );
-    gsr = gnc_ledger_display_get_user_data( ld );
-    if ( !gsr ) {
-      /* create new */
-      gsr = regWindowSimple( account );
-    }
-    gnc_split_reg_raise( gsr );
-    gnc_split_reg_jump_to_split( gsr, split );
-  }
+  g_assert_not_reached();
 }
 
 void
@@ -1625,7 +1588,6 @@ gnc_split_reg_jump_cb( GtkWidget *widget, gpointer data )
   gsr_emit_simple_signal( gsr, "jump" );
 }
 
-static
 void
 gnc_split_reg_change_style (GNCSplitReg *gsr, SplitRegisterStyle style)
 {
@@ -1881,7 +1843,7 @@ gnc_split_reg_goto_next_trans_row (GNCSplitReg *gsr)
                                            gsr );
 }
 
-static void
+void
 gnc_split_reg_enter( GNCSplitReg *gsr, gboolean next_transaction )
 {
   SplitRegister *sr = gnc_ledger_display_get_split_register( gsr->ledger );
@@ -2113,6 +2075,7 @@ gsr_create_popup_menu( GNCSplitReg *gsr )
 {
   GtkWidget *popup, *menuitem;
   GladeXML *xml;
+  GConfClient *client;
 
   xml = gnc_glade_xml_new( "register.glade", "register_popup" );
   popup = glade_xml_get_widget( xml, "register_popup" );
@@ -2120,8 +2083,9 @@ gsr_create_popup_menu( GNCSplitReg *gsr )
                                      gnc_glade_autoconnect_full_func,
                                      gsr );
 
+  client = gconf_client_get_default ();
   /* Glade insists on making this a tearoff menu. */
-  if (gnome_preferences_get_menus_have_tearoff()) {
+  if (gconf_client_get_bool (client, "/desktop/gnome/interface/menus_have_tearoff", NULL)) {
     GtkMenuShell *ms = GTK_MENU_SHELL(popup);
     GtkWidget *tearoff;
 
@@ -2282,6 +2246,7 @@ gnc_split_reg_determine_read_only( GNCSplitReg *gsr )
 
 }
 
+#if 0
 static
 void
 gnc_toolbar_change_cb (void *data)
@@ -2289,6 +2254,7 @@ gnc_toolbar_change_cb (void *data)
   GNCSplitReg *gsr = data;
   gnc_split_reg_refresh_toolbar( gsr );
 }
+#endif
 
 static
 gncUIWidget
@@ -2343,8 +2309,7 @@ gnc_split_reg_get_sort_type( GNCSplitReg *gsr )
 void
 gnc_split_reg_set_sort_type( GNCSplitReg *gsr, SortType t )
 {
-  /* FIXME */
-  PERR( "unimplemented" );
+  gnc_split_reg_sort( gsr, t );
 }
 
 GtkWidget*

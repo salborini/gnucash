@@ -9,13 +9,14 @@ AM_CFLAGS = \
   -I${top_srcdir}/src/engine \
   -I${top_srcdir}/src/app-utils \
   -I${top_srcdir}/src/gnome-utils \
-  ${GNOME_INCLUDEDIR} \
+  ${GNOME_CFLAGS} \
   ${GUILE_INCS} \
   ${GLIB_CFLAGS} \
   ${G_WRAP_COMPILE_ARGS}
 
 libgncmod_app_file_la_SOURCES = \
   gnc-file.c \
+  gnc-file-history.c \
   gncmod-app-file.c
 
 gncincludedir = ${GNC_INCLUDE_DIR}

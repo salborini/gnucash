@@ -41,7 +41,7 @@ typedef struct
 
 /** Static Variables ************************************************/
 static guint  suspend_counter = 0;
-static gint   next_handler_id = 0;
+static gint   next_handler_id = 1;
 static GList *handlers = NULL;
 
 /* This static indicates the debugging module that this .o belongs to.  */
@@ -168,6 +168,8 @@ gnc_engine_generate_event_internal (const GUID *entity, QofIdType type,
     case GNC_EVENT_CREATE:
     case GNC_EVENT_MODIFY:
     case GNC_EVENT_DESTROY:
+    case GNC_EVENT_ADD:
+    case GNC_EVENT_REMOVE:
       break;
 
     default:

@@ -1,0 +1,158 @@
+This is a ad-hoc list of list of what works and doesn't work in the g2
+port of gnucash.  The plan is to finish porting those parts of gnucash
+that have already been started (i.e. new windowing system, account
+tree, commodities tree, etc.), but not to port any additional features
+unless absolutely required.  The clist/ctree widgets *do* still exist
+in gtk2 and can be used, even though they've been marked as deprecated
+and will disappear in a future release.  Its important to get this
+release out the door and not stall it until all the deprecated
+functionality has been removed.
+
+Feel free to add to, delete from, or modify anything in this list.  If
+someone wants to turn this into a columnar table with a field for
+names of active developers, that'd be great.
+
+========================================
+   Last sync with HEAD on 2003-09-18
+========================================
+
+========================================
+              DONE
+========================================
+
+Help
+Financial Calculator
+Commodity Editor
+Reconcile
+Transfer
+View Toolbar
+View Statusbar
+Properties Dialog
+
+========================================
+          MISSING MENU ITEMS
+========================================
+
+Main Window
+  File
+    Import
+      OFX
+    Print <- remove ?
+  Edit
+    Style Sheets
+    Tax Options - Lots 'o errors
+  Actions
+    Close Books
+  Reports (all)
+
+Register Window
+  Edit
+    Cut Transaction
+    Copy Transaction
+    Paste Transaction
+    --
+    Void Transaction
+    Unvoid Transaction
+    Reverse Transaction
+    Find (on tools, same as account tree)
+  View
+    Style
+      Double Line - Initial state wrong
+  Actions
+    Check and Repair (all)
+  Reports (all)
+  Business <- remove ?
+
+
+Register Toolbar
+  Find
+  Report
+  Print
+
+========================================
+            General Notes
+========================================
+
+Account Tree: - FUNCTIONAL
+
+	- can open/close multiple account tree windows
+	- can navigate account tree
+	- select an account and run a command
+	- Some menu/toolbar items functional
+
+
+Register Core - MINIMALLY FUNCTIONAL
+
+	- Can navigate, enter transactions, etc.
+
+	- Insertion point not shown. (fix gnucash-item-edit.c)
+	- Cannot hilight text with mouse (fix gnucash-item-edit.c)
+	- Popup buttons don't appear. (gnucash-item-edit.c ?)
+
+	- The first time it is used, the account popup immediately
+	  selects the first account. After that it functions normally.
+
+
+Price Editor - MINIMALLY FUNCTIONAL
+
+	- Only loads one commodity
+	- Doesn't notice a new commodity, but adds another line from
+	  existing commodities.
+	- Remove/Edit doesn't work
+	- Get Quotes works.
+	- Close doesn't work.
+
+Stock Split Dialog - Mostly done
+	-Fix up accounts presented on "Cash In Lieu" page.  Always
+	shows top two levels.
+
+Find - MINIMALLY FUNCTIONAL
+	- Can generate a query in the dialog.
+	- Use of the "Date" selection sometimes crashes gnucash (not
+	  when you select it, but then you change from "Date" to
+	  something else.
+
+View Summarybar - Summarybar not ported yet. Where should it go?
+	Wouldn't look good between the toolbar and the notebook tabs.
+
+Business functions - Somewhat Functional
+	- Everything works but the New Invoice/Bill code.  The dialog
+	seems to function properly but then gnucash crashes when the
+	dialog is closed.
+
+
+
+IMPORTING
+
+  QIF - importing produces errors
+
+  OFX - ???
+
+  HBCI - Needs new http support.
+
+EXPORTING
+
+  COA - ?
+
+========================================
+              ENHANCEMENTS
+========================================
+
+1) New icons desired:
+
+	a) Add account
+	b) Register
+	c) Report
+
+2) Support multiple windows and moving plugin pages between windows. -Done.
+
+2a) Support a preference on whether new plugin pages appear in the same
+	or a new window.
+
+3) Enhance Commodity Editor by converting to a tree so types can be
+	expanded/collapsed to find data easier
+
+4) Make account tree columns clickable. Provide in-place editing where
+	feasable.  E.G. Editing the account code or the account name, but
+	not being able to reparent the account.  (Maybe add DND support for
+	this in the long term?)

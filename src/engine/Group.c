@@ -653,6 +653,8 @@ xaccGroupRemoveAccount (AccountGroup *grp, Account *acc)
     return;
   }
 
+  gnc_engine_generate_event (&acc->guid, GNC_ID_ACCOUNT, GNC_EVENT_REMOVE);
+
   acc->parent = NULL;
 
   grp->accounts = g_list_remove (grp->accounts, acc);
@@ -758,6 +760,7 @@ xaccGroupInsertAccount (AccountGroup *grp, Account *acc)
 
     grp->accounts = g_list_insert_sorted (grp->accounts, acc,
                                           group_sort_helper);
+    gnc_engine_generate_event (&acc->guid, GNC_ID_ACCOUNT, GNC_EVENT_ADD);
 
     acc->core_dirty = TRUE;
     xaccAccountCommitEdit (acc);
@@ -927,6 +930,7 @@ xaccGroupMergeAccounts (AccountGroup *grp)
         node_b = node_b->prev;
 
         /* remove from list -- node_a is ok, it's before node_b */
+	gnc_engine_generate_event (&acc_b->guid, GNC_ID_ACCOUNT, GNC_EVENT_REMOVE);
         grp->accounts = g_list_remove (grp->accounts, acc_b);
 
         xaccAccountBeginEdit (acc_b);

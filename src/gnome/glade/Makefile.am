@@ -4,15 +4,16 @@ glade_DATA = \
 	acctperiod.glade \
 	commodities.glade \
 	fincalc.glade \
-	help.glade \
 	lots.glade \
 	newuser.glade \
 	price.glade \
 	print.glade \
 	progress.glade \
+	reconcile.glade \
 	register.glade \
 	stocks.glade \
 	tax.glade \
+	totd.glade \
 	userpass.glade \
 	sched-xact.glade
 

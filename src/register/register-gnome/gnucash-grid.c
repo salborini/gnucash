@@ -116,8 +116,10 @@ gnucash_grid_update (GnomeCanvasItem *item, double *affine,
         item->x2 = INT_MAX/2 -1;
         item->y2 = INT_MAX/2 -1;
 
-        gnome_canvas_group_child_bounds (GNOME_CANVAS_GROUP (item->parent),
-					 item);
+	/* GNOME 2 Port (Maybe there is some special handling needed) */
+        /*gnome_canvas_group_child_bounds (GNOME_CANVAS_GROUP (item->parent),
+					 item);*/
+	gnome_canvas_item_request_update (item);
 }
 
 
@@ -364,10 +366,12 @@ draw_cell (GnucashGrid *grid,
         Table *table = grid->sheet->table;
         PhysicalCellBorders borders;
         const char *text;
-        GdkFont *font;
+	PangoLayout *layout;
+	PangoContext *context;
+	PangoFontDescription *font;
         GdkColor *bg_color;
         GdkColor *fg_color;
-        gint x_offset, y_offset;
+/*        gint x_offset, y_offset;*/
         GdkRectangle rect;
         gboolean hatching;
         guint32 argb;
@@ -448,65 +452,74 @@ draw_cell (GnucashGrid *grid,
 
         text = gnc_table_get_entry (table, virt_loc);
 
-        font = grid->normal_font;
+	layout = gtk_widget_create_pango_layout (GTK_WIDGET (grid->sheet), text);
+	pango_layout_set_width (layout, (width - 2 * CELL_HPADDING) * PANGO_SCALE);
+        context = pango_layout_get_context (layout);
+	font = pango_font_description_copy (pango_context_get_font_description (context));
 
         argb = gnc_table_get_fg_color (table, virt_loc);
         fg_color = gnucash_color_argb_to_gdk (argb);
 
         gdk_gc_set_foreground (grid->gc, fg_color);
 
+	/* If this is the currently open transaction and
+	   there is no text in this cell */
         if ((table->current_cursor_loc.vcell_loc.virt_row ==
              virt_loc.vcell_loc.virt_row) &&
 	    (!text || strlen(text) == 0)) {
-                font = grid->italic_font;
-                gdk_gc_set_foreground (grid->gc, &gn_light_gray);
                 text = gnc_table_get_label (table, virt_loc);
-        }
+		if ((text == NULL) || (*text == '\0'))
+			goto exit;
+                gdk_gc_set_foreground (grid->gc, &gn_light_gray);
+		pango_layout_set_text (layout, text, strlen (text));
+		pango_font_description_set_style (font, PANGO_STYLE_ITALIC);
+		pango_context_set_font_description (context, font);
+	}
 
-        if ((text == NULL) || (*text == '\0'))
-                return;
+        if ((text == NULL) || (*text == '\0')) {
+                goto exit;
+	}
 
-        y_offset = ((height / 2) +
+        /*y_offset = ((height / 2) +
                     (((font->ascent + font->descent) / 2) - font->descent));
-        y_offset++;
+        y_offset++;*/
 
         switch (gnc_table_get_align (table, virt_loc))
         {
                 default:
                 case CELL_ALIGN_LEFT:
-                        x_offset = CELL_HPADDING;
+			pango_layout_set_alignment (layout, PANGO_ALIGN_LEFT);
                         break;
 
                 case CELL_ALIGN_RIGHT:
-                        x_offset = width - CELL_HPADDING
-                                - gdk_string_measure (font, text);
+			pango_layout_set_alignment (layout, PANGO_ALIGN_RIGHT);
                         break;
 
                 case CELL_ALIGN_CENTER:
-                        if (width < gdk_string_measure (font, text))
-                                x_offset = CELL_HPADDING;
-                        else {
-                                x_offset = width / 2;
-                                x_offset -= gdk_string_measure(font, text) / 2;
-                        }
+			pango_layout_set_alignment (layout, PANGO_ALIGN_CENTER);
                         break;
                 }
 
         rect.x      = x + CELL_HPADDING;
-        rect.y      = y + 1;
+        rect.y      = y + CELL_VPADDING;
         rect.width  = MAX (0, width - (2 * CELL_HPADDING));
         rect.height = height - 2;
 
         gdk_gc_set_clip_rectangle (grid->gc, &rect);
 
-        gdk_draw_string (drawable,
-                         font,
+        gdk_draw_layout (drawable,
                          grid->gc,
-                         x + x_offset,
-                         y + y_offset,
-                         text);
+                         x + CELL_HPADDING,
+                         y + 1,
+                         layout);
 
         gdk_gc_set_clip_rectangle (grid->gc, NULL);
+
+ exit:
+	pango_font_description_set_style (font, PANGO_STYLE_NORMAL);
+	pango_context_set_font_description (context, font);
+	pango_font_description_free (font);
+	g_object_unref (layout);
 }
 
 static void
@@ -627,9 +640,6 @@ gnucash_grid_init (GnucashGrid *grid)
         grid->top_block  = 0;
         grid->top_offset = 0;
         grid->left_offset = 0;
-
-        grid->normal_font = gnucash_register_font;
-        grid->italic_font = gnucash_register_hint_font;
 }
 
 

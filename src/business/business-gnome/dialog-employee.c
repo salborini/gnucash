@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#include <gnome.h>
+#include <gtk/gtk.h>
 
 #include "dialog-utils.h"
 #include "global-options.h"
@@ -17,7 +17,6 @@
 #include "gnc-gui-query.h"
 #include "gnc-ui-util.h"
 #include "gnc-engine-util.h"
-#include "window-help.h"
 #include "dialog-search.h"
 #include "search-param.h"
 #include "gnc-account-sel.h"
@@ -33,6 +32,13 @@
 
 #define DIALOG_NEW_EMPLOYEE_CM_CLASS "dialog-new-employee"
 #define DIALOG_EDIT_EMPLOYEE_CM_CLASS "dialog-edit-employee"
+
+void gnc_employee_window_ok_cb (GtkWidget *widget, gpointer data);
+void gnc_employee_window_cancel_cb (GtkWidget *widget, gpointer data);
+void gnc_employee_window_help_cb (GtkWidget *widget, gpointer data);
+void gnc_employee_window_destroy_cb (GtkWidget *widget, gpointer data);
+void gnc_employee_name_changed_cb (GtkWidget *widget, gpointer data);
+void gnc_employee_ccard_acct_toggled_cb (GtkToggleButton *button, gpointer data);
 
 typedef enum
 {
@@ -180,7 +186,7 @@ static gboolean check_entry_nonempty (GtkWidget *dialog, GtkWidget *entry,
   return FALSE;
 }
 
-static void
+void
 gnc_employee_window_ok_cb (GtkWidget *widget, gpointer data)
 {
   EmployeeWindow *ew = data;
@@ -225,7 +231,7 @@ gnc_employee_window_ok_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (ew->component_id);
 }
 
-static void
+void
 gnc_employee_window_cancel_cb (GtkWidget *widget, gpointer data)
 {
   EmployeeWindow *ew = data;
@@ -233,15 +239,13 @@ gnc_employee_window_cancel_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (ew->component_id);
 }
 
-static void
+void
 gnc_employee_window_help_cb (GtkWidget *widget, gpointer data)
 {
-  char *help_file = HH_EMPLOYEE;
-
-  helpWindow(NULL, NULL, help_file);
+  gnc_gnome_help(HF_USAGE, NULL);
 }
 
-static void
+void
 gnc_employee_window_destroy_cb (GtkWidget *widget, gpointer data)
 {
   EmployeeWindow *ew = data;
@@ -261,11 +265,12 @@ gnc_employee_window_destroy_cb (GtkWidget *widget, gpointer data)
   g_free (ew);
 }
 
-static void
+void
 gnc_employee_name_changed_cb (GtkWidget *widget, gpointer data)
 {
   EmployeeWindow *ew = data;
-  char *name, *id, *fullname, *title;
+  char *fullname, *title;
+  const char *name, *id;
 
   if (!ew)
     return;
@@ -289,7 +294,7 @@ gnc_employee_name_changed_cb (GtkWidget *widget, gpointer data)
   g_free (title);
 }
 
-static void
+void
 gnc_employee_ccard_acct_toggled_cb (GtkToggleButton *button, gpointer data)
 {
   EmployeeWindow *ew = data;
@@ -311,7 +316,7 @@ gnc_employee_window_close_handler (gpointer user_data)
 {
   EmployeeWindow *ew = user_data;
 
-  gnome_dialog_close (GNOME_DIALOG (ew->dialog));
+  gtk_widget_destroy (ew->dialog);
 }
 
 static void
@@ -353,7 +358,6 @@ gnc_employee_new_window (GNCBook *bookp,
   EmployeeWindow *ew;
   GladeXML *xml;
   GtkWidget *hbox, *edit;
-  GnomeDialog *ewd;
   gnc_commodity *currency;
   GNCPrintAmountInfo print_info;
   GList *acct_types;
@@ -391,12 +395,8 @@ gnc_employee_new_window (GNCBook *bookp,
   /* Find the dialog */
   xml = gnc_glade_xml_new ("employee.glade", "Employee Dialog");
   ew->dialog = glade_xml_get_widget (xml, "Employee Dialog");
-  ewd = GNOME_DIALOG (ew->dialog);
 
   gtk_object_set_data (GTK_OBJECT (ew->dialog), "dialog_info", ew);
-
-  /* default to ok */
-  gnome_dialog_set_default (ewd, 0);
 
   /* Get entry points */
   ew->id_entry = glade_xml_get_widget (xml, "id_entry");
@@ -462,45 +462,10 @@ gnc_employee_new_window (GNCBook *bookp,
   hbox = glade_xml_get_widget (xml, "ccard_acct_hbox");
   gtk_box_pack_start (GTK_BOX (hbox), edit, TRUE, TRUE, 0);
 
-
-  /* Setup Dialog for Editing */
-  gnome_dialog_set_default (ewd, 0);
-
-  /* Attach <Enter> to default button */
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->id_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->username_entry));
-
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->name_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->addr1_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->addr2_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->addr3_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->addr4_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->phone_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->fax_entry));
-  gnome_dialog_editable_enters (ewd, GTK_EDITABLE (ew->email_entry));
-
-  /* Set focus to username */
-  gtk_widget_grab_focus (ew->username_entry);
-
   /* Setup signals */
-  gnome_dialog_button_connect
-    (ewd, 0, GTK_SIGNAL_FUNC(gnc_employee_window_ok_cb), ew);
-  gnome_dialog_button_connect
-    (ewd, 1, GTK_SIGNAL_FUNC(gnc_employee_window_cancel_cb), ew);
-  gnome_dialog_button_connect
-    (ewd, 2, GTK_SIGNAL_FUNC(gnc_employee_window_help_cb), ew);
-
-  gtk_signal_connect (GTK_OBJECT (ew->dialog), "destroy",
-		      GTK_SIGNAL_FUNC(gnc_employee_window_destroy_cb), ew);
-
-  gtk_signal_connect(GTK_OBJECT (ew->id_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_employee_name_changed_cb), ew);
-
-  gtk_signal_connect(GTK_OBJECT (ew->username_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_employee_name_changed_cb), ew);
-
-  gtk_signal_connect(GTK_OBJECT (ew->ccard_acct_check), "toggled",
-		     GTK_SIGNAL_FUNC(gnc_employee_ccard_acct_toggled_cb), ew);
+  glade_xml_signal_autoconnect_full( xml,
+                                     gnc_glade_autoconnect_full_func,
+                                     ew);
 
   /* Setup initial values */
   if (employee != NULL) {

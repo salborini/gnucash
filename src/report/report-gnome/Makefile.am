@@ -11,12 +11,13 @@ AM_CFLAGS = \
   -I${top_srcdir}/src/gnome-utils \
   -I${top_srcdir}/src/app-file \
   -I${top_srcdir}/src/report/report-system \
+  -I${top_srcdir}/lib/egg \
   ${GLADE_CFLAGS} \
   ${GUILE_INCS} \
   ${GTKHTML_CFLAGS} \
   ${GNOME_PRINT_CFLAGS} \
   ${G_WRAP_COMPILE_ARGS} \
-  ${GNOME_INCLUDEDIR} \
+  ${GNOME_CFLAGS} \
   ${GLIB_CFLAGS}
 
 libgncmod_report_gnome_la_SOURCES = \
@@ -41,8 +42,7 @@ libgncmod_report_gnome_la_LIBADD = \
   ${GLADE_LIBS} \
   ${GUILE_LIBS} \
   ${GNOME_PRINT_LIBS} \
-  ${GNOME_LIBDIR} \
-  ${GNOMEUI_LIBS} \
+  ${GNOME_LIBS} \
   ${GLIB_LIBS}
 
 libgw_report_gnome_la_SOURCES = gw-report-gnome.c

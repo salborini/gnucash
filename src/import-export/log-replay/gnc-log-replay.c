@@ -102,12 +102,6 @@ typedef struct _split_record
  * Entry point
 \********************************************************************/
 
-SCM  scm_gnc_file_log_replay ()
-{
-  gnc_file_log_replay();
-  return SCM_EOL;
-}
-
 static char *olds;
 /* This version of strtok will only match SINGLE occurence of delim,
    returning a 0 length valid string between two consecutive ocurence of delim.
@@ -497,7 +491,7 @@ static void  process_trans_record(  FILE *log_file)
 
 void gnc_file_log_replay (void)
 {
-  const char *selected_filename;
+  char *selected_filename;
   char *default_dir;
   char read_buf[256];
   char *read_retval;
@@ -559,6 +553,7 @@ void gnc_file_log_replay (void)
 	    }
 	  fclose(log_file);
 	}
+      g_free(selected_filename);
     }
   
 }

@@ -224,22 +224,26 @@ gnc_dense_cal_get_type ()
 static void
 gnc_dense_cal_class_init (GncDenseCalClass *class)
 {
-        GtkObjectClass *object_class;
+        GObjectClass *object_class;
+	GtkObjectClass *gtkobject_class;
         GtkWidgetClass *widget_class;
 
-        object_class = (GtkObjectClass*) class;
-        widget_class = (GtkWidgetClass*) class;
-        parent_class = gtk_type_class (gtk_widget_get_type ());
+        object_class =  G_OBJECT_CLASS (class);
+	gtkobject_class = GTK_OBJECT_CLASS (class);
+        widget_class = GTK_WIDGET_CLASS (class);
+        parent_class = g_type_class_peek_parent (class);
 
         gnc_dense_cal_signals[MARKS_LOST_SIGNAL] =
-                gtk_signal_new( MARKS_LOST_SIGNAL_NAME,
-                                GTK_RUN_LAST,
-                                object_class->type,
-                                GTK_SIGNAL_OFFSET( GncDenseCalClass, marks_lost_cb ),
-                                gtk_signal_default_marshaller, GTK_TYPE_NONE, 0 );
-        gtk_object_class_add_signals (object_class, gnc_dense_cal_signals, LAST_SIGNAL);
+                g_signal_new (MARKS_LOST_SIGNAL_NAME,
+			      G_OBJECT_CLASS_TYPE (object_class),
+                              G_SIGNAL_RUN_LAST,
+                              G_STRUCT_OFFSET (GncDenseCalClass, marks_lost_cb),
+			      NULL, NULL,
+			      g_cclosure_marshal_VOID__VOID,
+			      G_TYPE_NONE,
+			      0);
 
-        object_class->destroy = gnc_dense_cal_destroy;
+        gtkobject_class->destroy = gnc_dense_cal_destroy;
         widget_class->realize = gnc_dense_cal_realize;
         widget_class->expose_event = gnc_dense_cal_expose;
         widget_class->size_request = gnc_dense_cal_size_request;
@@ -310,11 +314,14 @@ gnc_dense_cal_init (GncDenseCal *dcal)
                 gint i;
                 gint maxWidth, maxHeight, maxAscent, maxLBearing;
                 gint lbearing, rbearing, width, ascent, descent;
+		GtkStyle *style;
 
                 dcal->monthLabelFont = gdk_font_load( LABEL_FONT_NAME );
                 g_assert( dcal->monthLabelFont );
 
-                dcal->dayLabelFont = GTK_WIDGET(dcal)->style->font;
+		/* FIXME GNOME 2 port (rework the complete font code) */
+                style = gtk_widget_get_style(GTK_WIDGET(dcal));
+                dcal->dayLabelFont = gtk_style_get_font(style);
                 gdk_font_ref( dcal->dayLabelFont );
                 g_assert( dcal->dayLabelFont );
 
@@ -351,8 +358,8 @@ gnc_dense_cal_init (GncDenseCal *dcal)
 
                 tmpDate = g_date_new();
                 g_date_set_time( tmpDate, time(NULL) );
-                gnc_dense_cal_set_month( dcal, g_date_month(tmpDate) );
-                gnc_dense_cal_set_year( dcal, g_date_year(tmpDate) );
+                gnc_dense_cal_set_month( dcal, g_date_get_month(tmpDate) );
+                gnc_dense_cal_set_year( dcal, g_date_get_year(tmpDate) );
                 g_date_free( tmpDate );
         }
 
@@ -371,7 +378,6 @@ gnc_dense_cal_init (GncDenseCal *dcal)
                             / 3.0 ),
                      gdk_string_height( dcal->dayLabelFont, "88" ) + 2 );
         dcal->dayLabelHeight = gdk_string_height( dcal->monthLabelFont, "88" );
-        
         dcal->initialized = TRUE;
 }
 
@@ -390,7 +396,7 @@ recompute_first_of_month_offset( GncDenseCal *dcal )
         GDate *tmpDate;
 
         tmpDate = g_date_new_dmy( 1, dcal->month, dcal->year );
-        dcal->firstOfMonthOffset = g_date_weekday( tmpDate ) % 7;
+        dcal->firstOfMonthOffset = g_date_get_weekday( tmpDate ) % 7;
         g_date_free( tmpDate );
 }
 
@@ -650,11 +656,11 @@ recompute_extents( GncDenseCal *dcal )
 
         g_date_clear( &date, 1 );
         g_date_set_dmy( &date, 1, dcal->month, dcal->year );
-        start_week = g_date_sunday_week_of_year(&date);
+        start_week = g_date_get_sunday_week_of_year(&date);
         g_date_add_months( &date, dcal->numMonths );
-        end_week = g_date_sunday_week_of_year(&date);
-        if ( g_date_year(&date) != dcal->year ) {
-                end_week += g_date_sunday_weeks_in_year( dcal->year );
+        end_week = g_date_get_sunday_week_of_year(&date);
+        if ( g_date_get_year(&date) != dcal->year ) {
+                end_week += g_date_get_sunday_weeks_in_year( dcal->year );
         }
         dcal->num_weeks = end_week - start_week + 1;
 }
@@ -951,11 +957,11 @@ gnc_dense_cal_draw_to_buffer( GncDenseCal *dcal )
                 g_date_set_dmy( &d, 1, dcal->month, dcal->year );
                 eoc = d;
                 g_date_add_months( &eoc, dcal->numMonths );
-                for ( doc = 0; g_date_julian(&d) < g_date_julian(&eoc);
+                for ( doc = 0; g_date_get_julian(&d) < g_date_get_julian(&eoc);
                       g_date_add_days( &d, 1 ), doc++ ) {
                         doc_coords( dcal, doc, &x1, &y1, &x2, &y2 );
                         memset( dayNumBuf, 0, 3 );
-                        sprintf( dayNumBuf, "%d", g_date_day( &d ) );
+                        sprintf( dayNumBuf, "%d", g_date_get_day( &d ) );
                         numW = gdk_string_width( dcal->dayLabelFont, dayNumBuf );
                         numH = gdk_string_height( dcal->dayLabelFont, dayNumBuf );
                         w = (x2 - x1)+1;
@@ -1187,10 +1193,10 @@ int num_weeks_per_col( GncDenseCal *dcal )
                                                   - ((i-1)
                                                      * dcal->monthsPerCol) ) ) );
                 g_date_subtract_days( end, 1 );
-                startWeek = g_date_sunday_week_of_year( start );
-                endWeek = g_date_sunday_week_of_year( end );
+                startWeek = g_date_get_sunday_week_of_year( start );
+                endWeek = g_date_get_sunday_week_of_year( end );
                 if ( endWeek < startWeek ) {
-                        endWeek += g_date_sunday_weeks_in_year( g_date_year(start) );
+                        endWeek += g_date_get_sunday_weeks_in_year( g_date_get_year(start) );
                 }
                 num_weeks_toRet = MAX( num_weeks_toRet, (endWeek - startWeek)+1 );
         }
@@ -1230,19 +1236,19 @@ month_coords( GncDenseCal *dcal, int monthOfCal, GList **outList )
                                 ((dcal->month - 1 + monthOffset) % 12) + 1,
                                 dcal->year + floor((dcal->month-1+monthOffset)/12) );
                 /* get the week of the top of the column */
-                startWk = g_date_sunday_week_of_year( startD );
+                startWk = g_date_get_sunday_week_of_year( startD );
                 /* get the week of the end of the previous months */
                 *endD = *startD;
                 g_date_add_months( endD, previousMonthsInCol );
                 g_date_subtract_days( endD, 1 );
-                endWk = g_date_sunday_week_of_year( endD );
+                endWk = g_date_get_sunday_week_of_year( endD );
                 if ( endWk < startWk ) {
-                        endWk += g_date_sunday_weeks_in_year( g_date_year(startD) );
+                        endWk += g_date_get_sunday_weeks_in_year( g_date_get_year(startD) );
                 }
                 /* determine how many weeks are before the month we're
                  * interested in. */
                 weekRow = endWk - startWk;
-                if ( g_date_weekday(endD) == G_DATE_SATURDAY ) {
+                if ( g_date_get_weekday(endD) == G_DATE_SATURDAY ) {
                         weekRow++;
                 }
         }
@@ -1255,7 +1261,7 @@ month_coords( GncDenseCal *dcal, int monthOfCal, GList **outList )
         g_date_subtract_days( endD, 1 );
         /* Get the first week. */
         {
-                start = g_date_weekday( startD ) % 7;
+                start = g_date_get_weekday( startD ) % 7;
                 rect = g_new0( GdkRectangle, 1 );
                 rect->x = dcal->leftPadding
                         + MINOR_BORDER_SIZE
@@ -1276,8 +1282,8 @@ month_coords( GncDenseCal *dcal, int monthOfCal, GList **outList )
         {
                 gint i, weekStart, weekEnd;
 
-                weekStart = g_date_sunday_week_of_year(startD)+1;
-                weekEnd = g_date_sunday_week_of_year(endD);
+                weekStart = g_date_get_sunday_week_of_year(startD)+1;
+                weekEnd = g_date_get_sunday_week_of_year(endD);
                 for ( i=weekStart; i<weekEnd; i++ ) {
                         rect = g_new0( GdkRectangle, 1 );
                         rect->x = dcal->leftPadding
@@ -1307,10 +1313,10 @@ month_coords( GncDenseCal *dcal, int monthOfCal, GList **outList )
                         + MINOR_BORDER_SIZE
                         + dcal->dayLabelHeight
                         + ((weekRow
-                            + (g_date_sunday_week_of_year(endD)
-                               - g_date_sunday_week_of_year(startD)))
+                            + (g_date_get_sunday_week_of_year(endD)
+                               - g_date_get_sunday_week_of_year(startD)))
                            * week_height(dcal));
-                rect->width = ((g_date_weekday(endD) % 7)+1) * day_width(dcal);
+                rect->width = ((g_date_get_weekday(endD) % 7)+1) * day_width(dcal);
                 rect->height = week_height(dcal);
 
                 *outList = g_list_append( *outList, (gpointer)rect );
@@ -1331,19 +1337,19 @@ doc_coords( GncDenseCal *dcal, int dayOfCal,
         /* FIXME: add range checks */
         g_date_set_dmy( &d, 1, dcal->month, dcal->year );
         g_date_add_days( &d, dayOfCal );
-        docMonth = g_date_month( &d );
-        if ( g_date_year( &d ) != dcal->year ) {
+        docMonth = g_date_get_month( &d );
+        if ( g_date_get_year( &d ) != dcal->year ) {
                 docMonth += 12;
         }
         colNum  = floor( (float)(docMonth - dcal->month) / (float)dcal->monthsPerCol );
-        dayCol  = g_date_weekday( &d ) % 7;
-        d_week_of_cal = g_date_sunday_week_of_year( &d );
+        dayCol  = g_date_get_weekday( &d ) % 7;
+        d_week_of_cal = g_date_get_sunday_week_of_year( &d );
         g_date_set_dmy( &d, 1, dcal->month, dcal->year );
         g_date_add_months( &d, (colNum * dcal->monthsPerCol) );
-        top_of_col_week_of_cal = g_date_sunday_week_of_year( &d );
+        top_of_col_week_of_cal = g_date_get_sunday_week_of_year( &d );
         if ( d_week_of_cal < top_of_col_week_of_cal ) {
                 d_week_of_cal +=
-                        g_date_sunday_weeks_in_year( dcal->year );
+                        g_date_get_sunday_weeks_in_year( dcal->year );
         }
         weekRow = d_week_of_cal - top_of_col_week_of_cal;
 
@@ -1430,7 +1436,7 @@ wheres_this( GncDenseCal *dcal, int x, int y )
         g_date_set_dmy( &startD, 1, dcal->month, dcal->year );
         d = startD;
         g_date_add_months( &d, (colNum * dcal->monthsPerCol) );
-        dayCol -= (g_date_weekday(&d) % 7);
+        dayCol -= (g_date_get_weekday(&d) % 7);
         if ( weekRow == 0 ) {
                 if ( dayCol < 0 ) {
 		    /*DEBUG( "Before the beginning of the first month." );*/
@@ -1444,21 +1450,21 @@ wheres_this( GncDenseCal *dcal, int x, int y )
                 GDate ccd;
                 g_date_set_dmy( &ccd, 1, dcal->month, dcal->year );
                 g_date_add_months( &ccd, (colNum+1) * dcal->monthsPerCol );
-                if ( g_date_julian(&d) >= g_date_julian(&ccd) ) {
+                if ( g_date_get_julian(&d) >= g_date_get_julian(&ccd) ) {
 		    /*DEBUG( "%d outside of column range [%d]",
-		      g_date_julian(&d), g_date_julian(&ccd) );*/
+		      g_date_get_julian(&d), g_date_get_julian(&ccd) );*/
                         return -1;
                 }
         }
 
-        dayOfCal = g_date_julian(&d) - g_date_julian(&startD);
+        dayOfCal = g_date_get_julian(&d) - g_date_get_julian(&startD);
 
         /* one more check before returning... */
         g_date_subtract_months( &d, dcal->numMonths );
-        if ( g_date_julian(&d) >= g_date_julian(&startD) ) {
+        if ( g_date_get_julian(&d) >= g_date_get_julian(&startD) ) {
                 /* we're past the end of the displayed calendar, thus -1 */
                 DEBUG( "%d >= %d",
-                       g_date_julian( &d ), g_date_julian( &startD ) );
+                       g_date_get_julian( &d ), g_date_get_julian( &startD ) );
                 return -1;
         }
 
@@ -1474,15 +1480,15 @@ gdc_get_doc_offset( GncDenseCal *dcal, GDate *d )
 
         g_date_set_dmy( &soc, 1, dcal->month, dcal->year );
         /* ensure not before calendar start. */
-        if ( g_date_julian(d) < g_date_julian(&soc) ) {
+        if ( g_date_get_julian(d) < g_date_get_julian(&soc) ) {
                 return -1;
         }
         /* do computation here, since we're going to change the
          * start-of-calendar date. */
-        toRet = g_date_julian(d) - g_date_julian(&soc);
+        toRet = g_date_get_julian(d) - g_date_get_julian(&soc);
         /* ensure not after end of visible calendar. */
         g_date_add_months( &soc, dcal->numMonths );
-        if ( g_date_julian(d) > g_date_julian(&soc) ) {
+        if ( g_date_get_julian(d) > g_date_get_julian(&soc) ) {
                 return -1;
         }
         /* return pre-computed value. */

@@ -77,6 +77,7 @@
 (export gnc:make-new-acct-tree-window)  
 (export gnc:free-acct-tree-window)
 (export gnc:main-window-save-state)
+(export gnc:main-window-properties-cb)
 
 ;; from printing/print-check.scm
 (export make-print-check-format)
@@ -356,7 +357,7 @@ string and 'directories' must be a list of strings."
      (_ "Report bugs and other problems to gnucash-devel@gnucash.org.\n")
      (_ "You can also lookup and file bug reports at http://bugzilla.gnome.org\n")
      (_ "The last stable version was ") "GnuCash 1.8.7" "\n"
-     (_ "The next stable version will be ") "GnuCash 1.10 or 2.0"
+     (_ "The next stable version will be ") "GnuCash 2.0"
      "\n\n"))))
 
 (define (gnc:startup-pass-1)

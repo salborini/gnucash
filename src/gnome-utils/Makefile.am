@@ -4,17 +4,23 @@ PWD := $(shell pwd)
 pkglib_LTLIBRARIES = libgncmod-gnome-utils.la libgw-gnome-utils.la
 
 AM_CFLAGS = \
+  -DPREFIX=\"${prefix}\" \
+  -DSYSCONFDIR=\"${GNC_CONFIGDIR}\" \
+  -DDATADIR=\"${GNC_SHAREDIR}\" \
+  -DLIBDIR=\"${GNC_LIBDIR}\" \
   -I${top_srcdir}/src/gnc-module \
   -I${top_srcdir}/src/engine \
+  -I${top_srcdir}/src/backend/file \
   -I${top_srcdir}/src/network-utils \
   -I${top_srcdir}/src/app-utils \
+  -I${top_srcdir}/lib/egg \
   -I${top_srcdir}/src \
   ${GUILE_INCS} \
   ${LIBGUPPI_CFLAGS} \
   ${GLIB_CFLAGS} \
   ${GLADE_CFLAGS} \
   ${GNOME_PRINT_CFLAGS} \
-  ${GNOME_INCLUDEDIR} \
+  ${GNOME_CFLAGS} \
   ${GTKHTML_CFLAGS} \
   ${G_WRAP_COMPILE_ARGS}
 
@@ -31,7 +37,6 @@ libgncmod_gnome_utils_la_SOURCES = \
   dialog-utils.c \
   druid-utils.c \
   gnc-account-sel.c \
-  gnc-account-tree.c \
   gnc-amount-edit.c \
   gnc-commodity-edit.c \
   gnc-currency-edit.c \
@@ -46,16 +51,23 @@ libgncmod_gnome_utils_la_SOURCES = \
   gnc-html-history.c \
   gnc-html-guppi.c \
   gnc-html.c \
+  gnc-icons.c \
   gnc-mdi-utils.c \
   gnc-menu-extensions.c \
   gnc-query-list.c \
   gnc-splash.c \
+  gnc-tree-model-account.c \
+  gnc-tree-model-account-types.c \
+  gnc-tree-model-commodity.c \
+  gnc-tree-model-example-account.c \
+  gnc-tree-model-price.c \
+  gnc-tree-model-selection.c \
+  gnc-tree-view-account.c \
   gncmod-gnome-utils.c \
   gtkselect.c \
   misc-gnome-utils.c \
   print-session.c \
-  search-param.c \
-  window-help.c
+  search-param.c
 
 gncincludedir = ${GNC_INCLUDE_DIR}
 gncinclude_HEADERS = \
@@ -69,7 +81,6 @@ gncinclude_HEADERS = \
   dialog-utils.h \
   druid-utils.h \
   gnc-account-sel.h \
-  gnc-account-tree.h \
   gnc-amount-edit.h \
   gnc-commodity-edit.h \
   gnc-currency-edit.h \
@@ -84,14 +95,21 @@ gncinclude_HEADERS = \
   gnc-html-history.h \
   gnc-html-guppi.h \
   gnc-html.h \
+  gnc-icons.h \
   gnc-mdi-utils.h \
   gnc-menu-extensions.h \
   gnc-query-list.h \
   gnc-splash.h \
+  gnc-tree-model-account.h \
+  gnc-tree-model-account-types.h \
+  gnc-tree-model-commodity.h \
+  gnc-tree-model-example-account.h \
+  gnc-tree-model-price.h \
+  gnc-tree-model-selection.h \
+  gnc-tree-view-account.h \
   gtkselect.h \
   misc-gnome-utils.h \
-  print-session.h \
-  window-help.h
+  print-session.h
 
 noinst_HEADERS = \
   argv-list-converters.h \
@@ -108,10 +126,10 @@ libgncmod_gnome_utils_la_LIBADD = \
   ${top_builddir}/src/calculation/libgncmod-calculation.la \
   ${top_builddir}/src/network-utils/libgncmod-network-utils.la \
   ${top_builddir}/src/app-utils/libgncmod-app-utils.la \
+  ${top_builddir}/lib/egg/libegg.la \
   ${GUILE_LIBS} \
   ${LIBGUPPI_LIBS} \
-  ${GNOMEUI_LIBS} \
-  ${GNOME_LIBDIR} \
+  ${GNOME_LIBS} \
   ${GNOME_PRINT_LIBS} \
   ${GTKHTML_LIBS} \
   ${GDK_PIXBUF_LIBS} \
@@ -138,6 +156,7 @@ glade_DATA = \
   dialog-query-list.glade \
   exchange-dialog.glade \
   gnc-date-format.glade \
+  preferences.glade \
   transfer.glade
 
 EXTRA_DIST = \
@@ -156,8 +175,7 @@ gnc-dir.h: gnc-dir.h.in ${top_builddir}/config.status
 	rm -f $@.tmp
 	sed < $< > $@.tmp \
 	    -e 's:@-GNC_ACCOUNTS_DIR-@:${GNC_ACCOUNTS_DIR}:g' \
-	    -e 's:@-GNC_GLADE_DIR-@:${GNC_GLADE_DIR}:g' \
-	    -e 's:@-GNC_PIXMAP_DIR-@:${GNC_PIXMAP_DIR}:g'
+	    -e 's:@-GNC_GLADE_DIR-@:${GNC_GLADE_DIR}:g'
 	mv $@.tmp $@
 
 gnc-version.h: _gnc-version.h
@@ -207,3 +225,14 @@ gw-gnome-utils.scm gw-gnome-utils.c gw-gnome-utils.h: \
 BUILT_SOURCES += gw-gnome-utils.scm gw-gnome-utils.c gw-gnome-utils.h
 DISTCLEANFILES = gnucash g-wrapped .scm-links ${SCM_FILE_LINKS} \
                  gw-gnome-utils.html
+
+#
+# I hate inconsistent standards. Autotools puts help files into
+# ${datadir}/gnome/help/${program} while the gnome2 libraries expect
+# them in ${pkgdatadir}/gnome/help/${program}.
+#
+install-data-hook:
+	ln -sf ../gnome ${pkgdatadir}
+
+uninstall-hook:
+	rm -f ${pkgdatadir}/gnome

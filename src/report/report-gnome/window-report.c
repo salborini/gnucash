@@ -46,7 +46,6 @@
 #include "gnc-report.h"
 #include "gnc-ui.h"
 #include "option-util.h"
-#include "window-help.h"
 #include "window-report.h"
 #include "guile-mappings.h"
 
@@ -188,8 +187,8 @@ gnc_report_window_view_new(GnomeMDIChild * child, gpointer user_data)
   /* make sure menu entry and label get refreshed */
   gnome_mdi_child_set_name(child, child->name);
 
-  gtk_signal_connect(GTK_OBJECT(child), "destroy", 
-                     gnc_report_window_view_destroy, mc);
+  g_signal_connect(G_OBJECT(child), "destroy", 
+                   G_CALLBACK (gnc_report_window_view_destroy), mc);
   
   gnc_report_window_create_menu(win, mc); 
   gnc_report_window_create_toolbar(win, mc);
@@ -397,10 +396,10 @@ gnc_get_export_type_choice (SCM export_types)
   return scm_list_ref (export_types, scm_int2num (choice));
 }
 
-static const char *
+static char *
 gnc_get_export_filename (SCM choice)
 {
-  const char * filepath;
+  char * filepath;
   struct stat statbuf;
   char * title;
   char * type;
@@ -435,6 +434,7 @@ gnc_get_export_filename (SCM choice)
     const char *format = _("You cannot save to that filename.\n\n%s");
 
     gnc_error_dialog (NULL, format, strerror(errno));
+    g_free(filepath);
     return NULL;
   }
 
@@ -444,6 +444,7 @@ gnc_get_export_filename (SCM choice)
     const char *message = _("You cannot save to that file.");
 
     gnc_error_dialog (NULL, message);
+    g_free(filepath);
     return NULL;
   }
 
@@ -452,8 +453,10 @@ gnc_get_export_filename (SCM choice)
     const char *format = _("The file \n    %s\n already exists.\n"
                            "Are you sure you want to overwrite it?");
 
-    if (!gnc_verify_dialog (NULL, FALSE, format, filepath))
+    if (!gnc_verify_dialog (NULL, FALSE, format, filepath)) {
+      g_free(filepath);
       return NULL;
+    }
   }
 
   return filepath;
@@ -463,7 +466,7 @@ static int
 gnc_report_window_export_button_cb(GtkWidget * w, gpointer data)
 {
   gnc_report_window * report = data;
-  const char * filepath;
+  char * filepath;
   SCM export_types;
   SCM export_thunk;
   gboolean result;
@@ -510,6 +513,7 @@ gnc_report_window_export_button_cb(GtkWidget * w, gpointer data)
 		      strerror (errno) ? strerror (errno) : "");
   }
 
+  g_free(filepath);
   return TRUE;
 }
 
@@ -785,7 +789,7 @@ gnc_report_window_new(GNCMDIChildInfo * mc)
   GtkObject         * tlo; 
 
   report->mc               = mc;
-  report->html             = gnc_html_new();
+  report->html             = gnc_html_new(gnc_ui_get_toplevel());
   report->cur_report       = SCM_BOOL_F;
   report->initial_report   = SCM_BOOL_F;
   report->edited_reports   = SCM_EOL;
@@ -1004,7 +1008,7 @@ gnc_print_report (int report_id)
   gnc_html *html;
   char * location;
 
-  html = gnc_html_new ();
+  html = gnc_html_new (gnc_ui_get_toplevel());
 
   gnc_set_busy_cursor (NULL, TRUE);
   location = g_strdup_printf("id=%d", report_id);  
@@ -1091,7 +1095,7 @@ gnc_report_window_default_params_editor(SCM options, SCM report)
     if (ptr != SCM_BOOL_F) {
       title = gh_scm2newstr(ptr, NULL);
     }
-    prm->win         = gnc_options_dialog_new(TRUE, title);
+    prm->win         = gnc_options_dialog_new(title);
     
     if (title) {
       free(title);
@@ -1245,20 +1249,8 @@ gnc_html_help_url_cb (const char *location, const char *label,
                       gboolean new_window, GNCURLResult *result)
 {
   g_return_val_if_fail (location != NULL, FALSE);
-  g_return_val_if_fail (result != NULL, FALSE);
 
-  if (new_window)
-  {
-    gnc_help_window * help;
-
-    help = gnc_help_window_new ();
-    gnc_help_window_show_help (help, location, label);
-
-    result->load_to_stream = FALSE;
-  }
-  else
-    result->load_to_stream = TRUE;
-
+  gnc_gnome_help (location, label);
   return TRUE;
 }
 

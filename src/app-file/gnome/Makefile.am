@@ -8,18 +8,12 @@ AM_CFLAGS = \
   ${GUILE_INCS} \
   ${G_WRAP_COMPILE_ARGS} \
   ${GLIB_CFLAGS} \
-  ${GNOME_INCLUDEDIR}
+  ${GNOME_CFLAGS}
 
 libgnc_app_file_gnome_la_SOURCES = \
-  gnc-file-dialog.c \
-  gnc-file-history.c 
-
-gncincludedir = ${GNC_INCLUDE_DIR}
-gncinclude_HEADERS = \
-  gnc-file-history-gnome.h
+  gnc-file-dialog.c
 
 libgnc_app_file_gnome_la_LIBADD = \
   ${GUILE_LIBS} \
-  ${GNOMEUI_LIBS} \
-  ${GNOME_LIBDIR} \
+  ${GNOME_LIBS} \
   ${GLIB_LIBS}

@@ -38,7 +38,7 @@
 gncLogLevel gnc_log_modules[MOD_LAST + 1] =
 {
   GNC_LOG_FATAL,        /* DUMMY */
-  GNC_LOG_TRACE,      /* ENGINE */
+  GNC_LOG_WARNING,      /* ENGINE */
   GNC_LOG_WARNING,      /* IO */
   GNC_LOG_WARNING,      /* REGISTER */
   GNC_LOG_WARNING,      /* LEDGER */
@@ -47,21 +47,22 @@ gncLogLevel gnc_log_modules[MOD_LAST + 1] =
   GNC_LOG_WARNING,      /* SCRUB */
   GNC_LOG_WARNING,      /* GTK_REG */
   GNC_LOG_WARNING,      /* GUILE */
-  GNC_LOG_TRACE,      /* BACKEND */
-  GNC_LOG_TRACE,      /* QUERY */
+  GNC_LOG_WARNING,      /* BACKEND */
+  GNC_LOG_WARNING,      /* QUERY */
   GNC_LOG_WARNING,      /* PRICE */
   GNC_LOG_WARNING,      /* SQL EVENT */
   GNC_LOG_WARNING,      /* SQL TXN */
   GNC_LOG_WARNING,      /* KVP */
   GNC_LOG_WARNING,      /* SX */
-  GNC_LOG_TRACE,      /* BOOK */
+  GNC_LOG_WARNING,      /* BOOK */
   GNC_LOG_TRACE,        /* TEST */
-  GNC_LOG_TRACE,      /* LOT */
+  GNC_LOG_WARNING,      /* LOT */
   GNC_LOG_WARNING,      /* ACCOUNT */
   GNC_LOG_WARNING,      /* IMPORT */
   GNC_LOG_WARNING,      /* BUSINESS */
   GNC_LOG_TRACE,        /* DRUID */
   GNC_LOG_WARNING,      /* COMMODITY */
+  GNC_LOG_WARNING,      /* HBCI */
 };
 
 static FILE *fout = NULL;
@@ -111,6 +112,7 @@ gnc_set_logfile (FILE *outfile)
    fout = outfile;
 }
 
+#define MAX_CHARS 50
 /* gnc_log_prettify() cleans up subroutine names. AIX/xlC has the habit
  * of printing signatures not names; clean this up. On other operating
  * systems, truncate name to 30 chars. Note this routine is not thread
@@ -125,7 +127,7 @@ gnc_log_prettify (const char *name)
   if (!name)
     return "";
 
-  strncpy (bf, name, 29); bf[28] = 0;
+  strncpy (bf, name, MAX_CHARS-1); bf[MAX_CHARS-2] = 0;
   p = strchr (bf, '(');
 
   if (p)
@@ -134,7 +136,7 @@ gnc_log_prettify (const char *name)
     *(p+2) = 0x0;
   }
   else
-    strcpy (&bf[26], "...()");
+    strcpy (&bf[MAX_CHARS-4], "...()");
 
   return bf;
 }

@@ -387,8 +387,6 @@ GNCImportMainMatcher *gnc_gen_trans_list_new (GtkWidget *parent,
   GladeXML *xml;
   GtkWidget *heading_label;
   
-  gnc_set_log_level(MOD_IMPORT, GNC_LOG_TRACE);
-
   info = g_new0 (GNCImportMainMatcher, 1);
 
   /* Initialize user Settings. */
@@ -397,12 +395,12 @@ GNCImportMainMatcher *gnc_gen_trans_list_new (GtkWidget *parent,
   /* Initialize the GnomeDialog. */
   xml = gnc_glade_xml_new ("generic-import.glade", "transaction_matcher");
 
-  g_assert
-    (info->dialog = glade_xml_get_widget (xml, "transaction_matcher"));
-  g_assert 
-    (info->clist = glade_xml_get_widget (xml, "downloaded_clist"));
-  g_assert
-    (heading_label = glade_xml_get_widget (xml, "heading_label"));
+  info->dialog = glade_xml_get_widget (xml, "transaction_matcher");
+  g_assert (info->dialog != NULL);
+  info->clist = glade_xml_get_widget (xml, "downloaded_clist");
+  g_assert (info->clist != NULL);
+  heading_label = glade_xml_get_widget (xml, "heading_label");
+  g_assert (heading_label != NULL);
 
   /*if (parent)
     gnome_dialog_set_parent (GNOME_DIALOG (info->dialog), 

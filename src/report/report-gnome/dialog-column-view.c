@@ -231,7 +231,7 @@ gnc_column_view_edit_options(SCM options, SCM view) {
     gnc_column_view_edit * r = g_new0(gnc_column_view_edit, 1);
     GladeXML *xml;
 
-    r->optwin = gnc_options_dialog_new(TRUE, NULL);
+    r->optwin = gnc_options_dialog_new(NULL);
 
     xml = gnc_glade_xml_new ("report.glade", "view_contents_hbox");
 
@@ -278,10 +278,10 @@ gnc_column_view_edit_options(SCM options, SCM view) {
     scm_protect_object(r->available_list);
     scm_protect_object(r->contents_list);
 
-    gtk_signal_connect(GTK_OBJECT(r->available), "select_row", 
-                       gnc_column_view_select_avail_cb, (gpointer)r);
-    gtk_signal_connect(GTK_OBJECT(r->contents), "select_row", 
-                       gnc_column_view_select_contents_cb, (gpointer)r);
+    g_signal_connect(G_OBJECT(r->available), "select_row", 
+                     G_CALLBACK (gnc_column_view_select_avail_cb), (gpointer)r);
+    g_signal_connect(G_OBJECT(r->contents), "select_row", 
+                     G_CALLBACK (gnc_column_view_select_contents_cb), (gpointer)r);
 
     update_display_lists(r);
 

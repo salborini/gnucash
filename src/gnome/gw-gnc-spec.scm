@@ -35,16 +35,17 @@
       "#include <gnc-engine.h>\n"
       "#include <gnc-commodity.h>\n"
       "#include <gnc-numeric.h>\n"
+      "#include <gnc-totd-dialog.h>\n"
       "#include <window-main.h>\n"
       "#include <gnc-gui-query.h>\n"
       "#include <dialog-new-user.h>\n"
       "#include <dialog-progress.h>\n"
-      "#include <dialog-totd.h>\n"
       "#include <dialog-commodity.h>\n"
       "#include <druid-hierarchy.h>\n"
       "#include <top-level.h>\n"
-      "#include <window-help.h>\n"
       "#include <gnc-html.h>\n"
+      "#include <gnc-main-window.h>\n"
+      "#include <gnc-plugin-account-tree.h>\n"
       "#include <gnc-splash.h>\n"
       "#include <dialog-find-transactions.h>\n"
       "#include <dialog-scheduledxaction.h>\n"
@@ -138,11 +139,23 @@
    '()
    "Destroy the UI.")
 
+  (gw:wrap-as-wct ws
+                  '<gnc:MainWindow*>
+                  "GncMainWindow *" "const GncMainWindow *")
+
   (gw:wrap-function
    ws
-   'gnc:ui-totd-dialog-create-and-run
+   'gnc:new-account-tree
    '<gw:void>
-   "gnc_ui_totd_dialog_create_and_run"
+   "gnc_new_account_tree"
+   '((<gnc:MainWindow*> window))
+   "Create a new account tree window.")
+
+  (gw:wrap-function
+   ws
+   'gnc:totd-dialog-create-and-run
+   '<gw:void>
+   "gnc_totd_dialog_create_and_run"
    '()
    "Create and run the \"Tip Of The Day\" dialog")
 

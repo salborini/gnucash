@@ -45,6 +45,9 @@
 #include <openhbci/mediumrdhbase.h>
 
 #include <openhbci.h>
+#ifndef OPENHBCI_VERSION_BUILD
+#  define OPENHBCI_VERSION_BUILD 0
+#endif
 
 typedef enum _infostate {
   INI_ADD_BANK,
@@ -295,14 +298,14 @@ druid_enable_next_button(HBCIInitialInfo *info)
 {
   g_assert(info);
   gnome_druid_set_buttons_sensitive (GNOME_DRUID (info->druid),
-				     TRUE, TRUE, TRUE);
+				     TRUE, TRUE, TRUE, TRUE);
 }
 static void 
 druid_disable_next_button(HBCIInitialInfo *info)
 {
   g_assert(info);
   gnome_druid_set_buttons_sensitive (GNOME_DRUID (info->druid),
-				     TRUE, FALSE, TRUE);
+				     TRUE, FALSE, TRUE, TRUE);
 }
 /*
  * end button enabling
@@ -510,10 +513,8 @@ choose_hbciversion_dialog (GtkWindow *parent, HBCI_Bank *bank)
   
   xml = gnc_glade_xml_new ("hbci.glade", "HBCI_version_dialog");
 
-  g_assert
-    (dialog = glade_xml_get_widget (xml, "HBCI_version_dialog"));
-  g_assert
-    (version_clist = glade_xml_get_widget (xml, "version_clist"));
+  dialog = glade_xml_get_widget (xml, "HBCI_version_dialog");
+  version_clist = glade_xml_get_widget (xml, "version_clist");
   gtk_signal_connect (GTK_OBJECT (version_clist), "select_row",
 		      GTK_SIGNAL_FUNC (hbciversion_select_row), &selected_row);
   gtk_signal_connect (GTK_OBJECT (version_clist), "unselect_row",
@@ -1179,7 +1180,7 @@ on_accountlist_prepare (GnomeDruidPage *gnomedruidpage,
     info->gnc_hash = gnc_hbci_new_hash_from_kvp (info->api);
   
   gnome_druid_set_buttons_sensitive (GNOME_DRUID (info->druid),
-				     FALSE, TRUE, TRUE);
+				     FALSE, TRUE, TRUE, TRUE);
 
   update_accountlist(info);
 }
@@ -1501,7 +1502,7 @@ on_button_clicked (GtkButton *button,
 		   gpointer user_data)
 {
   HBCIInitialInfo *info = user_data;
-  char *name;
+  const char *name;
   g_assert(info->druid);
   g_assert(info->userpage);
   
@@ -1605,7 +1606,7 @@ void gnc_hbci_initial_druid (void)
 	g_strdup (gnc_hbci_get_book_configfile (gnc_get_current_book () ));
     if (info->configfile && 
 	g_file_test (info->configfile, 
-		     G_FILE_TEST_ISFILE | G_FILE_TEST_ISLINK)) 
+		     G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_SYMLINK)) 
       gtk_entry_set_text 
 	(GTK_ENTRY (gnome_file_entry_gtk_entry
 		    (GNOME_FILE_ENTRY (info->configfileentry))), 
@@ -1719,7 +1720,7 @@ void gnc_hbci_initial_druid (void)
     info->serverpage = page;
     info->server_vbox = glade_xml_get_widget(xml, "iniletter_server_vbox");
     info->server_frame = glade_xml_get_widget(xml, "iniletter_server_frame");
-    info->server_html = gnc_html_new();
+    info->server_html = gnc_html_new(info->window);
     gtk_container_add (GTK_CONTAINER (info->server_frame), 
 		       gnc_html_get_widget (info->server_html));
 
@@ -1750,7 +1751,7 @@ void gnc_hbci_initial_druid (void)
     page = glade_xml_get_widget(xml, "iniletter_user_page");
     info->user_vbox = glade_xml_get_widget(xml, "iniletter_user_vbox");
     info->user_frame = glade_xml_get_widget(xml, "iniletter_user_frame");
-    info->user_html = gnc_html_new();
+    info->user_html = gnc_html_new(info->window);
     gtk_container_add (GTK_CONTAINER (info->user_frame), 
 		       gnc_html_get_widget (info->user_html));
 
@@ -1770,11 +1771,4 @@ void gnc_hbci_initial_druid (void)
   /*                   GTK_SIGNAL_FUNC(gnc_hierarchy_destroy_cb), NULL);*/
 
   gtk_widget_show_all (info->window);
-  
-}
-
-SCM  scm_hbci_initial_druid (void)
-{
-  gnc_hbci_initial_druid();
-  return SCM_EOL;
 }

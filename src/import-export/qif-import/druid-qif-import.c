@@ -44,11 +44,9 @@
 #include "gnc-engine-util.h"
 #include "gnc-file-dialog.h"
 #include "gnc-gui-query.h"
-#include "gnc-menu-extensions.h"
 #include "gnc-ui-util.h"
 #include "gnc-ui.h"
 #include "messages.h"
-#include "window-help.h"
 #include "guile-mappings.h"
 
 #include <g-wrap-wct.h>
@@ -352,7 +350,7 @@ gnc_ui_qif_import_select_file_cb(GtkButton * button,
                                  gpointer user_data)
 {
   QIFImportWindow * wind = user_data;
-  const char * new_file_name;
+  char * new_file_name;
   char *file_name, *default_dir;
 
   /* Default to whatever's already present */
@@ -362,12 +360,14 @@ gnc_ui_qif_import_select_file_cb(GtkButton * button,
   new_file_name = gnc_file_dialog (_("Select QIF File"), "*.qif", default_dir);
 
   /* Insure valid data, and something that can be freed. */
-  if (new_file_name == NULL)
+  if (new_file_name == NULL) {
     file_name = g_strdup(default_dir);
-  else if (*new_file_name != '/')
+  } else if (*new_file_name != '/') {
     file_name = g_strdup_printf("%s%s", default_dir, new_file_name);
-  else
-    file_name = g_strdup(new_file_name);
+    g_free(new_file_name);
+  } else {
+    file_name = new_file_name;
+  }
 
   /* set the filename entry for what was selected */
   gtk_entry_set_text(GTK_ENTRY(wind->filename_entry), file_name);
@@ -421,7 +421,7 @@ gnc_ui_qif_import_load_file_next_cb(GnomeDruidPage * page,
 {
   QIFImportWindow * wind = user_data;
 
-  char * path_to_load;
+  const char * path_to_load;
   char * default_acctname = NULL;
 
   GList * format_strings;
@@ -699,7 +699,7 @@ gnc_ui_qif_import_loaded_files_prepare_cb(GnomeDruidPage * page,
 
   update_file_page(wind);
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    FALSE, TRUE, TRUE); 
+                                    FALSE, TRUE, TRUE, TRUE); 
 }
 
 
@@ -718,7 +718,7 @@ gnc_ui_qif_import_load_another_cb(GtkButton * button,
   gnome_druid_set_page(GNOME_DRUID(wind->druid),
                        get_named_page(wind, "load_file_page"));
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    TRUE, TRUE, TRUE); 
+                                    TRUE, TRUE, TRUE, TRUE); 
 }
 
 
@@ -814,7 +814,7 @@ gnc_ui_qif_import_default_acct_next_cb(GnomeDruidPage * page,
                                        gpointer user_data)
 {
   QIFImportWindow * wind = user_data;
-  char   * acct_name = gtk_entry_get_text(GTK_ENTRY(wind->acct_entry));
+  const char   * acct_name = gtk_entry_get_text(GTK_ENTRY(wind->acct_entry));
   SCM    fix_default = scm_c_eval_string("qif-import:fix-from-acct");
   SCM    scm_name;
 
@@ -858,7 +858,7 @@ gnc_ui_qif_import_default_acct_back_cb(GnomeDruidPage * page,
   gnome_druid_set_page(GNOME_DRUID(wind->druid),
                        get_named_page(wind, "load_file_page"));
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    TRUE, TRUE, TRUE); 
+                                    TRUE, TRUE, TRUE, TRUE); 
   return TRUE;
 }
 
@@ -1131,14 +1131,14 @@ gnc_ui_qif_import_convert(QIFImportWindow * wind)
   Split        * gnc_split;
   gnc_commodity * old_commodity;
 
-  char * mnemonic = NULL; 
+  const char * mnemonic = NULL; 
   const char * namespace = NULL;
-  char * fullname = NULL;
+  const char * fullname = NULL;
   const gchar * row_text[4] = { NULL, NULL, NULL, NULL };
   int  rownum;
 
   /* get the default currency */
-  char * currname = gtk_entry_get_text(GTK_ENTRY(wind->currency_entry));
+  const char * currname = gtk_entry_get_text(GTK_ENTRY(wind->currency_entry));
 
   /* busy cursor */
   gnc_suspend_gui_refresh ();
@@ -1386,8 +1386,8 @@ gnc_ui_qif_import_comm_check_cb(GnomeDruidPage * page,
     gtk_object_get_data(GTK_OBJECT(page), "page_struct");
   
   const char * namespace = gnc_ui_namespace_picker_ns(qpage->new_type_combo);
-  char * name      = gtk_entry_get_text(GTK_ENTRY(qpage->new_name_entry));
-  char * mnemonic  = gtk_entry_get_text(GTK_ENTRY(qpage->new_mnemonic_entry));
+  const char * name      = gtk_entry_get_text(GTK_ENTRY(qpage->new_name_entry));
+  const char * mnemonic  = gtk_entry_get_text(GTK_ENTRY(qpage->new_mnemonic_entry));
   int  show_matches;
 
   if(!namespace || (namespace[0] == 0)) {
@@ -1536,7 +1536,7 @@ make_qif_druid_page(gnc_commodity * comm)
   GnomeDruidPageStandard * page;
 
   /* make the page widget */
-  retval->page = gnome_druid_page_standard_new_with_vals("", NULL);
+  retval->page = gnome_druid_page_standard_new_with_vals("", NULL, NULL);
   retval->commodity = comm;
   gtk_object_set_data(GTK_OBJECT(retval->page),
                       "page_struct", (gpointer)retval);
@@ -1548,9 +1548,9 @@ make_qif_druid_page(gnc_commodity * comm)
   str = str ? str : "";
   title = g_strdup_printf(_("Enter information about \"%s\""), str);
 
-  gnome_druid_page_standard_set_bg_color(page, & std_bg_color);  
-  gnome_druid_page_standard_set_logo_bg_color(page, & std_logo_bg_color);
-  gnome_druid_page_standard_set_title_color(page, & std_title_color);
+  gnome_druid_page_standard_set_background(page, & std_bg_color);  
+  gnome_druid_page_standard_set_logo_background(page, & std_logo_bg_color);
+  gnome_druid_page_standard_set_title_foreground (page, & std_title_color);
   gnome_druid_page_standard_set_title(page, title);
   g_free(title);
   
@@ -1801,7 +1801,8 @@ gnc_file_qif_import (void)
  ********************************************************************/
 
 QIFImportWindow *
-gnc_ui_qif_import_druid_make(void)  {
+gnc_ui_qif_import_druid_make(void)
+{
   
   QIFImportWindow * retval;
   GladeXML        * xml;
@@ -2039,20 +2040,4 @@ gnc_ui_qif_import_druid_make(void)  {
   gtk_window_present (GTK_WINDOW(retval->window));
 
   return retval;
-}
-
-void
-gnc_ui_qif_import_create_menus(void)
-{
-  static GnomeUIInfo menuitem =
-  {
-    GNOME_APP_UI_ITEM,
-    N_("Import _QIF..."),
-    N_("Import a Quicken QIF file"),
-    gnc_file_qif_import, NULL, NULL,
-    GNOME_APP_PIXMAP_STOCK, GNOME_STOCK_MENU_CONVERT,
-    'i', GDK_CONTROL_MASK, NULL
-  };
-
-  gnc_add_c_extension(&menuitem, WINDOW_NAME_MAIN "/File/_Import/");
 }
