@@ -27,28 +27,23 @@
 #include "config.h"
 
 #include <gnome.h>
-#include <libgnomeprint/gnome-printer.h>
 #include <libgnomeprint/gnome-print.h>
-#include <libgnomeprint/gnome-print-meta.h>
-#include <libgnomeprint/gnome-print-preview.h>
-#include <libgnomeprint/gnome-printer-dialog.h>
-#include <libgnomeprint/gnome-print-dialog.h>
 #include <libgnomeprint/gnome-print-master.h>
-#include <libgnomeprint/gnome-print-master-preview.h>
-/* #include <libgnomeprint/gnome-printer-profile.h> */
-#include <libgnomeprint/gnome-font.h>
+
+#include <libgnomeprintui/gnome-print-dialog.h>
+#include <libgnomeprintui/gnome-print-preview.h>
 
 typedef struct {
   GnomePrintMaster   * master;
-  GnomePrintMeta     * meta;
+  GnomePrintContext  * meta;
   GnomeFont          * default_font;
-  char               * paper;
+  GnomePrintPaper    * paper;
 } PrintSession;
 
 typedef struct {
   GtkWidget         * toplevel;
   GtkWidget         * canvas;
-  GnomePrintContext * pc;
+  GnomePrintContext * meta;
   PrintSession      * session;
 } PrintPreviewDialog;
 

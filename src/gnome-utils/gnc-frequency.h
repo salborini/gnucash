@@ -30,11 +30,10 @@
 #include "FreqSpec.h"
 #include "dialog-utils.h"
 
-BEGIN_GNOME_DECLS
-
-#define GNC_FREQUENCY(obj)	  GTK_CHECK_CAST(obj, gnc_frequency_get_type(), GNCFrequency)
-#define GNC_FREQENCY_CLASS(klass) GTK_CHECK_CLASS_CAST(klass, gnc_frequency_get_type(), GNCFrequency)
-#define GNC_IS_FREQUENCY(obj)     GTK_CHECK_TYPE(obj, gnc_frequency_get_type())
+#define GNC_TYPE_FREQUENCY	  (gnc_frequency_get_type())
+#define GNC_FREQUENCY(obj)	  G_TYPE_CHECK_INSTANCE_CAST (obj, GNC_TYPE_FREQUENCY, GNCFrequency)
+#define GNC_FREQENCY_CLASS(klass) G_TYPE_CHECK_CLASS_CAST (klass, GNC_TYPE_FREQUENCY, GNCFrequency)
+#define GNC_IS_FREQUENCY(obj)     G_TYPE_CHECK_INSTANCE_TYPE (obj, GNC_TYPE_FREQUENCY)
 
 /**
  * A GNCFrequency is a VBox containing a scrollable GtkNotebook [and other
@@ -53,10 +52,11 @@ typedef struct _GNCFrequency
 	GladeXML        *gxml;
 } GNCFrequency;
 
-typedef struct _GNCFrequencyClass 
+typedef struct _GNCFrequencyClass
 {
-  GtkVBoxClass parent_class;
-  void (*changed) (GNCFrequency *gf);
+	GtkVBoxClass parent_class;
+
+	void (*changed) (GNCFrequency *gf);
 } GNCFrequencyClass;
 
 struct pageDataTuple 
@@ -66,7 +66,7 @@ struct pageDataTuple
 	char		*name;
 };
 
-guint gnc_frequency_get_type( void );
+GType gnc_frequency_get_type( void );
 
 /**
  * For the default freq spec widget, use 'NULL'.
@@ -100,7 +100,5 @@ void gnc_frequency_set_frequency_label_text (GNCFrequency *gf, const gchar *txt)
  * impelmentation, the default label text is "Start Date:"
  */
 void gnc_frequency_set_startdate_label_text (GNCFrequency *gf, const gchar *txt);
-
-END_GNOME_DECLS
 
 #endif /* !defined( GNC_FREQUENCY_H ) */

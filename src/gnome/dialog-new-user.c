@@ -67,8 +67,6 @@ gnc_ui_new_user_dialog (void)
 
   dialog = glade_xml_get_widget (xml, "New User Dialog");
 
-  gnome_dialog_close_hides (GNOME_DIALOG (dialog), TRUE);
-
   new_accounts_button = glade_xml_get_widget (xml, "new_accounts_button");
   import_qif_button = glade_xml_get_widget (xml, "import_qif_button");
   tutorial_button = glade_xml_get_widget (xml, "tutorial_button");
@@ -78,33 +76,30 @@ gnc_ui_new_user_dialog (void)
    */
   gtk_widget_set_sensitive (import_qif_button, (qifImportDruidFcn != NULL));
 
-  result = gnome_dialog_run_and_close (GNOME_DIALOG (dialog));
-  if (result != 0)
-  {
-    gnc_ui_new_user_cancel_dialog ();
-    gtk_widget_destroy (dialog);
-    gncp_new_user_finish ();
-    return;
+  result = gtk_dialog_run (GTK_DIALOG (dialog));
+  switch (result) {
+	  case GTK_RESPONSE_CANCEL:
+		gnc_ui_new_user_cancel_dialog ();
+		break;
+	  case GTK_RESPONSE_OK:
+		if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (new_accounts_button))) {
+			gnc_ui_hierarchy_druid ();
+			break;
+		} else if ((qifImportDruidFcn != NULL) &&
+				gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (import_qif_button))) {
+			qifImportDruidFcn();
+			gncp_new_user_finish ();
+			break;
+		} else if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (tutorial_button))) {
+			helpWindow (NULL, NULL, HH_QUICKSTART);
+			gncp_new_user_finish ();
+			break;
+		}
+	  default:
+		g_print ("DEBUG: Response: %d", result);
+		g_assert_not_reached ();
   }
 
-  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (new_accounts_button)))
-  {
-    gnc_ui_hierarchy_druid ();
-    gtk_widget_destroy (dialog);
-    return;
-  }
-
-  if ((qifImportDruidFcn != NULL) &&
-      gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (import_qif_button)))
-  {
-    qifImportDruidFcn();
-  }
-  else if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (tutorial_button)))
-  {
-    helpWindow (NULL, NULL, HH_QUICKSTART);
-  }
-
-  gncp_new_user_finish ();
   gtk_widget_destroy (dialog);
 }
 
@@ -121,10 +116,8 @@ gnc_ui_new_user_cancel_dialog (void)
   dialog = glade_xml_get_widget (xml, "New User Cancel Dialog");
   toggle = glade_xml_get_widget (xml, "run_again_toggle");
 
-  gnome_dialog_close_hides (GNOME_DIALOG (dialog), TRUE);
-
-  result = gnome_dialog_run_and_close (GNOME_DIALOG (dialog));
-  if (result == 0)
+  result = gtk_dialog_run (GTK_DIALOG (dialog));
+  if (result == GTK_RESPONSE_OK)
   {
     gboolean keepshowing = TRUE;
 
@@ -134,6 +127,7 @@ gnc_ui_new_user_cancel_dialog (void)
 
     gncp_new_user_finish ();
   }
+  gtk_widget_destroy(dialog);
 }
 
 void

@@ -44,7 +44,8 @@
 #include "gnc-engine-util.h"
 #include "gnc-file-dialog.h"
 #include "gnc-gui-query.h"
-#include "gnc-menu-extensions.h"
+#include "gnc-plugin-manager.h"
+#include "gnc-plugin-qif-import.h"
 #include "gnc-ui-util.h"
 #include "gnc-ui.h"
 #include "messages.h"
@@ -421,7 +422,7 @@ gnc_ui_qif_import_load_file_next_cb(GnomeDruidPage * page,
 {
   QIFImportWindow * wind = user_data;
 
-  char * path_to_load;
+  const char * path_to_load;
   char * default_acctname = NULL;
 
   GList * format_strings;
@@ -702,7 +703,7 @@ gnc_ui_qif_import_loaded_files_prepare_cb(GnomeDruidPage * page,
 
   update_file_page(wind);
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    FALSE, TRUE, TRUE); 
+                                    FALSE, TRUE, TRUE, TRUE); 
 }
 
 
@@ -721,7 +722,7 @@ gnc_ui_qif_import_load_another_cb(GtkButton * button,
   gnome_druid_set_page(GNOME_DRUID(wind->druid),
                        get_named_page(wind, "load_file_page"));
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    TRUE, TRUE, TRUE); 
+                                    TRUE, TRUE, TRUE, TRUE); 
 }
 
 
@@ -817,7 +818,7 @@ gnc_ui_qif_import_default_acct_next_cb(GnomeDruidPage * page,
                                        gpointer user_data)
 {
   QIFImportWindow * wind = user_data;
-  char   * acct_name = gtk_entry_get_text(GTK_ENTRY(wind->acct_entry));
+  const char   * acct_name = gtk_entry_get_text(GTK_ENTRY(wind->acct_entry));
   SCM    fix_default = scm_c_eval_string("qif-import:fix-from-acct");
   SCM    scm_name;
 
@@ -862,7 +863,7 @@ gnc_ui_qif_import_default_acct_back_cb(GnomeDruidPage * page,
   gnome_druid_set_page(GNOME_DRUID(wind->druid),
                        get_named_page(wind, "load_file_page"));
   gnome_druid_set_buttons_sensitive(GNOME_DRUID(wind->druid),
-                                    TRUE, TRUE, TRUE); 
+                                    TRUE, TRUE, TRUE, TRUE); 
   return TRUE;
 }
 
@@ -1135,14 +1136,14 @@ gnc_ui_qif_import_convert(QIFImportWindow * wind)
   Split        * gnc_split;
   gnc_commodity * old_commodity;
 
-  char * mnemonic = NULL; 
+  const char * mnemonic = NULL; 
   const char * namespace = NULL;
-  char * fullname = NULL;
+  const char * fullname = NULL;
   const gchar * row_text[4] = { NULL, NULL, NULL, NULL };
   int  rownum;
 
   /* get the default currency */
-  char * currname = gtk_entry_get_text(GTK_ENTRY(wind->currency_entry));
+  const char * currname = gtk_entry_get_text(GTK_ENTRY(wind->currency_entry));
 
   /* busy cursor */
   gnc_suspend_gui_refresh ();
@@ -1390,8 +1391,8 @@ gnc_ui_qif_import_comm_check_cb(GnomeDruidPage * page,
     gtk_object_get_data(GTK_OBJECT(page), "page_struct");
   
   const char * namespace = gnc_ui_namespace_picker_ns(qpage->new_type_combo);
-  char * name      = gtk_entry_get_text(GTK_ENTRY(qpage->new_name_entry));
-  char * mnemonic  = gtk_entry_get_text(GTK_ENTRY(qpage->new_mnemonic_entry));
+  const char * name      = gtk_entry_get_text(GTK_ENTRY(qpage->new_name_entry));
+  const char * mnemonic  = gtk_entry_get_text(GTK_ENTRY(qpage->new_mnemonic_entry));
   int  show_matches;
 
   if(!namespace || (namespace[0] == 0)) {
@@ -1540,7 +1541,7 @@ make_qif_druid_page(gnc_commodity * comm)
   GnomeDruidPageStandard * page;
 
   /* make the page widget */
-  retval->page = gnome_druid_page_standard_new_with_vals("", NULL);
+  retval->page = gnome_druid_page_standard_new_with_vals("", NULL, NULL);
   retval->commodity = comm;
   gtk_object_set_data(GTK_OBJECT(retval->page),
                       "page_struct", (gpointer)retval);
@@ -1552,9 +1553,9 @@ make_qif_druid_page(gnc_commodity * comm)
   str = str ? str : "";
   title = g_strdup_printf(_("Enter information about \"%s\""), str);
 
-  gnome_druid_page_standard_set_bg_color(page, & std_bg_color);  
-  gnome_druid_page_standard_set_logo_bg_color(page, & std_logo_bg_color);
-  gnome_druid_page_standard_set_title_color(page, & std_title_color);
+  gnome_druid_page_standard_set_background(page, & std_bg_color);  
+  gnome_druid_page_standard_set_logo_background(page, & std_logo_bg_color);
+  gnome_druid_page_standard_set_title_foreground (page, & std_title_color);
   gnome_druid_page_standard_set_title(page, title);
   g_free(title);
   
@@ -2046,17 +2047,9 @@ gnc_ui_qif_import_druid_make(void)  {
 }
 
 void
-gnc_ui_qif_import_create_menus(void)
+gnc_ui_qif_import_create_plugin(void)
 {
-  static GnomeUIInfo menuitem =
-  {
-    GNOME_APP_UI_ITEM,
-    N_("Import _QIF..."),
-    N_("Import a Quicken QIF file"),
-    gnc_file_qif_import, NULL, NULL,
-    GNOME_APP_PIXMAP_STOCK, GNOME_STOCK_MENU_CONVERT,
-    'i', GDK_CONTROL_MASK, NULL
-  };
+	GncPlugin *plugin = gnc_plugin_qif_import_new ();
 
-  gnc_add_c_extension(&menuitem, WINDOW_NAME_MAIN "/File/_Import/");
+	gnc_plugin_manager_add_plugin (gnc_plugin_manager_get (), plugin);
 }

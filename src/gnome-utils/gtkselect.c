@@ -103,8 +103,8 @@ static void
 gtk_select_destroy (GtkObject * select)
 {
   gtk_widget_destroy (GTK_SELECT (select)->popwin);
-  gtk_widget_unref (GTK_SELECT (select)->popwin);
-  gtk_widget_unref (GTK_SELECT (select)->empty);
+  g_object_unref (GTK_SELECT (select)->popwin);
+  g_object_unref (GTK_SELECT (select)->empty);
 
   if (GTK_OBJECT_CLASS (parent_class)->destroy)
     (*GTK_OBJECT_CLASS (parent_class)->destroy) (select);
@@ -178,6 +178,7 @@ gtk_select_get_pos (GtkSelect * select, gint * x, gint * y, gint * height, gint 
   gint work_height;
   gint old_height;
   gint old_width;
+  gint scrollbar_spacing;
   
   widget = GTK_WIDGET(select);
   popup  = GTK_SCROLLED_WINDOW (select->popup);
@@ -196,17 +197,17 @@ gtk_select_get_pos (GtkSelect * select, gint * x, gint * y, gint * height, gint 
     list_requisition.height += EMPTY_LIST_HEIGHT;
   
   alloc_width = (widget->allocation.width -
-		 2 * popwin->child->style->klass->xthickness -
+		 2 * popwin->child->style->xthickness -
 		 2 * GTK_CONTAINER (popwin->child)->border_width -
 		 2 * GTK_CONTAINER (select->popup)->border_width -
 		 2 * GTK_CONTAINER (GTK_BIN (popup)->child)->border_width - 
-		 2 * GTK_BIN (popup)->child->style->klass->xthickness);
+		 2 * GTK_BIN (popup)->child->style->xthickness);
   
-  work_height = (2 * popwin->child->style->klass->ythickness +
+  work_height = (2 * popwin->child->style->ythickness +
 		 2 * GTK_CONTAINER (popwin->child)->border_width +
 		 2 * GTK_CONTAINER (select->popup)->border_width +
 		 2 * GTK_CONTAINER (GTK_BIN (popup)->child)->border_width +
-		 2 * GTK_BIN (popup)->child->style->klass->xthickness);
+		 2 * GTK_BIN (popup)->child->style->xthickness);
   
   do 
     {
@@ -216,9 +217,10 @@ gtk_select_get_pos (GtkSelect * select, gint * x, gint * y, gint * height, gint 
       if (!show_hscroll &&
 	  alloc_width < list_requisition.width)
 	{
-	  work_height += popup->hscrollbar->requisition.height +
-	    GTK_SCROLLED_WINDOW_CLASS 
-	    (GTK_OBJECT (select->popup)->klass)->scrollbar_spacing;
+	  g_object_get (G_OBJECT (select->popup),
+			"scrollbar_spacing", &scrollbar_spacing,
+		       	NULL);
+	  work_height += popup->hscrollbar->requisition.height + scrollbar_spacing;
 	  show_hscroll = TRUE;
 	}
       if (!show_vscroll && 
@@ -230,10 +232,11 @@ gtk_select_get_pos (GtkSelect * select, gint * x, gint * y, gint * height, gint 
 	      *y -= (work_height + list_requisition.height + real_height);
 	      break;
 	    }
+	  g_object_get (G_OBJECT (select->popup),
+			"scrollbar_spacing", &scrollbar_spacing,
+		       	NULL);
 	  alloc_width -= 
-	    popup->vscrollbar->requisition.width +
-	    GTK_SCROLLED_WINDOW_CLASS 
-	    (GTK_OBJECT (select->popup)->klass)->scrollbar_spacing;
+	    popup->vscrollbar->requisition.width + scrollbar_spacing;
 	  show_vscroll = TRUE;
 	}
     } while (old_width != alloc_width || old_height != work_height);
@@ -333,21 +336,21 @@ gtk_select_update_entry (GtkList * list, GtkSelect * select)
     if (old_selected) {
       items = g_list_append(NULL, old_selected);
       posn = g_list_index(select->entries, old_selected);
-      gtk_widget_ref(old_selected);
+      g_object_ref(old_selected);
       gtk_container_remove(GTK_CONTAINER(select->entry), old_selected);
       if (old_selected != select->empty)
 	gtk_list_insert_items(list, items, posn);
-      gtk_widget_unref(old_selected);
+      g_object_unref(old_selected);
     } else {
       gtk_container_remove(GTK_CONTAINER(select->entry), select->empty);
     }
     if (selected) {
       select->selected = selected;
       items = g_list_append(NULL, selected);
-      gtk_widget_ref(selected);
+      g_object_ref(selected);
       gtk_list_remove_items(list, items);
       gtk_container_add(GTK_CONTAINER(select->entry), selected);
-      gtk_widget_unref(selected);
+      g_object_unref(selected);
     } else {
       gtk_container_add(GTK_CONTAINER(select->entry), select->empty);
       select->selected = NULL;
@@ -533,7 +536,7 @@ gtk_select_init (GtkSelect * select)
   select->selected = NULL;
   arrow = gtk_arrow_new (GTK_ARROW_DOWN, GTK_SHADOW_OUT);
   gtk_widget_show (arrow);
-  gtk_widget_ref(select->empty);
+  g_object_ref(select->empty);
   gtk_widget_show (select->empty);
   gtk_container_add(GTK_CONTAINER(select->entry), select->empty);
   gtk_container_add (GTK_CONTAINER (select->button), arrow);
@@ -553,7 +556,7 @@ gtk_select_init (GtkSelect * select)
      (GtkSignalFunc)prelight_bug, select); */
 
   select->popwin = gtk_window_new (GTK_WINDOW_POPUP);
-  gtk_widget_ref (select->popwin);
+  g_object_ref (select->popwin);
   gtk_window_set_policy (GTK_WINDOW (select->popwin), 1, 1, 0);
   
   gtk_widget_set_events (select->popwin, GDK_KEY_PRESS_MASK);
@@ -768,7 +771,7 @@ gtk_select_remove_items_internal (GtkSelect *select, GList *items,
     items = g_list_remove(items, select->selected);
     do_free = 1;
     if (!unref)
-      gtk_widget_ref(select->selected);
+      g_object_ref(select->selected);
     gtk_container_remove(GTK_CONTAINER(select->entry), select->selected);
     gtk_container_add(GTK_CONTAINER(select->entry), select->empty);
     select->selected = NULL;

@@ -104,6 +104,9 @@ void gnc_ui_commodity_ok_cb(GtkButton * button, gpointer user_data);
 void gnc_ui_commodity_help_cb(GtkButton * button, gpointer user_data);
 void gnc_ui_commodity_quote_info_cb(GtkWidget *w, gpointer data);
 
+#define GNC_RESPONSE_NEW 0
+static void gnc_ui_select_commodity_response_cb (GtkDialog * dialog, gint response, gpointer data);
+
 
 /********************************************************************
  * gnc_ui_commodity_set_help_callback
@@ -141,7 +144,7 @@ gnc_ui_select_commodity_modal_full(gnc_commodity * orig_sel,
   win->default_mnemonic=mnemonic;
   
   if (parent)
-    gnome_dialog_set_parent(GNOME_DIALOG(win->dialog), GTK_WINDOW(parent));
+    gtk_window_set_transient_for (GTK_WINDOW (win->dialog), GTK_WINDOW (parent));
 
   if (user_message != NULL)
     initial = user_message;
@@ -165,14 +168,14 @@ gnc_ui_select_commodity_modal_full(gnc_commodity * orig_sel,
   /* Run the dialog, handling the terminal conditions. */
   done = FALSE;
   while (!done) {
-    switch (value = gnome_dialog_run(GNOME_DIALOG(win->dialog))) {
-     case 0:	/* OK */
-      DEBUG("case 0");
+    switch (value = gtk_dialog_run(GTK_DIALOG(win->dialog))) {
+     case GTK_RESPONSE_OK:
+      DEBUG("case OK");
       retval = win->selection;
       done = TRUE;
       break;
-     case 1:	/* New */
-      DEBUG("case 1");
+     case GNC_RESPONSE_NEW:
+      DEBUG("case NEW");
       break;
      default:	/* Cancel, Escape, Close, etc. */
       DEBUG("default: %d", value);
@@ -181,7 +184,7 @@ gnc_ui_select_commodity_modal_full(gnc_commodity * orig_sel,
       break;
     }
   }
-  gnome_dialog_close(GNOME_DIALOG(win->dialog)); /* Close and destroy */
+  gtk_widget_destroy (GTK_WIDGET (win->dialog)); /* Close and destroy */
   g_free(win);
   
   return retval;
@@ -231,7 +234,14 @@ gnc_ui_select_commodity_create(const gnc_commodity * orig_sel,
   retval->select_user_prompt = glade_xml_get_widget (xml, "select_user_prompt");
   retval->ok_button = glade_xml_get_widget (xml, "ok_button");
 
-  gtk_label_set_text ((GtkLabel *)retval->select_user_prompt, "");
+  gtk_label_set_text (GTK_LABEL (retval->select_user_prompt), "");
+
+#ifdef DRH
+  g_signal_connect (G_OBJECT (retval->dialog), "close",
+		    G_CALLBACK (select_commodity_close), retval);
+  g_signal_connect (G_OBJECT (retval->dialog), "response",
+		    G_CALLBACK (gnc_ui_select_commodity_response_cb), retval);
+#endif
 
   switch (mode) {
     case DIAG_COMM_ALL:
@@ -420,6 +430,77 @@ gnc_ui_update_commodity_picker(GtkWidget * combobox,
   g_list_free(commodity_items);
 }
 
+
+/********************************************************************
+ * gnc_ui_update_namespace_picker
+ ********************************************************************/
+
+void
+gnc_ui_select_commodity_destroy(SelectCommodityWindow * w) {
+  g_return_if_fail (w != NULL);
+
+  gtk_widget_destroy (GTK_WIDGET (w->dialog));
+}
+
+#if 0
+/********************************************************************
+ * gnc_ui_select_commodity_ok_cb()
+ ********************************************************************/
+
+static void
+gnc_ui_select_commodity_response_cb (GtkDialog * dialog, gint response, gpointer data)
+{
+  SelectCommodityWindow * w = data;
+  const gchar *namespace;
+  const gchar *fullname;
+  gnc_commodity *commodity = NULL;
+
+  switch (response) {
+   case GTK_RESPONSE_OK:
+    namespace = gnc_ui_namespace_picker_ns (w->namespace_combo);
+    fullname = gtk_entry_get_text (GTK_ENTRY (w->commodity_entry));
+
+    commodity = gnc_commodity_table_find_full (gnc_get_current_commodities (),
+					       namespace, fullname);
+
+    if (commodity != NULL) {
+      if (w->callback != NULL)
+	(w->callback) (commodity, w->callback_data);
+      gnc_ui_select_commodity_destroy (w);
+    } else {
+      gnc_warning_dialog (_
+			  ("You must select a commodity.\n"
+			   "To create a new one, click \"New\""));
+    }
+    break;
+   case GNC_RESPONSE_NEW:
+    namespace = gnc_ui_namespace_picker_ns (w->namespace_combo);
+
+    commodity = gnc_ui_new_commodity_modal_full (namespace,
+						 w->dialog,
+						 w->default_exchange_code,
+						 w->default_fullname,
+						 w->default_mnemonic,
+						 w->default_fraction);
+    if (commodity != NULL) {
+      namespace =
+	gnc_ui_update_namespace_picker (w->namespace_combo,
+					gnc_commodity_get_namespace
+					(commodity), TRUE, FALSE);
+      gnc_ui_update_commodity_picker (w->commodity_combo,
+				      gnc_commodity_get_namespace (commodity),
+				      gnc_commodity_get_printname (commodity));
+    }
+    break;
+   default:
+    if (w->callback != NULL)
+      (w->callback) (NULL, w->callback_data);
+
+    gnc_ui_select_commodity_destroy (w);
+    break;
+  }
+}
+#endif
 
 /********************************************************************
  * gnc_ui_update_namespace_picker
@@ -703,8 +784,8 @@ gnc_ui_new_commodity_dialog(const char * selected_namespace,
                                      retval );
 
   retval->dialog = glade_xml_get_widget (xml, "Commodity Dialog");
-  if (parent)
-    gnome_dialog_set_parent(GNOME_DIALOG(retval->dialog), GTK_WINDOW(parent));
+  if (parent != NULL)
+    gtk_window_set_transient_for (GTK_WINDOW (retval->dialog), GTK_WINDOW (parent));
   retval->edit_commodity = NULL;
 
   help_button = glade_xml_get_widget (xml, "help_button");
@@ -770,6 +851,10 @@ gnc_ui_new_commodity_dialog(const char * selected_namespace,
   }
 
 
+#ifdef DRH
+  g_signal_connect (G_OBJECT (retval->dialog), "close",
+		    G_CALLBACK (commodity_close), retval);
+#endif
   /* Fill in any data, top to bottom */
   
   gtk_entry_set_text (GTK_ENTRY (retval->fullname_entry), fullname ? fullname : "");
@@ -782,6 +867,7 @@ gnc_ui_new_commodity_dialog(const char * selected_namespace,
     gtk_spin_button_set_value (GTK_SPIN_BUTTON (retval->fraction_spinbutton),
 			       fraction);
 
+#if 0
 
   /* Set up so <CR> activates default button */
   gnome_dialog_editable_enters(GNOME_DIALOG(retval->dialog),
@@ -790,6 +876,7 @@ gnc_ui_new_commodity_dialog(const char * selected_namespace,
 			       GTK_EDITABLE(retval->mnemonic_entry));
   gnome_dialog_editable_enters(GNOME_DIALOG(retval->dialog),
 			       GTK_EDITABLE(retval->code_entry));
+#endif
 
   LEAVE(" ");
   return retval;
@@ -877,15 +964,15 @@ gnc_ui_common_commodity_modal(gnc_commodity *commodity,
   /* Run the dialog, handling the terminal conditions. */
   done = FALSE;
   while (!done) {
-    value = gnome_dialog_run(GNOME_DIALOG(win->dialog));
+    value = gtk_dialog_run(GTK_DIALOG(win->dialog));
     switch (value) {
-     case 0:	/* OK */
+     case GTK_RESPONSE_OK:
       retval = win->edit_commodity;
       done = TRUE;
-      DEBUG("case 0");
+      DEBUG("case OK");
       break;
-     case 2:	/* Help */
-      DEBUG("case 2");
+     case GTK_RESPONSE_HELP:
+      DEBUG("case HELP");
       break;
      default:	/* Cancel, Escape, Close, etc. */
       DEBUG("default: %d", value);
@@ -894,7 +981,7 @@ gnc_ui_common_commodity_modal(gnc_commodity *commodity,
       break;
     }
   }
-  gnome_dialog_close(GNOME_DIALOG(win->dialog)); /* Close and destroy */
+  gtk_widget_destroy (GTK_WIDGET (win->dialog)); /* Close and destroy */
   g_free(win);
 
   LEAVE(" ");

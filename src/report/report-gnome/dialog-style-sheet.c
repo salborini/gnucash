@@ -114,7 +114,7 @@ gnc_style_sheet_dialog_fill(StyleSheetDialog * ss, SCM selected) {
     ssinfo->stylesheet = SCM_CAR(stylesheets);
 
     scm_protect_object(ssinfo->stylesheet);
-    gtk_widget_ref(gnc_options_dialog_widget(ssinfo->odialog));
+    g_object_ref(gnc_options_dialog_widget(ssinfo->odialog));
 
     gnc_build_options_dialog_contents(ssinfo->odialog, 
                                       ssinfo->odb);
@@ -158,8 +158,8 @@ gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data) {
   GList            * strings=NULL;
   GList            * lptr;
   gint             dialog_retval;
-  char             * template_str = NULL;
-  char             * name_str = NULL;
+  const char       * template_str = NULL;
+  const char       * name_str = NULL;
 
   /* get the new name for the style sheet */
   GladeXML *xml = gnc_glade_xml_new ("report.glade",

@@ -32,8 +32,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <gtkhtml/gtkhtml.h>
-#include <gtkhtml/gtkhtml-embedded.h>
+#include <libgtkhtml/gtkhtml.h>
+#include <libgtkhtml/dom/core/dom-attr.h>
 #ifdef USE_GUPPI
 #include <libguppitank/guppi-tank.h>
 #endif
@@ -60,14 +60,14 @@
 
 struct gnc_html_struct {
   GtkWidget   * container;         /* parent of the gtkhtml widget */
-  GtkWidget   * html;              /* gtkhtml widget itself */
+  HtmlView    * view;
   gchar       * current_link;      /* link under mouse pointer */
 
   URLType     base_type;           /* base of URL (path - filename) */
   gchar       * base_location;
 
-  gnc_http    * http;              /* handles HTTP requests */ 
-  GHashTable  * request_info;      /* hash uri to GList of GtkHTMLStream * */
+  gnc_http    * http;              /* documents HTTP requests */ 
+  GHashTable  * request_info;      /* hash uri to GList of HtmlDocument * */
 
   /* callbacks */
   GncHTMLUrltypeCB  urltype_cb;     /* is this type OK for this instance? */
@@ -215,7 +215,7 @@ gnc_html_parse_url(gnc_html * html, const gchar * url,
   if(found_protocol) {
     retval = g_hash_table_lookup (gnc_html_proto_to_type_hash, protocol);
     if (!retval) {
-      PWARN("unhandled URL type for '%s'", url ? url : "(null)");
+      PWARN("undocumentd URL type for '%s'", url ? url : "(null)");
       retval = URL_TYPE_OTHER;
     }
   }
@@ -433,7 +433,7 @@ gnc_network_allowed()
 
 /************************************************************
  * gnc_html_http_request_cb: fires when an HTTP request is completed.
- * this is when it's time to load the data into the GtkHTML widget. 
+ * this is when it's time to load the data into the HtmlView widget. 
  ************************************************************/
 
 static void
@@ -444,56 +444,55 @@ gnc_html_http_request_cb(const gchar * uri, int completed_ok,
   gnc_html * html = user_data; 
   URLType  type;
   char     * location = NULL;
-  char    ** p_location = &location;
   char     * label    = NULL;
-  GList    * handles  = NULL;
-  GList   ** p_handles = &handles;
+  GList    * documents  = NULL;
   GList    * current;
   
   DEBUG("uri %s, ok %d, body %10.10s, body len %d", uri, completed_ok, body, body_len);
-  g_hash_table_lookup_extended(html->request_info, uri, 
-                               (gpointer *)p_location, 
-                               (gpointer *)p_handles);
+  g_hash_table_lookup_extended(html->request_info, uri,
+			       (gpointer *)&location,
+			       (gpointer *)&documents);
   
-  /* handles will be NULL for an HTTP POST transaction, where we are
+  /* documents will be NULL for an HTTP POST transaction, where we are
    * displaying the reply data. */
-  if(!handles) {    
-    GtkHTMLStream * handle = gtk_html_begin(GTK_HTML(html->html));
+  if (documents == NULL) {
+    HtmlDocument *document = html->view->document;
+
+    html_document_open_stream  (document, "text/html");
     if(completed_ok) {
-      gtk_html_write(GTK_HTML(html->html), handle, body, body_len);
+      html_document_write_stream (document, body, body_len);
     }
     else {
       char *data;
 
       data = g_strdup_printf(error_format, 
 			     _(error_title), _(error_body1), _(error_body2));
-      gtk_html_write(GTK_HTML(html->html), handle, data, strlen (data));
+      html_document_write_stream (document, data, strlen (data));
       g_free (data);
-      gtk_html_write(GTK_HTML(html->html), handle, body, body_len);
-      gtk_html_write(GTK_HTML(html->html), handle,
-                     error_end, strlen(error_end));
-      gtk_html_end(GTK_HTML(html->html), handle, GTK_HTML_STREAM_OK);
+      html_document_write_stream (document, body, body_len);
+      html_document_write_stream (document,
+				  error_end, strlen(error_end));
+      html_document_close_stream (document);
     }
   }
   /* otherwise, it's a normal SUBMIT transaction */ 
   else {
-    /* before writing to the handles, make sure any new traffic won't
+    /* before writing to the documents, make sure any new traffic won't
      * see them while we're working */
     g_hash_table_remove(html->request_info, uri);
     g_free(location);
     location = NULL;
 
-    for(current = handles; current; current = current->next) {
-      /* request completed OK... write the HTML to the handles that
+    for(current = documents; current; current = current->next) {
+      /* request completed OK... write the HTML to the documents that
        * asked for that URI. */
       if(completed_ok) {
-        gtk_html_write(GTK_HTML(html->html), (GtkHTMLStream *)(current->data),
-                       body, body_len);
-        gtk_html_end(GTK_HTML(html->html), (GtkHTMLStream *)(current->data), 
-                     GTK_HTML_STREAM_OK);
-        type = gnc_html_parse_url(html, uri, &location, &label);
+	html_document_write_stream (HTML_DOCUMENT (current->data),
+				    body, body_len);
+	html_document_close_stream (HTML_DOCUMENT (current->data));
+	type = gnc_html_parse_url(html, uri, &location, &label);
         if(label) {
-          gtk_html_jump_to_anchor(GTK_HTML(html->html), label);
+          html_view_jump_to_anchor(html->view, label);
         }
         g_free(location);
         g_free(label);
@@ -505,21 +504,20 @@ gnc_html_http_request_cb(const gchar * uri, int completed_ok,
 
 	data = g_strdup_printf(error_format, 
 			       _(error_title), _(error_body1), _(error_body2));
-        gtk_html_write(GTK_HTML(html->html), (GtkHTMLStream *)(current->data), 
-                       data, strlen(data));
+	html_document_write_stream (HTML_DOCUMENT (current->data),
+				    data, strlen(data));
 	g_free (data);
-        gtk_html_write(GTK_HTML(html->html), (GtkHTMLStream *)(current->data), 
-                       body, body_len);
-        gtk_html_write(GTK_HTML(html->html), (GtkHTMLStream *)(current->data), 
-                       error_end, strlen(error_end));
-        gtk_html_end(GTK_HTML(html->html), (GtkHTMLStream *)(current->data), 
-                     GTK_HTML_STREAM_ERROR);
+	html_document_write_stream (HTML_DOCUMENT (current->data),
+				    body, body_len);
+	html_document_write_stream (HTML_DOCUMENT (current->data),
+				    error_end, strlen(error_end));
+	html_document_close_stream (HTML_DOCUMENT (current->data));
       }
     }
-    g_list_free(handles);    
+    g_list_free(documents);
   }
 
-  gnc_unset_busy_cursor (html->html);
+  gnc_unset_busy_cursor (GTK_WIDGET (html->view));
 }
 
 
@@ -529,39 +527,40 @@ gnc_html_http_request_cb(const gchar * uri, int completed_ok,
  ************************************************************/
 
 static void 
-gnc_html_start_request(gnc_html * html, gchar * uri, GtkHTMLStream * handle)
+gnc_html_start_request(gnc_html *html, gchar *uri, HtmlDocument *document)
 {
-  GList * handles = NULL;
+  GList *documents = NULL;
   gint  need_request = FALSE;
 
-  /* we want to make a list of handles to fill with this URI.
-   * multiple handles with the same URI will all get filled when the
+  /* we want to make a list of documents to fill with this URI.
+   * multiple documents with the same URI will all get filled when the
    * request comes in. */
   DEBUG("requesting %s", uri);
-  handles = g_hash_table_lookup(html->request_info, uri);
-  if(!handles) {
+	
+  documents = g_hash_table_lookup (html->request_info, uri);
+  if (documents == NULL) {
     need_request = TRUE;
   }
 
-  handles = g_list_append(handles, handle);
-  g_hash_table_insert(html->request_info, uri, handles);
+  documents = g_list_append (documents, document);
+  g_hash_table_insert (html->request_info, uri, documents);
   
   if(need_request) {
-    gnc_set_busy_cursor (html->html, FALSE);
-    gnc_http_start_request(html->http, uri, gnc_html_http_request_cb, 
-                           (gpointer)html);
+    gnc_set_busy_cursor (GTK_WIDGET (html->view), FALSE);
+    gnc_http_start_request (html->http, uri, gnc_html_http_request_cb, 
+			    (gpointer)html);
   }
 }
 
 
 /********************************************************************
  * gnc_html_load_to_stream : actually do the work of loading the HTML
- * or binary data referenced by a URL and feeding it into the GtkHTML
+ * or binary data referenced by a URL and feeding it into the HtmlView
  * widget.
  ********************************************************************/
 
 static void
-gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
+gnc_html_load_to_stream(gnc_html *html, HtmlDocument *document,
                         URLType type, const gchar * location, 
                         const gchar * label)
 {
@@ -569,7 +568,8 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
   int fdata_len = 0;
 
   DEBUG("type %s, location %s, label %s", type, location, label);
-  if(!html) {
+
+  if (html == NULL) {
     return;
   }
 
@@ -582,15 +582,15 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
 
       if(ok) {
         fdata = fdata ? fdata : g_strdup ("");
-        gtk_html_write(GTK_HTML(html->html), handle, fdata, fdata_len);
-        gtk_html_end(GTK_HTML(html->html), handle, GTK_HTML_STREAM_OK);      
+	html_document_write_stream (document, fdata, fdata_len);
+	html_document_close_stream (document);
       }
       else {
         fdata = fdata ? fdata : 
 	  g_strdup_printf (error_404_format, 
 			   _(error_404_title), _(error_404_body));
-        gtk_html_write(GTK_HTML(html->html), handle, fdata, strlen (fdata));
-        gtk_html_end(GTK_HTML(html->html), handle, GTK_HTML_STREAM_ERROR);
+	html_document_write_stream (document, fdata, fdata_len);
+	html_document_close_stream (document);
       }
 
       g_free(fdata);
@@ -598,7 +598,7 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
       if(label) {
 	while (gtk_events_pending ())
 	  gtk_main_iteration ();
-        gtk_html_jump_to_anchor(GTK_HTML(html->html), label);
+	html_view_jump_to_anchor(html->view, label);
       }
 
       return;
@@ -608,7 +608,6 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
   do {
     if (!safe_strcmp (type, URL_TYPE_SECURE) ||
 	!safe_strcmp (type, URL_TYPE_HTTP)) {
-
       if (!safe_strcmp (type, URL_TYPE_SECURE)) {
 	if(!https_allowed()) {
 	  gnc_error_dialog(_("Secure HTTP access is disabled.\n"
@@ -626,18 +625,18 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
 	char *fullurl;
       
 	fullurl = gnc_build_url(type, location, label);
-	gnc_html_start_request(html, fullurl, handle);
+	gnc_html_start_request(html, fullurl, document);
       }
-
     } else {
       PWARN("load_to_stream for inappropriate type\n"
 	    "\turl = '%s#%s'\n",
 	    location ? location : "(null)",
 	    label ? label : "(null)");
+			
       fdata = g_strdup_printf (error_404_format, 
 			       _(error_404_title), _(error_404_body));
-      gtk_html_write(GTK_HTML(html->html), handle, fdata, strlen (fdata));
-      gtk_html_end(GTK_HTML(html->html), handle, GTK_HTML_STREAM_ERROR);
+      html_document_write_stream (document, fdata, fdata_len);
+      html_document_close_stream (document);
       g_free (fdata);
     }
 
@@ -652,7 +651,7 @@ gnc_html_load_to_stream(gnc_html * html, GtkHTMLStream * handle,
  ********************************************************************/
 
 static void 
-gnc_html_link_clicked_cb(GtkHTML * html, const gchar * url, gpointer data)
+gnc_html_link_clicked_cb (HtmlDocument *document, const gchar *url, gpointer data)
 {
   URLType   type;
   char      * location = NULL;
@@ -660,21 +659,23 @@ gnc_html_link_clicked_cb(GtkHTML * html, const gchar * url, gpointer data)
   gnc_html  * gnchtml = (gnc_html *)data;
 
   DEBUG("Clicked %s", url);
+	
   type = gnc_html_parse_url(gnchtml, url, &location, &label);
   gnc_html_show_url(gnchtml, type, location, label, 0);
+	
   g_free(location);
   g_free(label);
 }
 
 
 /********************************************************************
- * gnc_html_url_requested_cb - called when a URL needs to be 
+ * gnc_html_request_url_cb - called when a URL needs to be 
  * loaded within the loading of a page (embedded image).
  ********************************************************************/
 
 static void 
-gnc_html_url_requested_cb(GtkHTML * html, char * url,
-                          GtkHTMLStream * handle, gpointer data)
+gnc_html_request_url_cb (HtmlDocument *document, const gchar *url,
+		         HtmlStream *stream, gpointer data)
 {
   URLType       type;
   char          * location=NULL;
@@ -682,8 +683,10 @@ gnc_html_url_requested_cb(GtkHTML * html, char * url,
   gnc_html      * gnchtml = (gnc_html *)data;
 
   DEBUG("requesting %s", url);
+	
   type = gnc_html_parse_url(gnchtml, url, &location, &label);
-  gnc_html_load_to_stream(gnchtml, handle, type, location, label);
+  gnc_html_load_to_stream(gnchtml, document, type, location, label);
+	
   g_free(location);
   g_free(label);
 }
@@ -695,18 +698,27 @@ gnc_html_url_requested_cb(GtkHTML * html, char * url,
  ********************************************************************/
 
 static int
-gnc_html_object_requested_cb(GtkHTML * html, GtkHTMLEmbedded * eb,
+gnc_html_object_requested_cb (HtmlView *view, HtmlEmbedded *widget,
                              gpointer data)
 {
-  gnc_html  * gnchtml = data; 
+  gnc_html  * gnchtml = data;
+  DomNamedNodeMap  *attributes;
+  DomAttr		 *classid;
   GncHTMLObjectCB h;
 
   DEBUG(" ");
-  if(!eb || !(eb->classid) || !gnc_html_object_handlers) return FALSE;
-  
-  h = g_hash_table_lookup(gnc_html_object_handlers, eb->classid);
-  if(h) {
-    return h(gnchtml, eb, data);
+	
+  g_return_val_if_fail (widget != NULL && widget->node != NULL, FALSE);
+  g_return_val_if_fail (gnc_html_object_handlers != NULL, FALSE);
+
+  attributes = dom_Node__get_attributes (widget->node);
+  classid = DOM_ATTR (dom_NamedNodeMap_getNamedItem (attributes, "classid"));
+
+  g_return_val_if_fail (classid != NULL, FALSE);
+
+  h = g_hash_table_lookup(gnc_html_object_handlers, dom_Attr__get_value (classid));
+  if (h != NULL) {
+    return h (gnchtml, widget, data);
   }
   else {
     return FALSE;
@@ -719,11 +731,12 @@ gnc_html_object_requested_cb(GtkHTML * html, GtkHTMLEmbedded * eb,
  ********************************************************************/
 
 static void 
-gnc_html_on_url_cb(GtkHTML * html, const gchar * url, gpointer data)
+gnc_html_on_url_cb (HtmlView *html_view, const gchar *url, gpointer data)
 {
   gnc_html * gnchtml = (gnc_html *) data;
 
   DEBUG("Rollover %s", url);
+	
   g_free(gnchtml->current_link);
   gnchtml->current_link = g_strdup(url);
   if(gnchtml->flyover_cb) {
@@ -737,7 +750,7 @@ gnc_html_on_url_cb(GtkHTML * html, const gchar * url, gpointer data)
  ********************************************************************/
 
 static void 
-gnc_html_set_base_cb(GtkHTML * gtkhtml, const gchar * base, 
+gnc_html_set_base_cb (HtmlDocument *document, const gchar *url,
                      gpointer data)
 {
   gnc_html * html = (gnc_html *)data;
@@ -745,8 +758,9 @@ gnc_html_set_base_cb(GtkHTML * gtkhtml, const gchar * base,
   char     * location = NULL;
   char     * label = NULL;
 
-  DEBUG("Setting base location to %s", base);
-  type = gnc_html_parse_url(html, base, &location, &label);
+  DEBUG("Setting base location to %s", url);
+	
+  type = gnc_html_parse_url(html, url, &location, &label);
 
   g_free(html->base_location);
   g_free(label);
@@ -887,7 +901,7 @@ gnc_html_pack_form_data(GHashTable * form_data)
  ********************************************************************/
 
 static int
-gnc_html_submit_cb(GtkHTML * html, const gchar * method, 
+gnc_html_submit_cb(HtmlDocument *document, const gchar *method, 
                    const gchar * action, const gchar * encoded_form_data,
                    gpointer user_data)
 {
@@ -971,12 +985,14 @@ void
 gnc_html_show_data(gnc_html * html, const char * data, 
                    int datalen)
 {
-  GtkHTMLStream * handle;
+  HtmlDocument *document;
 
   DEBUG("datalen %d, data %20.20s", datalen, data);
-  handle = gtk_html_begin(GTK_HTML(html->html));
-  gtk_html_write(GTK_HTML(html->html), handle, data, datalen);
-  gtk_html_end(GTK_HTML(html->html), handle, GTK_HTML_STREAM_OK);  
+
+  document = html->view->document;
+
+  html_document_write_stream (document, data, datalen);
+  html_document_close_stream (document);  
 }
 
 
@@ -994,32 +1010,34 @@ gnc_html_show_url(gnc_html * html, URLType type,
                   gboolean new_window_hint)
 {
   GncHTMLUrlCB url_handler;
-  GtkHTMLStream * handle;
+  HtmlDocument *document;
   gboolean new_window;
 
   DEBUG(" ");
-  if (!html) return;
-  if (!location) return;
+
+  g_return_if_fail (html != NULL);
+  g_return_if_fail (location != NULL);
 
   /* make sure it's OK to show this URL type in this window */
-  if(new_window_hint == 0) {
-    if (html->urltype_cb)
+  if (new_window_hint == 0) {
+    if (html->urltype_cb) {
       new_window = !((html->urltype_cb)(type));
-    else
+    } else {
       new_window = FALSE;
-  }
-  else {
+    }
+  } else {
     new_window = TRUE;
   }
 
-  if(!new_window) {
+  if (!new_window) {
     gnc_html_cancel(html);
   }
 
-  if (gnc_html_url_handlers)
+  if (gnc_html_url_handlers) {
     url_handler = g_hash_table_lookup (gnc_html_url_handlers, type);
-  else
+  } else {
     url_handler = NULL;
+  }
 
   if (url_handler)
   {
@@ -1037,23 +1055,23 @@ gnc_html_show_url(gnc_html * html, URLType type,
     ok = url_handler (location, label, new_window, &result);
     if (!ok)
     {
-      if (result.error_message)
-        gnc_error_dialog(result.error_message);
-      else
+      if (result.error_message) {
+	gnc_error_dialog(result.error_message);
+      } else {
 	/* %s is a URL (some location somewhere). */
         gnc_error_dialog(_("There was an error accessing %s."), location);
+      }
 
-      if (html->load_cb)
+      if (html->load_cb) {
         html->load_cb (html, result.url_type,
                        location, label,
                        html->load_cb_data);
-    }
-    else if (result.load_to_stream)
-    {
+      }
+    } else if (result.load_to_stream) {
       gnc_html_history_node *hnode;
       const char *new_location;
       const char *new_label;
-      GtkHTMLStream * stream;
+      HtmlDocument *document;
 
       new_location = result.location ? result.location : location;
       new_label = result.label ? result.label : label;
@@ -1068,8 +1086,8 @@ gnc_html_show_url(gnc_html * html, URLType type,
 	    g_strdup (extract_base_name(result.base_type, new_location));
       DEBUG("resetting base location to %s",  html->base_location);
     
-      stream = gtk_html_begin (GTK_HTML(html->html));
-      gnc_html_load_to_stream (html, stream, result.url_type,
+      document = html->view->document;
+      gnc_html_load_to_stream (html, document, result.url_type,
                                new_location, new_label);
 
       if (html->load_cb)
@@ -1090,7 +1108,7 @@ gnc_html_show_url(gnc_html * html, URLType type,
     gnc_html_open_scm(html, location, label, new_window);
 
   } else if (!safe_strcmp (type, URL_TYPE_JUMP)) {
-    gtk_html_jump_to_anchor(GTK_HTML(html->html), label);
+    html_view_jump_to_anchor(html->view, label);
 
   } else if (!safe_strcmp (type, URL_TYPE_SECURE) ||
 	     !safe_strcmp (type, URL_TYPE_HTTP) ||
@@ -1120,18 +1138,18 @@ gnc_html_show_url(gnc_html * html, URLType type,
       if(html->base_location) g_free(html->base_location);
       html->base_location = extract_base_name(type, location);
 
-      /* FIXME : handle new_window = 1 */
+      /* FIXME : document new_window = 1 */
       gnc_html_history_append(html->history,
 			      gnc_html_history_node_new(type, location, label));
-      handle = gtk_html_begin(GTK_HTML(html->html));
-      gnc_html_load_to_stream(html, handle, type, location, label);
+      document = html->view->document;
+      gnc_html_load_to_stream(html, document, type, location, label);
 
     } while (FALSE);
 
   } else if (!safe_strcmp (type, URL_TYPE_ACTION)) {
     gnc_html_history_append(html->history,
                             gnc_html_history_node_new(type, location, label));
-    gnc_html_submit_cb(GTK_HTML(html->html), "get", 
+    gnc_html_submit_cb(html->view->document, "get", 
                        gnc_build_url(type, location, label), NULL,
                        (gpointer)html);
 
@@ -1156,8 +1174,9 @@ gnc_html_reload(gnc_html * html)
   gnc_html_history_node * n;
 
   DEBUG(" ");
+	
   n = gnc_html_history_get_current(html->history);
-  if(n) {
+  if (n != NULL) {
     gnc_html_show_url(html, n->type, n->location, n->label, 0);
   }
 }
@@ -1171,56 +1190,56 @@ gnc_html_reload(gnc_html * html)
 gnc_html * 
 gnc_html_new(void)
 {
-  gnc_html * retval = g_new0(gnc_html, 1);
+  gnc_html *html = g_new0(gnc_html, 1);
   
-  retval->container = gtk_scrolled_window_new(NULL, NULL);
-  retval->html      = gtk_html_new();
+  html->container = gtk_scrolled_window_new (NULL, NULL);
+  html->view      = HTML_VIEW (html_view_new());
 
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(retval->container),
-                                 GTK_POLICY_AUTOMATIC,
-                                 GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(html->container),
+				 GTK_POLICY_AUTOMATIC,
+				 GTK_POLICY_AUTOMATIC);
 
-  gtk_container_add(GTK_CONTAINER(retval->container), 
-                    GTK_WIDGET(retval->html));
+  gtk_container_add(GTK_CONTAINER(html->container), 
+		    GTK_WIDGET(html->view));
 
-  retval->request_info = g_hash_table_new(g_str_hash, g_str_equal);
-  retval->http         = gnc_http_new();
-  retval->history      = gnc_html_history_new();
+  html->request_info = g_hash_table_new (g_str_hash, g_str_equal);
+  html->http         = gnc_http_new();
+  html->history      = gnc_html_history_new();
 
-  gtk_widget_ref (retval->container);
-  gtk_object_sink (GTK_OBJECT (retval->container));
+  g_object_ref (html->container);
+  gtk_object_sink (GTK_OBJECT (html->container));
 
   /* signals */
-  gtk_signal_connect(GTK_OBJECT(retval->html), "url_requested",
-                     GTK_SIGNAL_FUNC(gnc_html_url_requested_cb),
-                     (gpointer)retval);
-  
-  gtk_signal_connect(GTK_OBJECT(retval->html), "on_url",
-                     GTK_SIGNAL_FUNC(gnc_html_on_url_cb),
-                     (gpointer)retval);
-  
-  gtk_signal_connect(GTK_OBJECT(retval->html), "set_base",
-                     GTK_SIGNAL_FUNC(gnc_html_set_base_cb),
-                     (gpointer)retval);
-  
-  gtk_signal_connect(GTK_OBJECT(retval->html), "link_clicked",
-                     GTK_SIGNAL_FUNC(gnc_html_link_clicked_cb),
-                     (gpointer)retval);
-  
-  gtk_signal_connect (GTK_OBJECT (retval->html), "object_requested",
-                      GTK_SIGNAL_FUNC (gnc_html_object_requested_cb), 
-                      (gpointer)retval);
+  g_signal_connect (G_OBJECT (html->view->document), "request_url",
+		    G_CALLBACK (gnc_html_request_url_cb),
+		    (gpointer)html);
 
-  gtk_signal_connect (GTK_OBJECT (retval->html), "button_press_event",
-                      GTK_SIGNAL_FUNC (gnc_html_button_press_cb), 
-                      (gpointer)retval);
+  g_signal_connect (G_OBJECT (html->view), "on_url",
+		    G_CALLBACK (gnc_html_on_url_cb),
+		    (gpointer)html);
 
-  gtk_signal_connect (GTK_OBJECT(retval->html), "submit", 
-                      GTK_SIGNAL_FUNC(gnc_html_submit_cb), (gpointer)retval);
-  
-  gtk_html_load_empty(GTK_HTML(retval->html));
-  
-  return retval;
+  g_signal_connect (G_OBJECT (html->view->document), "set_base",
+		    G_CALLBACK (gnc_html_set_base_cb),
+		    (gpointer)html);
+
+  g_signal_connect (G_OBJECT(html->view->document), "link_clicked",
+		    G_CALLBACK (gnc_html_link_clicked_cb),
+		    (gpointer)html);
+
+  g_signal_connect (G_OBJECT (html->view), "object_requested",
+		    G_CALLBACK (gnc_html_object_requested_cb), 
+		    (gpointer)html);
+
+  g_signal_connect (G_OBJECT (html->view), "button_press_event",
+		    G_CALLBACK (gnc_html_button_press_cb), 
+		    (gpointer)html);
+
+  g_signal_connect (G_OBJECT(html->view->document), "submit", 
+		    G_CALLBACK (gnc_html_submit_cb), (gpointer)html);
+
+  /* html_view_set_document (html->view, html_document_new ()); */
+
+  return html;
 }
 
 
@@ -1234,6 +1253,7 @@ html_cancel_helper(gpointer key, gpointer value, gpointer user_data)
 {
   g_free(key);
   g_list_free((GList *)value);
+
   return TRUE;
 }
 
@@ -1255,8 +1275,7 @@ gnc_html_cancel(gnc_html * html)
 void
 gnc_html_destroy(gnc_html * html)
 {
-
-  if(!html) return;
+  g_return_if_fail (html != NULL);
 
   /* cancel any outstanding HTTP requests */
   gnc_html_cancel(html);
@@ -1264,13 +1283,13 @@ gnc_html_destroy(gnc_html * html)
   gnc_html_history_destroy(html->history);
 
   gtk_widget_destroy(html->container);
-  gtk_widget_unref(html->container);
+  g_object_unref(html->container);
 
   g_free(html->current_link);
   g_free(html->base_location);
 
   html->container     = NULL;
-  html->html          = NULL;
+  html->view          = NULL;
   html->history       = NULL;
   html->current_link  = NULL;
   html->base_location = NULL;
@@ -1311,7 +1330,7 @@ gnc_html_set_button_cb(gnc_html * html, GncHTMLButtonCB button_cb,
 /**************************************************************
  * gnc_html_export : wrapper around the builtin function in gtkhtml
  **************************************************************/
-
+#if 0
 static gboolean 
 raw_html_receiver (gpointer     engine,
                    const gchar *data,
@@ -1322,10 +1341,14 @@ raw_html_receiver (gpointer     engine,
   fwrite (data, len, 1, fh);
   return TRUE;
 }
+#endif
 
 gboolean
 gnc_html_export(gnc_html * html, const char *filepath)
 {
+  /* Export need to be added to gtkhtml 2.0 */
+
+#if 0
   FILE *fh;
 
   g_return_val_if_fail (html != NULL, FALSE);
@@ -1340,23 +1363,31 @@ gnc_html_export(gnc_html * html, const char *filepath)
   fclose (fh);
 
   return TRUE;
+#endif
+
+  return FALSE;
 }
 
 void
 gnc_html_print(gnc_html * html)
 {
-  PrintSession * ps = gnc_print_session_create(FALSE);
+  /* Printing need to be added to gtkhtml 2.0 */
   
+#if 0
+  PrintSession * ps = gnc_print_session_create(FALSE);
+
   gtk_html_print(GTK_HTML(html->html),
                  GNOME_PRINT_CONTEXT(ps->meta));
   gnc_print_session_done(ps, FALSE);
   gnc_print_session_print(ps);
+#endif
 }
 
 gnc_html_history * 
 gnc_html_get_history(gnc_html * html)
 {
-  if (!html) return NULL;
+  g_return_val_if_fail (html != NULL, NULL);
+
   return html->history;
 }
 
@@ -1364,7 +1395,8 @@ gnc_html_get_history(gnc_html * html)
 GtkWidget * 
 gnc_html_get_widget(gnc_html * html)
 {
-  if (!html) return NULL;
+  g_return_val_if_fail (html != NULL, NULL);
+
   return html->container;
 }
 
@@ -1373,14 +1405,13 @@ gnc_html_register_object_handler(const char * classid,
                                  GncHTMLObjectCB hand)
 {
   g_return_if_fail (classid != NULL);
+  g_return_if_fail (hand != NULL);
 
-  if(!gnc_html_object_handlers) {
+  if (gnc_html_object_handlers == NULL) {
     gnc_html_object_handlers = g_hash_table_new(g_str_hash, g_str_equal);
   }
 
   gnc_html_unregister_object_handler (classid);
-  if (!hand)
-    return;
 
   g_hash_table_insert(gnc_html_object_handlers, g_strdup(classid), hand);
 }

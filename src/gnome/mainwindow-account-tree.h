@@ -31,23 +31,18 @@
 #include "gnc-account-tree.h"
 #include "Account.h"
 
-#define GNC_MAINWIN_ACCOUNT_TREE(obj)          GTK_CHECK_CAST (obj, gnc_mainwin_account_tree_get_type (), GNCMainWinAccountTree)
-#define GNC_MAINWIN_ACCOUNT_TREE_CLASS(klass)  GTK_CHECK_CLASS_CAST (klass, gnc_mainwin_account_tree_get_type(), GNCMainWinAccountTreeClass)
-#define IS_GNC_MAINWIN_ACCOUNT_TREE(obj)       GTK_CHECK_TYPE (obj, gnc_mainwin_account_tree_get_type ())
+#define GNC_TYPE_MAINWIN_ACCOUNT_TREE		(gnc_mainwin_account_tree_get_type ())
+#define GNC_MAINWIN_ACCOUNT_TREE(o)		(G_TYPE_CHECK_INSTANCE_CAST ((o), GNC_TYPE_MAINWIN_ACCOUNT_TREE, GNCMainWinAccountTree))
+#define GNC_MAINWIN_ACCOUNT_TREE_CLASS(k)	(G_TYPE_CHECK_CLASS_CAST ((k), GNC_TYPE_MAINWIN_ACCOUNT_TREE, GNCMainWinAccountTreeClass))
+#define GNC_IS_MAINWIN_ACCOUNT_TREE(o)		(G_TYPE_CHECK_INSTANCE_TYPE ((o), GNC_TYPE_MAINWIN_ACCOUNT_TREE))
 
-
-typedef struct _GNCMainWinAccountTree       GNCMainWinAccountTree;
-typedef struct _GNCMainWinAccountTreeClass  GNCMainWinAccountTreeClass;
-
-struct _GNCMainWinAccountTree
-{ 
+typedef struct {
   GtkVBox vbox;
   GtkScrolledWindow *scrolled_window;
   GNCAccountTree *acc_tree; 
-};
+} GNCMainWinAccountTree;
 
-struct _GNCMainWinAccountTreeClass
-{
+typedef struct {
   GtkVBoxClass parent_class;  
 
   void (*select_account)   (GNCMainWinAccountTree *tree,
@@ -58,10 +53,10 @@ struct _GNCMainWinAccountTreeClass
 
   void (*activate_account) (GNCMainWinAccountTree *tree,
                             Account        *account);
-};
+} GNCMainWinAccountTreeClass;
 
-guint          gnc_mainwin_account_tree_get_type(void);
-GtkWidget*     gnc_mainwin_account_tree_new(void);
+GType          gnc_mainwin_account_tree_get_type (void);
+GtkWidget*     gnc_mainwin_account_tree_new (void);
 
 GtkWidget* 
 gnc_mainwin_account_tree_attach_popup(GNCMainWinAccountTree *tree,

@@ -703,7 +703,7 @@ reminders_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
         /* FIXME: this isn't quite right; see the comment in
          * sxsld_remind_row_toggle */
         gnome_druid_set_show_finish( sxsld->sincelast_druid,
@@ -832,7 +832,7 @@ created_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         if ( !gnc_sxsld_get_appropriate_page( sxsld,
                                               druid_page,
@@ -854,7 +854,7 @@ obsolete_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         /* This is always the last/finish page. */
         gnome_druid_set_show_finish( sxsld->sincelast_druid, TRUE );
@@ -945,7 +945,7 @@ auto_create_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         if ( !gnc_sxsld_get_appropriate_page( sxsld,
                                               druid_page,
@@ -977,7 +977,7 @@ to_create_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
         /* Setup next/finish button based on the number of ready-to-go
          * to-create transactions */
         gnome_druid_set_show_finish(
@@ -1889,15 +1889,15 @@ add_reminders_to_gui( GList *reminderList, sxSinceLastData *sxsld )
                         gtk_ctree_node_set_row_data( ctree,
                                                      instNode,
                                                      (gpointer)rit );
-                        gtk_signal_handler_block_by_func( GTK_OBJECT(ctree),
-                                                          sxsld_remind_row_toggle,
-                                                          sxsld ); 
+                        g_signal_handlers_block_by_func( G_OBJECT(ctree),
+                                                         sxsld_remind_row_toggle,
+                                                         sxsld ); 
                         if ( rit->isSelected ) {
                                 gtk_ctree_select( ctree, instNode );
                         }
-                        gtk_signal_handler_unblock_by_func( GTK_OBJECT(ctree),
-                                                            sxsld_remind_row_toggle,
-                                                            sxsld );
+                        g_signal_handlers_unblock_by_func( G_OBJECT(ctree),
+                                                           sxsld_remind_row_toggle,
+                                                           sxsld );
                         g_free( rowText[0] );
                         g_free( rowText[2] );
                 }
@@ -1921,9 +1921,9 @@ add_dead_list_to_gui(GList *removeList, sxSinceLastData *sxsld)
 
         gtk_clist_freeze( cl );
         gtk_clist_clear( cl );
-        gtk_signal_handler_block_by_func( GTK_OBJECT(cl),
-                                          sxsld_obsolete_row_toggle,
-                                          sxsld );
+        g_signal_handlers_block_by_func( G_OBJECT(cl),
+                                         sxsld_obsolete_row_toggle,
+                                         sxsld );
 
         for ( row = 0; removeList;
               row++, removeList = removeList->next ) {
@@ -1943,9 +1943,9 @@ add_dead_list_to_gui(GList *removeList, sxSinceLastData *sxsld)
                         gtk_clist_select_row( cl, row, 0 );
                 }
         }
-        gtk_signal_handler_unblock_by_func( GTK_OBJECT(cl),
-                                            sxsld_obsolete_row_toggle,
-                                            sxsld );
+        g_signal_handlers_unblock_by_func( G_OBJECT(cl),
+                                           sxsld_obsolete_row_toggle,
+                                           sxsld );
         gtk_clist_thaw( cl );
 
         g_string_free(tmp_str, TRUE);
