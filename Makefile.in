@@ -38,9 +38,6 @@ default:
 	@echo "Please choose one of the following targets:"
 	@echo "motif           dynamically linked motif version"
 	@echo "motif-static    statically linked motif version"
-	@echo "gnome           gnome/gtk version"
-	@echo "gnome-static    gnome/gtk statically linked version"
-	@echo "qt              kde/qt version"
 	@echo " "
 
 # This inclusion must come after the first target, and after the
@@ -49,7 +46,6 @@ include @top_srcdir@/Makefile.common
 
 # Aliases
 motif-static: motif.static
-gnome-static: gnome.static
 
 build-flavor:
 	@cd lib;    $(MAKE) ${FLAVOR}
@@ -63,15 +59,6 @@ motif:
 motif.static:
 	${MAKE} FLAVOR=motif.static build-flavor
 
-gnome:
-	${MAKE} FLAVOR=gnome build-flavor
-
-gnome.static:
-	${MAKE} FLAVOR=gnome.static build-flavor
-
-qt:
-	${MAKE} FLAVOR=qt build-flavor
-
 depend:
 	@echo make depend is now superfluous.
 
@@ -80,7 +67,7 @@ TRASH += *~ *.o *.bak
 
 DIST_TRASH += Makefile *~ *.o *.bak share/scm gnucash.bin
 DIST_TRASH += gnucash.motif gnucash.motif.static
-DIST_TRASH += gnucash.gnome gnucash.gnome.static gnucash.qt gnucash-shell
+DIST_TRASH += gnucash-shell
 DIST_TRASH += config.cache config.log config.status config.h
 
 tagsfiles := $(shell find . -name "*.[ch]" -print)
@@ -95,24 +82,17 @@ install-bin: gnucash.${FLAVOR}
 install:
 	$(INSTALL) -d ${GNC_BINDIR} ${GNC_LIBDIR} ${GNC_DOCDIR} ${GNC_SHAREDIR}
 
-  # Put these in the opposite order of precedence.  Final bin/gnucash link will
-  # point to the last one that exists...
-	-[ -e gnucash.qt ] && ${MAKE} FLAVOR=qt GNC_BINDIR=${GNC_BINDIR} install-bin
-	-[ -e gnucash.gnome.static ] && \
-     ${MAKE} FLAVOR=gnome.static GNC_BINDIR=${GNC_BINDIR} install-bin
-	-[ -e gnucash.gnome ] && ${MAKE} FLAVOR=gnome GNC_BINDIR=${GNC_BINDIR} install-bin
+	# Put these in the opposite order of precedence.  Final bin/gnucash link will
+	# point to the last one that exists...
 	-[ -e gnucash.motif.static ] && \
-     ${MAKE} FLAVOR=motif.static GNC_BINDIR=${GNC_BINDIR} install-bin
+	    ${MAKE} FLAVOR=motif.static GNC_BINDIR=${GNC_BINDIR} install-bin
 	-[ -e gnucash.motif ] && ${MAKE} FLAVOR=motif GNC_BINDIR=${GNC_BINDIR} install-bin
 
   # Make sure at least one succeeded
 	[ \
-    -e ${GNC_BINDIR}/gnucash.motif -o \
-    -e ${GNC_BINDIR}/gnucash.motif.static -o \
-    -e ${GNC_BINDIR}/gnucash.gnome -o \
-    -e ${GNC_BINDIR}/gnucash.gnome.static -o \
-    -e ${GNC_BINDIR}/gnucash.qt \
-  ]
+	  -e ${GNC_BINDIR}/gnucash.motif -o \
+	  -e ${GNC_BINDIR}/gnucash.motif.static \
+	]
 	$(INSTALL) src/quotes/gnc-prices ${GNC_BINDIR}
 
 	$(INSTALL_DATA) src/swig/perl5/gnucash.pm ${GNC_LIBDIR}
@@ -145,7 +125,7 @@ install:
 
 	@mkdir -p ${GNC_SHAREDIR}/Docs
 	@mkdir -p ${GNC_SHAREDIR}/Docs/En
-	@mkdir -p ${GNC_SHAREDIR}/Docs/Fn
+	@mkdir -p ${GNC_SHAREDIR}/Docs/Fr
 	$(INSTALL_DATA) Docs/*.html ${GNC_SHAREDIR}/Docs
 	$(INSTALL_DATA) Docs/En/*.html ${GNC_SHAREDIR}/Docs/En
 	$(INSTALL_DATA) Docs/Fr/*.html ${GNC_SHAREDIR}/Docs/Fr
@@ -193,7 +173,7 @@ install:
 #		${INSTALL_DATA} $$file ${GNC_CONFIGDIR}/$$dest; \
 #  done
 
-.PHONY: default install-private install motif motif-static gnome gnome-static qt
+.PHONY: default install-private install motif motif-static 
 .PHONY: depend clean distclean
 
 # Local Variables:
