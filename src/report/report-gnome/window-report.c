@@ -188,8 +188,8 @@ gnc_report_window_view_new(GnomeMDIChild * child, gpointer user_data)
   /* make sure menu entry and label get refreshed */
   gnome_mdi_child_set_name(child, child->name);
 
-  gtk_signal_connect(GTK_OBJECT(child), "destroy", 
-                     gnc_report_window_view_destroy, mc);
+  g_signal_connect(G_OBJECT(child), "destroy", 
+                   G_CALLBACK (gnc_report_window_view_destroy), mc);
   
   gnc_report_window_create_menu(win, mc); 
   gnc_report_window_create_toolbar(win, mc);
@@ -785,7 +785,7 @@ gnc_report_window_new(GNCMDIChildInfo * mc)
   GtkObject         * tlo; 
 
   report->mc               = mc;
-  report->html             = gnc_html_new();
+  report->html             = gnc_html_new(gnc_ui_get_toplevel());
   report->cur_report       = SCM_BOOL_F;
   report->initial_report   = SCM_BOOL_F;
   report->edited_reports   = SCM_EOL;
@@ -1004,7 +1004,7 @@ gnc_print_report (int report_id)
   gnc_html *html;
   char * location;
 
-  html = gnc_html_new ();
+  html = gnc_html_new (gnc_ui_get_toplevel());
 
   gnc_set_busy_cursor (NULL, TRUE);
   location = g_strdup_printf("id=%d", report_id);  
@@ -1091,7 +1091,7 @@ gnc_report_window_default_params_editor(SCM options, SCM report)
     if (ptr != SCM_BOOL_F) {
       title = gh_scm2newstr(ptr, NULL);
     }
-    prm->win         = gnc_options_dialog_new(TRUE, title);
+    prm->win         = gnc_options_dialog_new(title);
     
     if (title) {
       free(title);

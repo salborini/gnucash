@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#include <gnome.h>
+#include <gtk/gtk.h>
 
 #include "dialog-utils.h"
 #include "gnc-component-manager.h"
@@ -28,6 +28,12 @@
 
 #define DIALOG_NEW_JOB_CM_CLASS "dialog-new-job"
 #define DIALOG_EDIT_JOB_CM_CLASS "dialog-edit-job"
+
+void gnc_job_window_ok_cb (GtkWidget *widget, gpointer data);
+void gnc_job_window_cancel_cb (GtkWidget *widget, gpointer data);
+void gnc_job_window_help_cb (GtkWidget *widget, gpointer data);
+void gnc_job_window_destroy_cb (GtkWidget *widget, gpointer data);
+void gnc_job_name_changed_cb (GtkWidget *widget, gpointer data);
 
 typedef enum
 {
@@ -136,7 +142,7 @@ gnc_job_verify_ok (JobWindow *jw)
   return TRUE;
 }
 
-static void
+void
 gnc_job_window_ok_cb (GtkWidget *widget, gpointer data)
 {
   JobWindow *jw = data;
@@ -152,7 +158,7 @@ gnc_job_window_ok_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (jw->component_id);
 }
 
-static void
+void
 gnc_job_window_cancel_cb (GtkWidget *widget, gpointer data)
 {
   JobWindow *jw = data;
@@ -160,16 +166,14 @@ gnc_job_window_cancel_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (jw->component_id);
 }
 
-static void
+void
 gnc_job_window_help_cb (GtkWidget *widget, gpointer data)
 {
-  char *help_file = HH_JOB;
-
-  helpWindow(NULL, NULL, help_file);
+  helpWindow(NULL, NULL, HH_JOB);
 }
 
 
-static void
+void
 gnc_job_window_destroy_cb (GtkWidget *widget, gpointer data)
 {
   JobWindow *jw = data;
@@ -189,11 +193,12 @@ gnc_job_window_destroy_cb (GtkWidget *widget, gpointer data)
   g_free (jw);
 }
 
-static void
+void
 gnc_job_name_changed_cb (GtkWidget *widget, gpointer data)
 {
   JobWindow *jw = data;
-  char *name, *id, *fullname, *title;
+  char *fullname, *title;
+  const char *name, *id;
 
   if (!jw)
     return;
@@ -222,7 +227,8 @@ gnc_job_window_close_handler (gpointer user_data)
 {
   JobWindow *jw = user_data;
 
-  gnome_dialog_close (GNOME_DIALOG (jw->dialog));
+  gtk_widget_destroy (jw->dialog);
+  jw->dialog = NULL;
 }
 
 static void
@@ -263,7 +269,6 @@ gnc_job_new_window (GNCBook *bookp, GncOwner *owner, GncJob *job)
   JobWindow *jw;
   GladeXML *xml;
   GtkWidget *owner_box, *owner_label;
-  GnomeDialog *jwd;
   GtkObject *jwo;
 
   /*
@@ -295,12 +300,8 @@ gnc_job_new_window (GNCBook *bookp, GncOwner *owner, GncJob *job)
   /* Find the dialog */
   jw->dialog = glade_xml_get_widget (xml, "Job Dialog");
   jwo = GTK_OBJECT (jw->dialog);
-  jwd = GNOME_DIALOG (jwo);
 
   gtk_object_set_data (jwo, "dialog_info", jw);
-
-  /* default to ok XXX */
-  gnome_dialog_set_default (jwd, 0);
 
   /* Get entry points */
   jw->id_entry  = glade_xml_get_widget (xml, "id_entry");
@@ -311,33 +312,10 @@ gnc_job_new_window (GNCBook *bookp, GncOwner *owner, GncJob *job)
   owner_box = glade_xml_get_widget (xml, "customer_hbox");
   owner_label = glade_xml_get_widget (xml, "owner_label");
 
-  /* Connect buttons */
-  gnome_dialog_button_connect (jwd, 0,
-			       GTK_SIGNAL_FUNC(gnc_job_window_ok_cb), jw);
-  gnome_dialog_button_connect (jwd, 1,
-			       GTK_SIGNAL_FUNC(gnc_job_window_cancel_cb), jw);
-  gnome_dialog_button_connect (jwd, 2,
-			       GTK_SIGNAL_FUNC(gnc_job_window_help_cb), jw);
-
   /* Setup signals */
-  gtk_signal_connect (jwo, "destroy",
-		      GTK_SIGNAL_FUNC(gnc_job_window_destroy_cb), jw);
-
-  gtk_signal_connect(GTK_OBJECT (jw->id_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_job_name_changed_cb), jw);
-
-  gtk_signal_connect(GTK_OBJECT (jw->name_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_job_name_changed_cb), jw);
-
-
-  /* Attach <Enter> to default button */
-  gnome_dialog_editable_enters (jwd, GTK_EDITABLE (jw->id_entry));
-  gnome_dialog_editable_enters (jwd, GTK_EDITABLE (jw->name_entry));
-  gnome_dialog_editable_enters (jwd, GTK_EDITABLE (jw->desc_entry));
-
-  /* Start at the name */
-  gtk_widget_grab_focus (jw->name_entry);
-
+  glade_xml_signal_autoconnect_full( xml,
+                                     gnc_glade_autoconnect_full_func,
+                                     jw);
   /* Set initial entries */
   if (job != NULL) {
     jw->job_guid = *gncJobGetGUID (job);

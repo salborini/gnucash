@@ -93,7 +93,8 @@ row_data_destroy_cb(gpointer data) {
 
 
 static void
-gnc_style_sheet_dialog_fill(StyleSheetDialog * ss, SCM selected) {
+gnc_style_sheet_dialog_fill(StyleSheetDialog * ss, SCM selected)
+{
   SCM stylesheets = scm_c_eval_string("(gnc:get-html-style-sheets)");
   SCM get_options = scm_c_eval_string("gnc:html-style-sheet-options");
   SCM get_name    = scm_c_eval_string("gnc:html-style-sheet-name");
@@ -109,12 +110,12 @@ gnc_style_sheet_dialog_fill(StyleSheetDialog * ss, SCM selected) {
     char           * c_name;
 
     /* make the options DB and dialog, but don't parent it yet */ 
-    ssinfo->odialog = gnc_options_dialog_new(FALSE, NULL);
+    ssinfo->odialog = gnc_options_dialog_new(NULL);
     ssinfo->odb     = gnc_option_db_new(scm_options);
     ssinfo->stylesheet = SCM_CAR(stylesheets);
 
     scm_protect_object(ssinfo->stylesheet);
-    gtk_widget_ref(gnc_options_dialog_widget(ssinfo->odialog));
+    g_object_ref(gnc_options_dialog_widget(ssinfo->odialog));
 
     gnc_build_options_dialog_contents(ssinfo->odialog, 
                                       ssinfo->odb);
@@ -147,7 +148,8 @@ gnc_style_sheet_dialog_fill(StyleSheetDialog * ss, SCM selected) {
 
 
 static void
-gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data) {
+gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data)
+{
   StyleSheetDialog * ssd = user_data;
   SCM              make_ss   = scm_c_eval_string("gnc:make-html-style-sheet");
   SCM              templates = scm_c_eval_string("(gnc:get-html-templates)");
@@ -158,8 +160,8 @@ gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data) {
   GList            * strings=NULL;
   GList            * lptr;
   gint             dialog_retval;
-  char             * template_str = NULL;
-  char             * name_str = NULL;
+  const char       * template_str = NULL;
+  const char       * name_str = NULL;
 
   /* get the new name for the style sheet */
   GladeXML *xml = gnc_glade_xml_new ("report.glade",
@@ -185,9 +187,9 @@ gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data) {
   g_list_free(strings);
 
   /* get the name */
-  dialog_retval = gnome_dialog_run(GNOME_DIALOG(dlg));
+  dialog_retval = gtk_dialog_run(GTK_DIALOG(dlg));
 
-  if(dialog_retval == 0) {
+  if(dialog_retval == GTK_RESPONSE_OK) {
     template_str = gtk_entry_get_text(GTK_ENTRY(template_entry));
     name_str     = gtk_entry_get_text(GTK_ENTRY(name_entry));
     if(template_str && name_str) {
@@ -199,7 +201,7 @@ gnc_style_sheet_new_cb(GtkWidget * w, gpointer user_data) {
     }
   }
 
-  gnome_dialog_close(GNOME_DIALOG(dlg));
+  gtk_widget_destroy(dlg);
 }
 
 
@@ -223,7 +225,8 @@ gnc_style_sheet_dialog_close_cb(GtkWidget * w, GdkEventAny * ev,
 }
 
 static StyleSheetDialog *
-gnc_style_sheet_dialog_create() {
+gnc_style_sheet_dialog_create()
+{
   StyleSheetDialog  * ss = g_new0(StyleSheetDialog, 1);
   GtkWidget         * new_button=NULL;
   GtkWidget         * delete_button=NULL;

@@ -24,9 +24,10 @@
 #define GNC_HTML_H
 
 #include <glib.h>
-#include <gtkhtml/gtkhtml.h>
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
+
+#include <libgtkhtml/gtkhtml.h>
 
 typedef char * URLType;
 
@@ -81,7 +82,7 @@ typedef void (* GncHTMLLoadCB)(gnc_html * html, URLType type,
                                gpointer data);
 typedef int  (* GncHTMLButtonCB)(gnc_html * html, GdkEventButton * event,
                                  gpointer data);
-typedef int  (* GncHTMLObjectCB)(gnc_html * html, GtkHTMLEmbedded * eb,
+typedef int  (* GncHTMLObjectCB)(gnc_html * html, HtmlEmbedded * widget,
                                  gpointer data); 
 typedef int  (* GncHTMLActionCB)(gnc_html * html, const char * method,
                                  const char * action, GHashTable * form_data);
@@ -89,7 +90,7 @@ typedef gboolean (* GncHTMLStreamCB)(const char *location, char **data, int *dat
 typedef gboolean (* GncHTMLUrlCB)(const char *location, const char *label,
                                   gboolean new_window, GNCURLResult * result);
 
-gnc_html    * gnc_html_new(void);
+gnc_html    * gnc_html_new(GtkWidget *window);
 void          gnc_html_destroy(gnc_html * html);
 void          gnc_html_show_url(gnc_html * html, 
                                 URLType type,
@@ -116,6 +117,7 @@ gboolean      gnc_html_register_urltype (URLType type, const char *protocol);
 
 /* object handlers deal with <object classid="foo"> objects in HTML.
  * the handlers are looked up at object load time. */
+
 void          gnc_html_register_object_handler(const char * classid, 
                                                GncHTMLObjectCB hand);
 void          gnc_html_unregister_object_handler(const char * classid);

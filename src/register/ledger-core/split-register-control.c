@@ -1246,7 +1246,7 @@ gnc_split_register_traverse (VirtualLocation *p_new_virt_loc,
   Transaction *pending_trans;
   VirtualLocation virt_loc;
   Transaction *trans, *new_trans;
-  GNCVerifyResult result;
+  gint result;
   gboolean changed;
   SRInfo *info;
   Split *split;

@@ -6,7 +6,7 @@
 
 #include "config.h"
 
-#include <gnome.h>
+#include <gtk/gtk.h>
 
 #include "dialog-utils.h"
 #include "global-options.h"
@@ -35,6 +35,15 @@
 
 #define DIALOG_NEW_CUSTOMER_CM_CLASS "dialog-new-customer"
 #define DIALOG_EDIT_CUSTOMER_CM_CLASS "dialog-edit-customer"
+
+void gnc_customer_taxtable_check_cb (GtkToggleButton *togglebutton,
+				     gpointer user_data);
+
+void gnc_customer_window_ok_cb (GtkWidget *widget, gpointer data);
+void gnc_customer_window_cancel_cb (GtkWidget *widget, gpointer data);
+void gnc_customer_window_help_cb (GtkWidget *widget, gpointer data);
+void gnc_customer_window_destroy_cb (GtkWidget *widget, gpointer data);
+void gnc_customer_name_changed_cb (GtkWidget *widget, gpointer data);
 
 typedef enum
 {
@@ -94,7 +103,7 @@ struct _customer_window {
   GncTaxTable *	taxtable;
 };
 
-static void
+void
 gnc_customer_taxtable_check_cb (GtkToggleButton *togglebutton,
 				gpointer user_data)
 {
@@ -117,6 +126,9 @@ cw_get_customer (CustomerWindow *cw)
 
 static void gnc_ui_to_customer (CustomerWindow *cw, GncCustomer *cust)
 {
+  GtkTextBuffer* text_buffer;
+  GtkTextIter start, end;
+  gchar *text;
   GncAddress *addr, *shipaddr;
 
   addr = gncCustomerGetAddr (cust);
@@ -168,8 +180,11 @@ static void gnc_ui_to_customer (CustomerWindow *cw, GncCustomer *cust)
   gncCustomerSetActive (cust, gtk_toggle_button_get_active
 			(GTK_TOGGLE_BUTTON (cw->active_check)));
   gncCustomerSetTaxIncluded (cust, cw->taxincluded);
-  gncCustomerSetNotes (cust, gtk_editable_get_chars
-		       (GTK_EDITABLE (cw->notes_text), 0, -1));
+
+  text_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW(cw->notes_text));
+  gtk_text_buffer_get_bounds (text_buffer, &start, &end);
+  text = gtk_text_buffer_get_text (text_buffer, &start, &end, FALSE);
+  gncCustomerSetNotes (cust, text);
 
   /* Parse and set the currency, terms, discount, and credit amounts */
   gncCustomerSetCurrency (cust,
@@ -223,7 +238,7 @@ static gboolean check_entry_nonempty (GtkWidget *dialog, GtkWidget *entry,
   return FALSE;
 }
 
-static void
+void
 gnc_customer_window_ok_cb (GtkWidget *widget, gpointer data)
 {
   CustomerWindow *cw = data;
@@ -281,7 +296,7 @@ gnc_customer_window_ok_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (cw->component_id);
 }
 
-static void
+void
 gnc_customer_window_cancel_cb (GtkWidget *widget, gpointer data)
 {
   CustomerWindow *cw = data;
@@ -289,15 +304,13 @@ gnc_customer_window_cancel_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (cw->component_id);
 }
 
-static void
+void
 gnc_customer_window_help_cb (GtkWidget *widget, gpointer data)
 {
-  char *help_file = HH_CUSTOMER;
-
-  helpWindow(NULL, NULL, help_file);
+  helpWindow(NULL, NULL, HH_CUSTOMER);
 }
 
-static void
+void
 gnc_customer_window_destroy_cb (GtkWidget *widget, gpointer data)
 {
   CustomerWindow *cw = data;
@@ -317,11 +330,12 @@ gnc_customer_window_destroy_cb (GtkWidget *widget, gpointer data)
   g_free (cw);
 }
 
-static void
+void
 gnc_customer_name_changed_cb (GtkWidget *widget, gpointer data)
 {
   CustomerWindow *cw = data;
-  char *name, *id, *fullname, *title;
+  char *fullname, *title;
+  const char *id,  *name;
 
   if (!cw)
     return;
@@ -350,7 +364,8 @@ gnc_customer_window_close_handler (gpointer user_data)
 {
   CustomerWindow *cw = user_data;
 
-  gnome_dialog_close (GNOME_DIALOG (cw->dialog));
+  gtk_widget_destroy (cw->dialog);
+  cw->dialog = NULL;
 }
 
 static void
@@ -391,7 +406,6 @@ gnc_customer_new_window (GNCBook *bookp, GncCustomer *cust)
   CustomerWindow *cw;
   GladeXML *xml;
   GtkWidget *hbox, *edit;
-  GnomeDialog *cwd;
   gnc_commodity *currency;
   GNCPrintAmountInfo print_info;
   
@@ -427,12 +441,8 @@ gnc_customer_new_window (GNCBook *bookp, GncCustomer *cust)
   /* Find the dialog */
   xml = gnc_glade_xml_new ("customer.glade", "Customer Dialog");
   cw->dialog = glade_xml_get_widget (xml, "Customer Dialog");
-  cwd = GNOME_DIALOG (cw->dialog);
 
   gtk_object_set_data (GTK_OBJECT (cw->dialog), "dialog_info", cw);
-
-  /* default to ok */
-  gnome_dialog_set_default (cwd, 0);
 
   /* Get entry points */
   cw->id_entry = glade_xml_get_widget (xml, "id_entry");
@@ -499,59 +509,16 @@ gnc_customer_new_window (GNCBook *bookp, GncCustomer *cust)
   hbox = glade_xml_get_widget (xml, "credit_box");
   gtk_box_pack_start (GTK_BOX (hbox), edit, TRUE, TRUE, 0);
 
-  /* Setup Dialog for Editing */
-  gnome_dialog_set_default (cwd, 0);
-
-  /* Attach <Enter> to default button */
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->id_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->company_entry));
-
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->name_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->addr1_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->addr2_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->addr3_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->addr4_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->phone_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->fax_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->email_entry));
-
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipname_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipaddr1_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipaddr2_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipaddr3_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipaddr4_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipphone_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipfax_entry));
-  gnome_dialog_editable_enters (cwd, GTK_EDITABLE (cw->shipemail_entry));
-
-  /* Set focus to company name */
-  gtk_widget_grab_focus (cw->company_entry);
-
   /* Setup signals */
-  gnome_dialog_button_connect
-    (cwd, 0, GTK_SIGNAL_FUNC(gnc_customer_window_ok_cb), cw);
-  gnome_dialog_button_connect
-    (cwd, 1, GTK_SIGNAL_FUNC(gnc_customer_window_cancel_cb), cw);
-  gnome_dialog_button_connect
-    (cwd, 2, GTK_SIGNAL_FUNC(gnc_customer_window_help_cb), cw);
-
-  gtk_signal_connect (GTK_OBJECT (cw->dialog), "destroy",
-		      GTK_SIGNAL_FUNC(gnc_customer_window_destroy_cb), cw);
-
-  gtk_signal_connect(GTK_OBJECT (cw->id_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_customer_name_changed_cb), cw);
-
-  gtk_signal_connect(GTK_OBJECT (cw->company_entry), "changed",
-		     GTK_SIGNAL_FUNC(gnc_customer_name_changed_cb), cw);
-
-  gtk_signal_connect(GTK_OBJECT (cw->taxtable_check), "toggled",
-		     GTK_SIGNAL_FUNC(gnc_customer_taxtable_check_cb), cw);
+  glade_xml_signal_autoconnect_full( xml,
+                                     gnc_glade_autoconnect_full_func,
+                                     cw);
 
   /* Setup initial values */
   if (cust != NULL) {
+    GtkTextBuffer* text_buffer;
     GncAddress *addr, *shipaddr;
     const char *string;
-    gint pos = 0;
 
     cw->dialog_type = EDIT_CUSTOMER;
     cw->customer_guid = *gncCustomerGetGUID (cust);
@@ -587,9 +554,8 @@ gnc_customer_new_window (GNCBook *bookp, GncCustomer *cust)
                                 gncCustomerGetActive (cust));
 
     string = gncCustomerGetNotes (cust);
-    gtk_editable_delete_text (GTK_EDITABLE (cw->notes_text), 0, -1);
-    gtk_editable_insert_text (GTK_EDITABLE (cw->notes_text), string,
-			      strlen(string), &pos);
+    text_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW(cw->notes_text));
+    gtk_text_buffer_set_text (text_buffer, string, -1);
 
     cw->component_id =
       gnc_register_gui_component (DIALOG_EDIT_CUSTOMER_CM_CLASS,

@@ -7,6 +7,7 @@
 #include "config.h"
 
 #include <gnome.h>
+#include <gconf/gconf-client.h>
 #include <g-wrap-wct.h>
 #include <libguile.h>
 
@@ -50,6 +51,12 @@
 
 #define DIALOG_NEW_INVOICE_CM_CLASS "dialog-new-invoice"
 #define DIALOG_VIEW_INVOICE_CM_CLASS "dialog-view-invoice"
+
+void gnc_invoice_window_ok_cb (GtkWidget *widget, gpointer data);
+void gnc_invoice_window_cancel_cb (GtkWidget *widget, gpointer data);
+void gnc_invoice_window_help_cb (GtkWidget *widget, gpointer data);
+void gnc_invoice_window_destroy_cb (GtkWidget *widget, gpointer data);
+void gnc_invoice_id_changed_cb (GtkWidget *widget, gpointer data);
 
 typedef enum
 {
@@ -215,43 +222,22 @@ static InvoiceWindow * gnc_ui_invoice_modify (GncInvoice *invoice);
 /*******************************************************************************/
 /* FUNCTIONS FOR UNPOSTING */
 
-static void
-on_yes_tt_reset_toggled (GtkToggleButton *button, InvoiceWindow *iw)
-{
-  if (!iw) return;
-  if (gtk_toggle_button_get_active(button))
-    iw->reset_tax_tables = TRUE;
-}
-
-static void
-on_no_tt_reset_toggled (GtkToggleButton *button, InvoiceWindow *iw)
-{
-  if (!iw) return;
-  if (gtk_toggle_button_get_active(button))
-    iw->reset_tax_tables = FALSE;
-}
-
 static gboolean
 iw_ask_unpost (InvoiceWindow *iw)
 {
   GtkWidget *dialog, *toggle, *pixmap;
   GladeXML *xml;
+  gint response;
   char *s;
 
   xml = gnc_glade_xml_new ("invoice.glade", "Unpost Message Dialog");
   dialog = glade_xml_get_widget (xml, "Unpost Message Dialog");
-  toggle = glade_xml_get_widget (xml, "no_tt_reset");
+  toggle = glade_xml_get_widget (xml, "yes_tt_reset");
   pixmap = glade_xml_get_widget (xml, "q_pixmap");
 
-  gnome_dialog_set_parent(GNOME_DIALOG(dialog), GTK_WINDOW(iw->dialog));
+  gtk_window_set_transient_for (GTK_WINDOW(dialog), GTK_WINDOW(iw->dialog));
 
-  glade_xml_signal_connect_data (xml, "on_yes_tt_reset_toggled",
-				 GTK_SIGNAL_FUNC (on_yes_tt_reset_toggled), iw);
-  glade_xml_signal_connect_data (xml, "on_no_tt_reset_toggled",
-				 GTK_SIGNAL_FUNC (on_no_tt_reset_toggled), iw);
-  
   iw->reset_tax_tables = FALSE;
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle), TRUE);
 
   s = gnome_unconditional_pixmap_file("gnome-question.png");
   if (s) {
@@ -261,7 +247,13 @@ iw_ask_unpost (InvoiceWindow *iw)
 
   gtk_widget_show_all(dialog);
 
-  return (gnome_dialog_run_and_close(GNOME_DIALOG(dialog)) == 0);
+  response = gtk_dialog_run(GTK_DIALOG(dialog));
+  if (response == GTK_RESPONSE_OK)
+    iw->reset_tax_tables =
+      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(toggle));
+
+  gtk_widget_destroy(dialog);
+  return (response == GTK_RESPONSE_OK);
 }
 
 /*******************************************************************************/
@@ -278,6 +270,9 @@ iw_get_invoice (InvoiceWindow *iw)
 
 static void gnc_ui_to_invoice (InvoiceWindow *iw, GncInvoice *invoice)
 {
+  GtkTextBuffer* text_buffer;
+  GtkTextIter start, end;
+  gchar *text;
   Timespec ts;
 
   if (iw->dialog_type == VIEW_INVOICE)
@@ -291,8 +286,10 @@ static void gnc_ui_to_invoice (InvoiceWindow *iw, GncInvoice *invoice)
     gncInvoiceSetActive (invoice, gtk_toggle_button_get_active
 			 (GTK_TOGGLE_BUTTON (iw->active_check)));
 
-  gncInvoiceSetNotes (invoice, gtk_editable_get_chars
-		      (GTK_EDITABLE (iw->notes_text), 0, -1));
+  text_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW(iw->notes_text));
+  gtk_text_buffer_get_bounds (text_buffer, &start, &end);
+  text = gtk_text_buffer_get_text (text_buffer, &start, &end, FALSE);
+  gncInvoiceSetNotes (invoice, text);
 
   if (iw->to_charge_edit)
     gncInvoiceSetToChargeAmount (invoice,
@@ -384,7 +381,7 @@ gnc_invoice_window_ok_save (InvoiceWindow *iw)
   return TRUE;
 }
 
-static void
+void
 gnc_invoice_window_ok_cb (GtkWidget *widget, gpointer data)
 {
   InvoiceWindow *iw = data;
@@ -405,7 +402,7 @@ gnc_invoice_window_ok_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (iw->component_id);
 }
 
-static void
+void
 gnc_invoice_window_cancel_cb (GtkWidget *widget, gpointer data)
 {
   InvoiceWindow *iw = data;
@@ -413,15 +410,13 @@ gnc_invoice_window_cancel_cb (GtkWidget *widget, gpointer data)
   gnc_close_gui_component (iw->component_id);
 }
 
-static void
+void
 gnc_invoice_window_help_cb (GtkWidget *widget, gpointer data)
 {
-  char *help_file = HH_INVOICE;
-
-  helpWindow(NULL, NULL, help_file);
+  helpWindow(NULL, NULL, HH_INVOICE);
 }
 
-static void
+void
 gnc_invoice_window_destroy_cb (GtkWidget *widget, gpointer data)
 {
   InvoiceWindow *iw = data;
@@ -1037,6 +1032,7 @@ gnc_invoice_window_create_popup_menu (InvoiceWindow *iw)
 {
   GtkWidget *popup;
   GladeXML *xml;
+  GConfClient *client;
 
   xml = gnc_glade_xml_new ("invoice.glade", "Invoice Window Popup Menu");
 
@@ -1045,7 +1041,8 @@ gnc_invoice_window_create_popup_menu (InvoiceWindow *iw)
   glade_xml_signal_autoconnect_full (xml, gnc_glade_autoconnect_full_func, iw);
 
   /* Glade insists on making this a tearoff menu. */
-  if (gnome_preferences_get_menus_have_tearoff ()) {
+  client = gconf_client_get_default ();
+  if (gconf_client_get_bool (client, "/desktop/gnome/interface/menus_have_tearoff", NULL)) {
     GtkMenuShell *ms = GTK_MENU_SHELL (popup);
     GtkWidget *tearoff;
 
@@ -1195,9 +1192,8 @@ gnc_invoice_update_job_choice (InvoiceWindow *iw)
       gtk_box_pack_start (GTK_BOX (iw->job_box), iw->job_choice,
 			  TRUE, TRUE, 0);
       
-      gtk_signal_connect (GTK_OBJECT (iw->job_choice), "changed",
-			  GTK_SIGNAL_FUNC (gnc_invoice_job_changed_cb),
-			  iw);
+      g_signal_connect (G_OBJECT (iw->job_choice), "changed",
+			G_CALLBACK (gnc_invoice_job_changed_cb), iw);
       break;
     }
   
@@ -1267,9 +1263,8 @@ gnc_invoice_update_proj_job (InvoiceWindow *iw)
       gtk_box_pack_start (GTK_BOX (iw->proj_job_box), iw->proj_job_choice,
 			  TRUE, TRUE, 0);
       
-      gtk_signal_connect (GTK_OBJECT (iw->proj_job_choice), "changed",
-			  GTK_SIGNAL_FUNC (gnc_invoice_proj_job_changed_cb),
-			  iw);
+      g_signal_connect (G_OBJECT (iw->proj_job_choice), "changed",
+			G_CALLBACK (gnc_invoice_proj_job_changed_cb), iw);
     }
     break;
   }
@@ -1365,8 +1360,11 @@ gnc_invoice_dialog_close_handler (gpointer user_data)
 {
   InvoiceWindow *iw = user_data;
 
-  if (iw)
-    gnome_dialog_close (GNOME_DIALOG (iw->dialog));
+  if (iw) {
+    gtk_widget_hide (iw->dialog);
+    gtk_widget_destroy (iw->dialog);
+    iw->dialog = NULL;
+  }
 }
 
 static void
@@ -1578,13 +1576,11 @@ gnc_invoice_update_window (InvoiceWindow *iw)
       gnc_owner_select_create (NULL, iw->proj_cust_box, iw->book,
 			       &(iw->proj_cust));
 
-    gtk_signal_connect (GTK_OBJECT (iw->owner_choice), "changed",
-			GTK_SIGNAL_FUNC (gnc_invoice_owner_changed_cb),
-			iw);
+    g_signal_connect (G_OBJECT (iw->owner_choice), "changed",
+		      G_CALLBACK (gnc_invoice_owner_changed_cb), iw);
 
-    gtk_signal_connect (GTK_OBJECT (iw->proj_cust_choice), "changed",
-			GTK_SIGNAL_FUNC (gnc_invoice_proj_cust_changed_cb),
-			iw);
+    g_signal_connect (G_OBJECT (iw->proj_cust_choice), "changed",
+		      G_CALLBACK (gnc_invoice_proj_cust_changed_cb), iw);
 
     break;
   }
@@ -1628,10 +1624,10 @@ gnc_invoice_update_window (InvoiceWindow *iw)
 
   /* We know that "invoice" (and "owner") exist now */
   do {
+    GtkTextBuffer* text_buffer;
     const char *string;
     Timespec ts, ts_zero = {0,0};
     Account *acct;
-    gint pos = 0;
 
     gtk_entry_set_text (GTK_ENTRY (iw->id_entry), gncInvoiceGetID (invoice));
 
@@ -1639,9 +1635,8 @@ gnc_invoice_update_window (InvoiceWindow *iw)
 			gncInvoiceGetBillingID (invoice));
 
     string = gncInvoiceGetNotes (invoice);
-    gtk_editable_delete_text (GTK_EDITABLE (iw->notes_text), 0, -1);
-    gtk_editable_insert_text (GTK_EDITABLE (iw->notes_text), string,
-			      strlen (string), &pos);
+    text_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW(iw->notes_text));
+    gtk_text_buffer_set_text (text_buffer, string, -1);
 
     if (iw->active_check)
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (iw->active_check),
@@ -1767,11 +1762,12 @@ gnc_invoice_update_window (InvoiceWindow *iw)
   }  
 }
 
-static void
+void
 gnc_invoice_id_changed_cb (GtkWidget *widget, gpointer data)
 {
   InvoiceWindow *iw = data;
-  char *id, *wintitle = NULL, *title;
+  char *wintitle = NULL, *title;
+  const char *id;
 
   if (!iw) return;
 
@@ -1895,8 +1891,6 @@ gnc_invoice_new_window (GNCBook *bookp, InvoiceDialogType type,
   /* Find the dialog */
   iw->xml = xml = gnc_glade_xml_new ("invoice.glade", "Invoice Entry Window");
   iw->dialog = glade_xml_get_widget (xml, "Invoice Entry Window");
-
-  gtk_object_set_data (GTK_OBJECT (iw->dialog), "dialog_info", iw);
 
   /* Autoconnect all the signals */
   glade_xml_signal_autoconnect_full (xml, gnc_glade_autoconnect_full_func, iw);
@@ -2050,12 +2044,12 @@ gnc_invoice_new_window (GNCBook *bookp, InvoiceDialogType type,
 				       GNC_INVOICE_MODULE_NAME,
 				       GNC_EVENT_MODIFY | GNC_EVENT_DESTROY);
 
-  gtk_signal_connect (GTK_OBJECT (iw->dialog), "destroy",
-		      GTK_SIGNAL_FUNC(gnc_invoice_window_destroy_cb), iw);
-  gtk_signal_connect (GTK_OBJECT (iw->dialog), "size-allocate",
-		      GTK_SIGNAL_FUNC(gnc_invoice_size_allocate), iw);
-  gtk_signal_connect (GTK_OBJECT (iw->id_entry), "changed",
-		      gnc_invoice_id_changed_cb, iw);
+  g_signal_connect (G_OBJECT (iw->dialog), "destroy",
+		    G_CALLBACK (gnc_invoice_window_destroy_cb), iw);
+  g_signal_connect (G_OBJECT (iw->dialog), "size-allocate",
+		    G_CALLBACK (gnc_invoice_size_allocate), iw);
+  g_signal_connect (GTK_OBJECT (iw->id_entry), "changed",
+		    G_CALLBACK (gnc_invoice_id_changed_cb), iw);
 
   /* Create the register */
   {
@@ -2078,12 +2072,12 @@ gnc_invoice_new_window (GNCBook *bookp, InvoiceDialogType type,
     iw->reg = GNUCASH_REGISTER (regWidget);
     GNUCASH_SHEET (iw->reg->sheet)->window = iw->dialog;
 
-    gtk_signal_connect (GTK_OBJECT(regWidget), "activate_cursor",
-			GTK_SIGNAL_FUNC(gnc_invoice_window_recordCB), iw);
-    gtk_signal_connect (GTK_OBJECT(regWidget), "redraw_all",
-			GTK_SIGNAL_FUNC(gnc_invoice_redraw_all_cb), iw);
-    gtk_signal_connect (GTK_OBJECT(regWidget), "redraw_help",
-			GTK_SIGNAL_FUNC(gnc_invoice_redraw_help_cb), iw);
+    g_signal_connect (G_OBJECT (regWidget), "activate_cursor",
+		      G_CALLBACK (gnc_invoice_window_recordCB), iw);
+    g_signal_connect (G_OBJECT (regWidget), "redraw_all",
+		      G_CALLBACK (gnc_invoice_redraw_all_cb), iw);
+    g_signal_connect (G_OBJECT (regWidget), "redraw_help",
+		      G_CALLBACK (gnc_invoice_redraw_help_cb), iw);
 
     popup = gnc_invoice_window_create_popup_menu (iw);
     gnucash_register_attach_popup (GNUCASH_REGISTER (regWidget), popup, iw);
@@ -2110,7 +2104,6 @@ gnc_invoice_window_new_invoice (GNCBook *bookp, GncOwner *owner,
 {
   InvoiceWindow *iw;
   GladeXML *xml;
-  GnomeDialog *iwd;
   GtkWidget *hbox;
   GncOwner *billto;
 
@@ -2158,7 +2151,6 @@ gnc_invoice_window_new_invoice (GNCBook *bookp, GncOwner *owner,
   /* Find the dialog */
   iw->xml = xml = gnc_glade_xml_new ("invoice.glade", "New Invoice Dialog");
   iw->dialog = glade_xml_get_widget (xml, "New Invoice Dialog");
-  iwd = GNOME_DIALOG (iw->dialog);
 
   gtk_object_set_data (GTK_OBJECT (iw->dialog), "dialog_info", iw);
 
@@ -2183,24 +2175,12 @@ gnc_invoice_window_new_invoice (GNCBook *bookp, GncOwner *owner,
 
   /* If this is a New Invoice, reset the Notes file to read/write */
   if (iw->dialog_type == NEW_INVOICE)
-    gtk_editable_set_editable (GTK_EDITABLE (iw->notes_text), TRUE);
+    gtk_text_view_set_editable (GTK_TEXT_VIEW (iw->notes_text), TRUE);
 
-  /* default to ok */
-  gnome_dialog_editable_enters (iwd, GTK_EDITABLE (iw->id_entry));
-  gnome_dialog_set_default (iwd, 0);
-
-  gtk_signal_connect (GTK_OBJECT (iw->dialog), "destroy",
-		      GTK_SIGNAL_FUNC(gnc_invoice_window_destroy_cb), iw);
-  gtk_signal_connect (GTK_OBJECT (iw->id_entry), "changed",
-		      gnc_invoice_id_changed_cb, iw);
-
-  gnome_dialog_button_connect (iwd, 0,
-  			       GTK_SIGNAL_FUNC(gnc_invoice_window_ok_cb), iw);
-  gnome_dialog_button_connect (iwd, 1,
-  			       GTK_SIGNAL_FUNC(gnc_invoice_window_cancel_cb), iw);
-  gnome_dialog_button_connect (iwd, 2,
-  			       GTK_SIGNAL_FUNC(gnc_invoice_window_help_cb), iw);
-
+  /* Setup signals */
+  glade_xml_signal_autoconnect_full( xml,
+                                     gnc_glade_autoconnect_full_func,
+                                     iw);
   /* Setup initial values */
   iw->invoice_guid = *gncInvoiceGetGUID (invoice);
 

@@ -68,7 +68,7 @@ typedef struct
   GtkLabel  * close_results;
   GtkLabel  * book_details;
   GtkEntry  * book_title;
-  GtkText   * book_notes;
+  GtkTextView * book_notes;
 
   time_t earliest;
   char * earliest_str;
@@ -191,7 +191,7 @@ ap_window_destroy_cb (GtkObject *object, gpointer data)
 }
 
 static void
-ap_finish (GnomeDruidPageFinish *druidpage,
+ap_finish (GnomeDruidPageEdge *druidpage,
                     GtkWidget *druid,
                     gpointer user_data)
 {
@@ -308,7 +308,7 @@ show_book_details (AcctPeriodInfo *info)
 
   str = g_strdup_printf (_("Period %s - %s"), prev_close_date_str, close_date_str);
   gtk_entry_set_text (info->book_title, str);
-  xxxgtk_text_set_text (info->book_notes, str);
+  xxxgtk_textview_set_text (info->book_notes, str);
   g_free (str);
 
 }
@@ -419,7 +419,7 @@ ap_close_period (GnomeDruidPage *druidpage,
   current_book = gnc_get_current_book ();
 
   btitle = gtk_entry_get_text (info->book_title);
-  bnotes = xxxgtk_text_get_text (info->book_notes);
+  bnotes = xxxgtk_textview_get_text (info->book_notes);
   PINFO("book title=%s\n", btitle);
 
   timespecFromTime_t (&closing_date,
@@ -478,7 +478,7 @@ ap_close_period (GnomeDruidPage *druidpage,
 /* =============================================================== */
 
 static void
-ap_show_done (GnomeDruidPageFinish *druidpage,
+ap_show_done (GnomeDruidPageEdge *druidpage,
                     GtkWidget *druid,
                     gpointer user_data)
 {
@@ -490,7 +490,7 @@ ap_show_done (GnomeDruidPageFinish *druidpage,
   msg = _("%s\nCongradulations! You are done closing books!");
 
   str = g_strdup_printf (msg, get_close_status_str (info));
-  gnome_druid_page_finish_set_text (druidpage, str);
+  gnome_druid_page_edge_set_text (druidpage, str);
   g_free (str);
 }
 
@@ -564,7 +564,7 @@ ap_druid_create (AcctPeriodInfo *info)
         GTK_ENTRY (glade_xml_get_widget (xml, "book title entry"));
 
   info->book_notes = 
-        GTK_TEXT (glade_xml_get_widget (xml, "book notes text"));
+        GTK_TEXT_VIEW (glade_xml_get_widget (xml, "book notes text"));
 
   /* generic finished/close/abort signals */
   gtk_signal_connect (GTK_OBJECT (info->window), "destroy",

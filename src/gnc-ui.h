@@ -47,19 +47,17 @@
 #define HH_SXEDITOR          "gnucash-help/usage.html#tran-sched"
 #define HH_VENDOR            "gnucash-help/usage.html"
 
+/* GTK Windows - Common Response Codes */
+
+#define GNC_RESPONSE_ADD    1
+#define GNC_RESPONSE_REMOVE 2
+#define GNC_RESPONSE_EDIT   3
+
 /* Dialog windows ***************************************************/
 
-typedef enum
-{
-  GTK_RESPONSE_NO,
-  GTK_RESPONSE_YES,
-  GTK_RESPONSE_CANCEL,
-  GTK_RESPONSE_OK
-} GNCVerifyResult;
-
-extern GNCVerifyResult
+extern gint
 gnc_verify_cancel_dialog(gncUIWidget parent,
-			 GNCVerifyResult default_result,
+			 gint default_result,
 			 const char *format, ...) G_GNUC_PRINTF (3,4);
 
 
@@ -71,9 +69,9 @@ gnc_verify_dialog(gncUIWidget parent,
 
 
 
-extern GNCVerifyResult
+extern gint
 gnc_ok_cancel_dialog(gncUIWidget parent,
-		     GNCVerifyResult default_result,
+		     gint default_result,
 		     const char *format, ...) G_GNUC_PRINTF (3,4);
 
 
@@ -99,7 +97,7 @@ int      gnc_choose_radio_option_dialog (gncUIWidget parent,
 gboolean gnc_dup_trans_dialog (gncUIWidget parent, time_t *date_p,
                                const char *num, char **out_num);
 void     gnc_tax_info_dialog (gncUIWidget parent);
-void     gnc_stock_split_dialog (Account * initial);
+void     gnc_stock_split_dialog (gncUIWidget parent, Account * initial);
 
 typedef enum
 {

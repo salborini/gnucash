@@ -32,6 +32,7 @@
 #include <gnome.h>
 #include <time.h>
 #include <g-wrap-wct.h>
+#include <gconf/gconf-client.h>
 
 #include "AccWindow.h"
 #include "Scrub.h"
@@ -153,7 +154,6 @@ void gnc_register_new_account_cb(GtkWidget * w, gpointer data);
 void gnc_register_void_trans_cb(GtkWidget *w, gpointer data);
 void gnc_register_unvoid_trans_cb(GtkWidget *w, gpointer data);
 void gnc_register_close_cb(GtkWidget *w, gpointer data);
-void gnc_register_exit_cb(GtkWidget *w, gpointer data);
 void gnc_register_report_account_cb(GtkWidget *w, gpointer data);
 void gnc_register_report_trans_cb(GtkWidget *w, gpointer data);
 void gnc_register_print_cb(GtkWidget *w, gpointer data);
@@ -542,7 +542,7 @@ gnc_register_date_window (RegWindow *regData, gboolean show_all)
 
   glade_xml_signal_autoconnect_full(xml, gnc_glade_autoconnect_full_func,
 				    regData);
-  gnome_dialog_set_parent(GNOME_DIALOG(dialog), GTK_WINDOW(regData->window));
+  gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (regData->window));
 
   /*
    * Get/create all the widgets up front to prevent callback errors
@@ -581,18 +581,18 @@ gnc_register_date_window (RegWindow *regData, gboolean show_all)
     if (time_val < time(NULL))
       gnc_date_edit_set_time(GNC_DATE_EDIT(date), time_val);
 
-    gtk_signal_connect(GTK_OBJECT(date), "date-changed",
-                       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (date), "date-changed",
+                      G_CALLBACK (gnc_register_date_changed_cb), regData);
 
     calendar = GNC_DATE_EDIT(date)->calendar;
-    gtk_signal_connect(GTK_OBJECT(calendar), "day_selected_double_click",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (calendar), "day_selected_double_click",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
 
     entry = GNC_DATE_EDIT(date)->date_entry;
-    gtk_signal_connect(GTK_OBJECT(entry), "activate",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
-    gtk_signal_connect(GTK_OBJECT(entry), "changed",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (entry), "activate",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (entry), "changed",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
 
 
     /* Ending Date */
@@ -609,18 +609,18 @@ gnc_register_date_window (RegWindow *regData, gboolean show_all)
     date = regDateData->end_date;
     gtk_box_pack_start(GTK_BOX(hbox), date, FALSE, FALSE, 0);
 
-    gtk_signal_connect(GTK_OBJECT(date), "date-changed",
-                       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (date), "date-changed",
+                      G_CALLBACK (gnc_register_date_changed_cb), regData);
 
     calendar = GNC_DATE_EDIT(date)->calendar;
-    gtk_signal_connect(GTK_OBJECT(calendar), "day_selected_double_click",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (calendar), "day_selected_double_click",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
 
     entry = GNC_DATE_EDIT(date)->date_entry;
-    gtk_signal_connect(GTK_OBJECT(entry), "activate",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
-    gtk_signal_connect(GTK_OBJECT(entry), "changed",
-		       GTK_SIGNAL_FUNC(gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (entry), "activate",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
+    g_signal_connect (G_OBJECT (entry), "changed",
+		      G_CALLBACK (gnc_register_date_changed_cb), regData);
   }
   gtk_widget_show_all(glade_xml_get_widget(xml, "main_frame"));
 
@@ -958,8 +958,8 @@ regWindowLedger( GNCLedgerDisplay *ledger )
 
   /* The status bar */
   regData->statusbar = glade_xml_get_widget( xml, "appbar" );
-  gtk_signal_connect( GTK_OBJECT(regData->gsr), "help-changed",
-                      GTK_SIGNAL_FUNC( gnc_register_help_changed_cb ),
+  g_signal_connect (G_OBJECT (regData->gsr), "help-changed",
+                    G_CALLBACK ( gnc_register_help_changed_cb ),
                       regData );
   gtk_signal_connect(GTK_OBJECT(regData->gsr), "void_txn",
 		     GTK_SIGNAL_FUNC(gnc_register_void_trans_cb), regData);
@@ -968,8 +968,8 @@ regWindowLedger( GNCLedgerDisplay *ledger )
 		     GTK_SIGNAL_FUNC(gnc_register_unvoid_trans_cb), regData);
 
   /* The "include-date" and "read-only" signals. */
-  gtk_signal_connect( GTK_OBJECT(regData->gsr), "include-date",
-                      GTK_SIGNAL_FUNC( gnc_register_include_date_adapter ),
+  g_signal_connect (G_OBJECT (regData->gsr), "include-date",
+                    G_CALLBACK ( gnc_register_include_date_adapter ),
                       regData );
 
   regData->reconciled_menu_item = glade_xml_get_widget( xml, "show_reconciled" );
@@ -1063,6 +1063,7 @@ gnc_register_setup_menu_widgets( RegWindow *regData, GladeXML *xml )
 {
   int adj = 0;
   GtkWidget *mbar, *menu, *regMenu, *regMenuItem, *tmpMi;
+  GConfClient *client;
 
   /* Get our menu bar from glade. */
   mbar = glade_xml_get_widget( xml, "gnc_register_menubar" );
@@ -1075,8 +1076,8 @@ gnc_register_setup_menu_widgets( RegWindow *regData, GladeXML *xml )
    * . remove the RegWindow menu from the menu bar, saving it's index.
    * . insert the GNCSplitReg menu at the same index.
    * . destroy now-unused widgets. */
-
-  if ( gnome_preferences_get_menus_have_tearoff() ) {
+  client = gconf_client_get_default ();
+  if ( gconf_client_get_bool (client, "/desktop/gnome/interface/menus_have_tearoff", NULL) ) {
     /* offset by one for the tearoff menu item. */
     adj = 1;
   }
@@ -1087,15 +1088,15 @@ gnc_register_setup_menu_widgets( RegWindow *regData, GladeXML *xml )
   regMenu = glade_xml_get_widget( xml, "gnc_register_edit_menu_menu" );
   gtk_menu_shell_insert( GTK_MENU_SHELL(menu), gtk_menu_item_new(), (3 + adj));
   tmpMi = glade_xml_get_widget( xml, "gnc_register_edit_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_shell_insert( GTK_MENU_SHELL(menu), tmpMi, (4 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_find_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_shell_append( GTK_MENU_SHELL(menu), tmpMi );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(regMenuItem) );
   gtk_menu_item_set_submenu( GTK_MENU_ITEM(regMenuItem), menu );
 
@@ -1104,26 +1105,26 @@ gnc_register_setup_menu_widgets( RegWindow *regData, GladeXML *xml )
   regMenuItem = glade_xml_get_widget( xml, "gnc_register_view_menu" );
   regMenu = glade_xml_get_widget( xml, "gnc_register_view_menu_menu" );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_toolbar_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (0 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_summary_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (1 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_statusbar_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (2 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   gtk_menu_insert( GTK_MENU(menu), gtk_menu_item_new(), (3 + adj) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_select_trans_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (4 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(regMenuItem) );
   gtk_menu_item_set_submenu( GTK_MENU_ITEM(regMenuItem), menu );
 
@@ -1132,34 +1133,34 @@ gnc_register_setup_menu_widgets( RegWindow *regData, GladeXML *xml )
   regMenuItem = glade_xml_get_widget( xml, "gnc_register_actions_menu" );
   regMenu = glade_xml_get_widget( xml, "gnc_register_actions_menu_menu" );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_xfer_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (0 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_recn_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (1 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_stock_split_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (2 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_lots_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_insert( GTK_MENU(menu), tmpMi, (3 + adj) );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
 
   gtk_menu_insert( GTK_MENU(menu), gtk_menu_item_new(), (4 + adj) );
   /* Base this off the end of the list for a bit more flexibility. */
   gtk_menu_append( GTK_MENU(menu), gtk_menu_item_new() );
   tmpMi = glade_xml_get_widget( xml, "gnc_register_scrub_mi" );
-  gtk_object_ref( GTK_OBJECT(tmpMi) );
+  g_object_ref( G_OBJECT(tmpMi) );
   gtk_container_remove( GTK_CONTAINER(regMenu), tmpMi );
   gtk_menu_append( GTK_MENU(menu), tmpMi );
-  gtk_object_unref( GTK_OBJECT(tmpMi) );
+  g_object_unref( G_OBJECT(tmpMi) );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(regMenuItem) );
   gtk_menu_item_set_submenu( GTK_MENU_ITEM(regMenuItem), menu );
 
@@ -1202,7 +1203,7 @@ gnc_register_insert_cloned_toolbar_elt( GtkToolbar *dstToolbar,
   tchild = (GtkToolbarChild*)(elt->data);
   gtk_label_get( GTK_LABEL(tchild->label), &label );
   labelCopy = g_strdup( label );
-  iconCopy = gnome_pixmap_new_from_gnome_pixmap( GNOME_PIXMAP( tchild->icon ) );
+  iconCopy = gtk_image_new_from_pixbuf (gtk_image_get_pixbuf (GTK_IMAGE (tchild->icon)));
   if ( idx == -1 ) {
     gtk_toolbar_append_element( dstToolbar,
                                 tchild->type,
@@ -1368,7 +1369,7 @@ gnc_register_stock_split_cb (GtkWidget * w, gpointer data)
 {
   RegWindow *regData = data;
 
-  gnc_stock_split_dialog (gnc_ledger_display_leader (regData->ledger));
+  gnc_stock_split_dialog (NULL, gnc_ledger_display_leader (regData->ledger));
 }
 
 
@@ -1472,15 +1473,11 @@ static
 void
 gnc_register_set_read_only( RegWindow *regData )
 {
-  gchar *old_title, *new_title;
-  GtkArg objarg;
+  gchar old_title, *new_title;
 
-  objarg.name = "GtkWindow::title";
-  gtk_object_arg_get(GTK_OBJECT(regData->window), &objarg, NULL);
-  old_title = GTK_VALUE_STRING(objarg);
-  new_title = g_strdup_printf(_("%s [Read-Only]"), old_title);
+  g_object_get (G_OBJECT (regData->window), "title", &old_title, NULL);
+  new_title = g_strdup_printf(_("%s [Read-Only]"), &old_title);
   gtk_window_set_title( GTK_WINDOW(regData->window), new_title );
-  g_free(old_title);
   g_free(new_title);
 
   regData->read_only = TRUE;
@@ -1501,7 +1498,7 @@ gnc_register_void_trans_cb(GtkWidget *w, gpointer data)
   GtkWidget *dialog, *entry;
   Transaction *trans;
   GladeXML *xml;
-  char *reason;
+  const char *reason;
   gint result;
 
   reg = gnc_ledger_display_get_split_register (regData->ledger);
@@ -1509,19 +1506,19 @@ gnc_register_void_trans_cb(GtkWidget *w, gpointer data)
   if (trans == NULL)
     return;
   if (xaccTransHasSplitsInState(trans, VREC)) {
-    gnc_error_dialog(NULL, _("This transaction has already been voided."));
+    gnc_error_dialog(regData->window,
+		     _("This transaction has already been voided."));
     return;
   }
   if (xaccTransHasReconciledSplits(trans) || xaccTransHasSplitsInState(trans, CREC)) {
-    gnc_error_dialog(NULL, _("You cannot void a transaction with reconciled or cleared splits."));
+    gnc_error_dialog(regData->window,
+		     _("You cannot void a transaction with reconciled or cleared splits."));
     return;
   }
 
   xml = gnc_glade_xml_new ("register.glade", "Void Transaction");
   dialog = glade_xml_get_widget (xml, "Void Transaction");
   entry = glade_xml_get_widget (xml, "reason");
-  gnome_dialog_editable_enters(GNOME_DIALOG(dialog),
-			       GTK_EDITABLE(entry));
 
   /* Keep around after closing so we can get the user's text out. */
   gnome_dialog_close_hides (GNOME_DIALOG (dialog), TRUE);
@@ -1558,7 +1555,7 @@ gnc_register_unvoid_trans_cb(GtkWidget *w, gpointer data)
   reg = gnc_ledger_display_get_split_register (regData->ledger);
   trans = gnc_split_register_get_current_trans (reg);
   if (!xaccTransHasSplitsInState(trans, VREC)) {
-    gnc_error_dialog(NULL, _("This transaction is not voided."));
+    gnc_error_dialog(regData->window, _("This transaction is not voided."));
     return;
   }
   gnc_split_register_unvoid_current_trans

@@ -69,7 +69,7 @@ libgncmod_qif_import_LTX_gnc_module_init(int refcount)
   }
 
   scm_c_eval_string("(use-modules (gnucash import-export qif-import))");
-  gnc_ui_qif_import_create_menus();
+  gnc_ui_qif_import_create_plugin();
 
   return TRUE;
 }

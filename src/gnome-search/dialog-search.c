@@ -6,8 +6,8 @@
 
 #include "config.h"
 
-#include <gnome.h>
 #include <glib.h>
+#include <gtk/gtk.h>
 
 #include "dialog-utils.h"
 #include "window-help.h"
@@ -96,7 +96,7 @@ struct _crit_data {
   GtkWidget *		elemwidget;
   GtkWidget *		container;
   GtkWidget *		button;
-  GnomeDialog *		dialog;
+  GtkDialog *		dialog;
 };
 
 static void search_clear_criteria (GNCSearchWindow *sw);
@@ -115,7 +115,7 @@ gnc_search_dialog_result_clicked (GtkButton *button, GNCSearchWindow *sw)
 {
   GNCSearchCallbackButton *cb;
 
-  cb = gtk_object_get_data (GTK_OBJECT (button), "data");
+  cb = g_object_get_data (G_OBJECT (button), "data");
   gnc_search_callback_button_execute (cb, sw);
 }
 
@@ -134,6 +134,7 @@ gnc_search_dialog_select_cb (GtkButton *button, GNCSearchWindow *sw)
   gnc_search_dialog_destroy (sw);
 }
 
+#if 0
 static void
 gnc_search_dialog_line_toggled (GNCQueryList *list, gpointer item,
 				gpointer user_data)
@@ -164,6 +165,40 @@ gnc_search_dialog_double_click_entry (GNCQueryList *list, gpointer item,
     /* Call the first button (usually view/edit) */
     gnc_search_callback_button_execute (sw->buttons, sw);
 }
+#endif
+
+static void
+gnc_search_dialog_select_row_cb (GtkCList *clist, gint row, gint column,
+				 GdkEventButton *event, gpointer user_data)
+{
+  GNCSearchWindow *sw = user_data;
+  sw->selected_item = gtk_clist_get_row_data (clist, row);
+
+  /* If we double-click an item, then either "select" it, or run it
+   * through the first button (which should be view/edit
+   */
+  if (event && event->type == GDK_2BUTTON_PRESS) {
+    if (sw->selected_cb)
+      /* Select the time */
+      gnc_search_dialog_select_cb (NULL, sw);
+    else if (sw->buttons)
+      /* Call the first button (usually view/edit) */
+      gnc_search_callback_button_execute (sw->buttons, sw);
+
+    /* If we get here, then nothing to do for a double-click */
+  }
+}
+
+static void
+gnc_search_dialog_unselect_row_cb (GtkCList *clist, gint row, gint column,
+				   GdkEventButton *event, gpointer user_data)
+{
+  GNCSearchWindow *sw = user_data;
+  gpointer item = gtk_clist_get_row_data (clist, row);
+
+  if (sw->selected_item == item)
+    sw->selected_item = NULL;
+}
 
 static void
 gnc_search_dialog_init_result_list (GNCSearchWindow *sw)
@@ -171,10 +206,10 @@ gnc_search_dialog_init_result_list (GNCSearchWindow *sw)
   sw->result_list = gnc_query_list_new(sw->display_list, sw->q);
 
   /* Setup the list callbacks */
-  gtk_signal_connect (GTK_OBJECT (sw->result_list), "line_toggled",
-		      gnc_search_dialog_line_toggled, sw);
-  gtk_signal_connect (GTK_OBJECT (sw->result_list), "double_click_entry",
-		      gnc_search_dialog_double_click_entry, sw);
+  g_signal_connect (G_OBJECT (sw->result_list), "select-row",
+		    G_CALLBACK (gnc_search_dialog_select_row_cb), sw);
+  g_signal_connect (G_OBJECT (sw->result_list), "unselect-row",
+		    G_CALLBACK (gnc_search_dialog_unselect_row_cb), sw);
 }
 
 static void
@@ -208,16 +243,16 @@ gnc_search_dialog_display_results (GNCSearchWindow *sw)
       int i;
 
       button = gtk_button_new_with_label (_("Select"));
-      gtk_signal_connect (GTK_OBJECT (button), "clicked",
-			  gnc_search_dialog_select_cb, sw);
+      g_signal_connect (G_OBJECT (button), "clicked",
+			G_CALLBACK (gnc_search_dialog_select_cb), sw);
       gtk_box_pack_start (GTK_BOX (button_box), button, FALSE, FALSE, 3);
       sw->select_button = button;
 			  
       for (i = 0; sw->buttons[i].label; i++) {
 	button = gtk_button_new_with_label (sw->buttons[i].label);
-	gtk_object_set_data (GTK_OBJECT (button), "data", &(sw->buttons[i]));
-	gtk_signal_connect (GTK_OBJECT (button), "clicked",
-			    gnc_search_dialog_result_clicked, sw);
+	g_object_set_data (G_OBJECT (button), "data", &(sw->buttons[i]));
+	g_signal_connect (G_OBJECT (button), "clicked",
+			  G_CALLBACK (gnc_search_dialog_result_clicked), sw);
 	gtk_box_pack_start (GTK_BOX (button_box), button, FALSE, FALSE, 3);
       }
     }
@@ -468,8 +503,8 @@ remove_element (GtkWidget *button, GNCSearchWindow *sw)
   if (g_list_length (sw->crit_list) < 2)
     return;
 
-  element = gtk_object_get_data (GTK_OBJECT (button), "element");
-  data = gtk_object_get_data (GTK_OBJECT (element), "data");
+  element = g_object_get_data (G_OBJECT (button), "element");
+  data = g_object_get_data (G_OBJECT (element), "data");
 
   /* remove the element from the list */
   sw->crit_list = g_list_remove (sw->crit_list, data);
@@ -482,18 +517,18 @@ remove_element (GtkWidget *button, GNCSearchWindow *sw)
 static void
 attach_element (GtkWidget *element, GNCSearchWindow *sw, int row)
 {
-  GtkWidget *pixmap, *remove;
+  GtkWidget *remove;
   struct _crit_data *data;
 
-  data = gtk_object_get_data (GTK_OBJECT (element), "data");
+  data = g_object_get_data (G_OBJECT (element), "data");
 
   gtk_table_attach (GTK_TABLE (sw->criteria_table), element, 0, 1, row, row+1,
 		    GTK_EXPAND | GTK_FILL, 0, 0, 0);
 
-  pixmap = gnome_stock_new_with_icon (GNOME_STOCK_PIXMAP_REMOVE);
-  remove = gnome_pixmap_button (pixmap, _("Remove"));
-  gtk_object_set_data (GTK_OBJECT (remove), "element", element);
-  gtk_signal_connect (GTK_OBJECT (remove), "clicked", remove_element, sw);
+  
+  remove = gtk_button_new_from_stock (GTK_STOCK_REMOVE);
+  g_object_set_data (G_OBJECT (remove), "element", element);
+  g_signal_connect (G_OBJECT (remove), "clicked", G_CALLBACK (remove_element), sw);
   gtk_table_attach (GTK_TABLE (sw->criteria_table), remove, 1, 2, row, row+1,
 		    0, 0, 0, 0);
   gtk_widget_show (remove);
@@ -503,7 +538,7 @@ attach_element (GtkWidget *element, GNCSearchWindow *sw, int row)
 static void
 option_activate (GtkMenuItem *item, struct _crit_data *data)
 {
-  GNCSearchParam *param = gtk_object_get_data (GTK_OBJECT (item), "param");
+  GNCSearchParam *param = g_object_get_data (G_OBJECT (item), "param");
   GNCSearchCoreType *newelem;
 
   if (gnc_search_param_type_match (param, data->param)) {
@@ -519,7 +554,7 @@ option_activate (GtkMenuItem *item, struct _crit_data *data)
    */
   if (data->elemwidget)
     gtk_container_remove (GTK_CONTAINER (data->container), data->elemwidget);
-  gtk_object_destroy (GTK_OBJECT (data->element));
+  g_object_unref (G_OBJECT (data->element));
 
   newelem = gnc_search_core_type_new_type_name
     (gnc_search_param_get_param_type (param));
@@ -538,7 +573,7 @@ option_activate (GtkMenuItem *item, struct _crit_data *data)
 
   /* And grab focus */
   gnc_search_core_type_grab_focus (newelem);
-  gnc_search_core_type_editable_enters (newelem, data->dialog);
+  gnc_search_core_type_editable_enters (newelem);
 }
 
 static void
@@ -549,7 +584,7 @@ search_clear_criteria (GNCSearchWindow *sw)
   for (node = sw->crit_list; node; ) {
     GList *tmp = node->next;
     struct _crit_data *data = node->data;
-    gtk_object_ref (GTK_OBJECT(data->button));
+    g_object_ref (data->button);
     remove_element (data->button, sw);
     node = tmp;
   }
@@ -565,11 +600,11 @@ get_element_widget (GNCSearchWindow *sw, GNCSearchCoreType *element)
 
   data = g_new0 (struct _crit_data, 1);
   data->element = element;
-  data->dialog = GNOME_DIALOG (sw->dialog);
+  data->dialog = GTK_DIALOG (sw->dialog);
 
   hbox = gtk_hbox_new (FALSE, 0);
   /* only set to automaticaly clean up the memory */
-  gtk_object_set_data_full (GTK_OBJECT (hbox), "data", data, g_free);
+  g_object_set_data_full (G_OBJECT (hbox), "data", data, g_free);
 
   p = gnc_search_core_type_get_widget (element);
   data->elemwidget = p;
@@ -580,8 +615,8 @@ get_element_widget (GNCSearchWindow *sw, GNCSearchCoreType *element)
   for (l = sw->params_list; l; l = l->next) {
     GNCSearchParam *param = l->data;
     item = gtk_menu_item_new_with_label (_(param->title));
-    gtk_object_set_data (GTK_OBJECT (item), "param", param);
-    gtk_signal_connect (GTK_OBJECT (item), "activate", option_activate, data);
+    g_object_set_data (G_OBJECT (item), "param", param);
+    g_signal_connect (G_OBJECT (item), "activate", G_CALLBACK (option_activate), data);
     gtk_menu_append (GTK_MENU (menu), item);
     gtk_widget_show (item);
 
@@ -627,7 +662,7 @@ gnc_search_dialog_add_criterion (GNCSearchWindow *sw)
     int rows;
 
     w = get_element_widget (sw, new);
-    data = gtk_object_get_data (GTK_OBJECT (w), "data");
+    data = g_object_get_data (G_OBJECT (w), "data");
     sw->crit_list = g_list_append (sw->crit_list, data);
 
     rows = GTK_TABLE (sw->criteria_table)->nrows;
@@ -635,7 +670,7 @@ gnc_search_dialog_add_criterion (GNCSearchWindow *sw)
     attach_element (w, sw, rows);
 
     gnc_search_core_type_grab_focus (new);
-    gnc_search_core_type_editable_enters (new, GNOME_DIALOG (sw->dialog));
+    gnc_search_core_type_editable_enters (new);
   }
 }
 
@@ -646,7 +681,7 @@ add_criterion (GtkWidget *button, GNCSearchWindow *sw)
 }
 
 static int
-gnc_search_dialog_close_cb (GnomeDialog *dialog, GNCSearchWindow *sw)
+gnc_search_dialog_close_cb (GtkDialog *dialog, GNCSearchWindow *sw)
 {
   g_return_val_if_fail (sw, TRUE);
 
@@ -683,14 +718,15 @@ close_handler (gpointer data)
   GNCSearchWindow * sw = data;
 
   g_return_if_fail (sw);
-  gnome_dialog_close (GNOME_DIALOG (sw->dialog));
+  gtk_widget_destroy (sw->dialog);
+  /* DRH: should sw be freed here? */
 }
 
 static void
 gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
 {
   GladeXML *xml;
-  GtkWidget *label, *pixmap, *add, *box;
+  GtkWidget *label, *add, *box;
   GtkWidget *menu, *item, *omenu;
   GtkWidget *new_item_button;
   const char * type_label;
@@ -699,7 +735,7 @@ gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
 
   /* Grab the dialog, save the dialog info */
   sw->dialog = glade_xml_get_widget (xml, "Search Dialog");
-  gtk_object_set_data (GTK_OBJECT (sw->dialog), "dialog-info", sw);
+  g_object_set_data (G_OBJECT (sw->dialog), "dialog-info", sw);
 
   /* grab the result hbox */
   sw->result_hbox = glade_xml_get_widget (xml, "result_hbox");
@@ -713,9 +749,9 @@ gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
   gtk_label_set_text (GTK_LABEL (label), type_label);
 
   /* Set the 'add criterion' button */
-  pixmap = gnome_stock_new_with_icon (GNOME_STOCK_PIXMAP_ADD);
-  add = gnome_pixmap_button (pixmap, _("Add criterion"));
-  gtk_signal_connect (GTK_OBJECT (add), "clicked", add_criterion, sw);
+  add = gtk_button_new_from_stock (GTK_STOCK_ADD);
+ 
+  g_signal_connect (G_OBJECT (add), "clicked", G_CALLBACK (add_criterion), sw);
   box = glade_xml_get_widget (xml, "add_button_box");
   gtk_box_pack_start (GTK_BOX (box), add, FALSE, FALSE, 3);
   
@@ -723,12 +759,12 @@ gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
   menu = gtk_menu_new ();
 
   item = gtk_menu_item_new_with_label (_("all criteria are met"));
-  gtk_signal_connect (GTK_OBJECT (item), "activate", match_all, sw);
+  g_signal_connect (G_OBJECT (item), "activate", G_CALLBACK (match_all), sw);
   gtk_menu_append (GTK_MENU (menu), item);
   gtk_widget_show (item);
 	
   item = gtk_menu_item_new_with_label (_("any criteria are met"));
-  gtk_signal_connect (GTK_OBJECT (item), "activate", match_any, sw);
+  g_signal_connect (G_OBJECT (item), "activate", G_CALLBACK (match_any), sw);
   gtk_menu_append (GTK_MENU (menu), item);
   gtk_widget_show (item);
 	
@@ -770,7 +806,7 @@ gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
       /* Translators: %s is either "item" or the name of some other
        * item, e.g. "Customer" or "Invoice". */
       g_strdup_printf (_("New %s"), type_label ? type_label : _("item"));
-    gtk_label_set_text (GTK_LABEL (GTK_BIN (new_item_button)->child), desc);
+    gtk_button_set_label (GTK_BUTTON(new_item_button), desc);
     g_free (desc);
   }
   /* add the first criterion */
@@ -812,8 +848,8 @@ gnc_search_dialog_init_widgets (GNCSearchWindow *sw)
 						 close_handler, sw);
 
   /* And setup the close callback */
-  gtk_signal_connect (GTK_OBJECT (sw->dialog), "close",
-		      GTK_SIGNAL_FUNC (gnc_search_dialog_close_cb), sw);
+  g_signal_connect (G_OBJECT (sw->dialog), "destroy",
+		    G_CALLBACK (gnc_search_dialog_close_cb), sw);
 
   gnc_search_dialog_reset_widgets (sw);
   gnc_search_dialog_show_close_cancel (sw);
@@ -884,15 +920,15 @@ gnc_search_dialog_create (GNCIdTypeConst obj_type, GList *param_list,
 
 /* Register an on-close signal with the Search Dialog */
 guint gnc_search_dialog_connect_on_close (GNCSearchWindow *sw,
-					  GtkSignalFunc func,
+					  GCallback func,
 					  gpointer user_data)
 {
   g_return_val_if_fail (sw, 0);
   g_return_val_if_fail (func, 0);
   g_return_val_if_fail (user_data, 0);
 
-  return gtk_signal_connect (GTK_OBJECT (sw->dialog), "close",
-			     func, user_data);
+  return g_signal_connect (G_OBJECT (sw->dialog), "destroy",
+			   func, user_data);
 
 }
 

@@ -495,13 +495,13 @@ gnc_split_register_duplicate_current (SplitRegister *reg)
   {
     const char *message = _("The current transaction has been changed.\n"
                             "Would you like to record it?");
-    GNCVerifyResult result;
+    gint result;
 
     result = gnc_ok_cancel_dialog
       (gnc_split_register_get_parent (reg),
        GTK_RESPONSE_OK, message);
 
-    if (result == GTK_RESPONSE_CANCEL)
+    if (result != GTK_RESPONSE_OK)
     {
       gnc_resume_gui_refresh ();
       return NULL;
