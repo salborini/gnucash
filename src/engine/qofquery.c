@@ -32,7 +32,6 @@
 #include "gnc-engine-util.h"
 #include "BackendP.h"
 
-#include "QueryObjectP.h"
 #include "qofbook.h"
 #include "qofbook-p.h"
 #include "qofobject.h"
@@ -40,6 +39,7 @@
 #include "qofquery-p.h"
 #include "qofquerycore.h"
 #include "qofquerycore-p.h"
+#include "qofqueryobject-p.h"
 
 static short module = MOD_QUERY;
 
