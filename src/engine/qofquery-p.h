@@ -27,7 +27,7 @@
 #include "qofquery.h"
 
 typedef struct _QofQueryTerm *QofQueryTerm_t;
-typedef struct _QofQuerySort *QofQuerySort_t;
+typedef struct _QofQofQuerySort *QofQofQuerySort_t;
 
 /* Initialize/Shutdown */
 void qof_query_init (void);
@@ -54,16 +54,16 @@ QofQueryPredData *qof_query_term_get_pred_data (QofQueryTerm_t queryterm);
 gboolean qof_query_term_is_inverted (QofQueryTerm_t queryterm);
 
 
-/* Functions to get and look at QuerySorts */
+/* Functions to get and look at QofQuerySorts */
 
 /* This function returns the primary, secondary, and tertiary sorts.
  * These are part of the query and should NOT be changed!
  */
-void qof_query_get_sorts (QofQuery *q, QofQuerySort_t *primary,
-		       QofQuerySort_t *secondary, QofQuerySort_t *tertiary);
+void qof_query_get_sorts (QofQuery *q, QofQofQuerySort_t *primary,
+		       QofQofQuerySort_t *secondary, QofQofQuerySort_t *tertiary);
 
-GSList * qof_query_sort_get_param_path (QofQuerySort_t querysort);
-gint qof_query_sort_get_sort_options (QofQuerySort_t querysort);
-gboolean qof_query_sort_get_increasing (QofQuerySort_t querysort);
+GSList * qof_query_sort_get_param_path (QofQofQuerySort_t querysort);
+gint qof_query_sort_get_sort_options (QofQofQuerySort_t querysort);
+gboolean qof_query_sort_get_increasing (QofQofQuerySort_t querysort);
 
 #endif /* QOF_QUERY_P_H */

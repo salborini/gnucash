@@ -329,7 +329,7 @@ gnc_lot_get_latest_split (GNCLot *lot)
 
 void gnc_lot_register (void)
 {
-  static const QueryObjectDef params[] = {
+  static const QofQueryObject params[] = {
     { QOF_QUERY_PARAM_BOOK, GNC_ID_BOOK, (QofQueryAccess)gnc_lot_get_book },
     { QOF_QUERY_PARAM_GUID, QOF_QUERYCORE_GUID, (QofQueryAccess)gnc_lot_get_guid },
     { LOT_IS_CLOSED, QOF_QUERYCORE_BOOLEAN, (QofQueryAccess)gnc_lot_is_closed },
@@ -337,7 +337,7 @@ void gnc_lot_register (void)
     { NULL },
   };
 
-  gncQueryObjectRegister (GNC_ID_LOT, NULL, params);
+  qof_query_object_register (GNC_ID_LOT, NULL, params);
 }
 
 /* ========================== END OF FILE ========================= */
