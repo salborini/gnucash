@@ -29,6 +29,7 @@ srcdir   = .
 CC       = gcc
 INCLPATH = -I/usr/include \
            -I.. \
+           -I/usr/local/include \
            -I/usr/X11R6/include/. \
            -I./../include \
            -I./../lib/ComboBox-1.33 \
@@ -42,9 +43,9 @@ INCLPATH = -I/usr/include \
 CFLAGS   = -O2 -DCELL_WIDGETS=1
 LFLAGS   = -O2
 LIBS     = -lXpm -lXm -lXmu -lXt -lXext  -lSM -lICE -lX11  -lpng -ljpeg -lz -lm
-LIBPATH  = -L/lib -L/usr/lib -L/usr/X11R6/lib/.
-TARGET   = ../xacc
-STATIC   = ../xacc-static
+LIBPATH  = -L/lib -L/usr/lib -L/usr/local/lib -L/usr/X11R6/lib/.
+TARGET   = ../xacc.bin
+STATIC   = ../xacc-static.bin
 
 # LIBHTMLW = ../lib/libhtmlw/libhtmlw.a
 LIBXMHTML= ../lib/XmHTML-1.1.0/src/libXmHTML.a
@@ -83,6 +84,6 @@ clean:
 	rm -f *.o *~ *.bak
 
 distclean: clean
-	rm -f $(TARGET) Makefile Makefile.bak config.h
+	rm -f $(TARGET) $(STATIC) Makefile Makefile.bak config.h
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.

@@ -1845,7 +1845,7 @@ regWindowLedger( Widget parent, Account **acclist, int ledger_type )
     { "Adjust Balance...",  &xmPushButtonWidgetClass, 'A', NULL, NULL, True,
       startAdjBCB,       NULL,                 (MenuItem *)NULL, 0 },
     { "Report",             &xmPushButtonWidgetClass, 'R', NULL, NULL, False,
-      NULL,              (XtPointer)0,         reportMenu,       0 },
+      NULL,              (XtPointer)0,         (MenuItem *)NULL, 0 },
     { "",                   &xmSeparatorWidgetClass,    0, NULL, NULL, True,
       NULL,              NULL,                 (MenuItem *)NULL, 0 },
     { "Delete Transaction", &xmPushButtonWidgetClass, 'D', NULL, NULL, True,
@@ -2431,6 +2431,8 @@ regWindowLedger( Widget parent, Account **acclist, int ledger_type )
 				 xmFormWidgetClass, pane,
 				 XmNfractionBase,   6,
 				 XmNresizable,      False,
+                                 XmNtraversalOn,    True,
+                                 XmNnavigationType, XmSTICKY_TAB_GROUP,
 				 NULL );
   
   position = 0;                    /* puts the buttons in the right place */
@@ -2445,6 +2447,7 @@ regWindowLedger( Widget parent, Account **acclist, int ledger_type )
 				    XmNrightAttachment,    XmATTACH_POSITION,
 				    XmNrightPosition,      position+1,
 				    XmNshowAsDefault,      True,
+                                    XmNnavigationType,     XmTAB_GROUP, 
 				    NULL );
   
   XtAddCallback( widget, XmNactivateCallback, 
@@ -2462,6 +2465,7 @@ regWindowLedger( Widget parent, Account **acclist, int ledger_type )
 				    XmNrightAttachment,    XmATTACH_POSITION,
 				    XmNrightPosition,      position+1,
 				    XmNshowAsDefault,      True,
+                                    XmNnavigationType,     XmEXCLUSIVE_TAB_GROUP,
 				    NULL );
   
   XtAddCallback( widget, XmNactivateCallback, 
@@ -2478,7 +2482,7 @@ regWindowLedger( Widget parent, Account **acclist, int ledger_type )
 				    XmNrightAttachment,    XmATTACH_POSITION,
 				    XmNrightPosition,      position+1,
 				    XmNshowAsDefault,      True,
-                                    XmNnavigationType,     XmNONE,  /* stop tabbing ! */
+                                    XmNnavigationType,     XmEXCLUSIVE_TAB_GROUP,
 				    NULL );
   
   XtAddCallback( widget, XmNactivateCallback, 
@@ -3310,7 +3314,7 @@ dateCellFormat( Widget mw, XbaeMatrixModifyVerifyCallbackStruct *mvcbs, int do_y
     case 'h':
       /* end of month */
       DEBUG("end of month\n");
-      date.day = daysInMonth( date.month );
+      date.day = daysInMonth( date.month, date.year );
       mvcbs->verify->doit = False;
       changed = True;
       break;

@@ -107,6 +107,14 @@ char * xaccReadQIFDiscard( int fd )
         qifline = xaccReadQIFLine (fd);
         return qifline;
      } else
+     if (NSTRNCMP(qifline, "^\n")) {
+        qifline = xaccReadQIFLine (fd);
+        return qifline;
+     } else
+     if (NSTRNCMP(qifline, "^\r")) {
+        qifline = xaccReadQIFLine (fd);
+        return qifline;
+     } else
      if ('!' == qifline [0]) return qifline;
      qifline = xaccReadQIFLine (fd);
    }
@@ -125,11 +133,16 @@ char * xaccReadQIFDiscard( int fd )
 \********************************************************************/
 
 #define XACC_PREP_STRING(str) {			\
-        int len = strlen (&qifline[1]); 	\
-        len --;					\
-        (str) = (char *)XtMalloc (len);		\
+	char * tok;				\
+	int len;				\
+	tok = strchr (&qifline[1], '\n');	\
+	if (tok) *tok = 0x0;			\
+	tok = strchr (&qifline[1], '\r');	\
+	if (tok) *tok = 0x0;			\
+        len = strlen (&qifline[1]); 		\
+        (str) = (char *)XtMalloc (len+1);	\
         strncpy ((str), &qifline[1], len);	\
-        (str)[len-1] = 0x0;			\
+        (str)[len] = 0x0;			\
 }
 
 #define XACC_PREP_NULL_STRING(str) {							\
@@ -185,6 +198,12 @@ char * xaccReadQIFCategory (int fd, Account * acc)
 
      /* check for end-of-transaction marker */
      if (NSTRNCMP(qifline, "^^")) {
+        break;
+     } else
+     if (NSTRNCMP(qifline, "^\n")) {
+        break;
+     } else
+     if (NSTRNCMP(qifline, "^\r")) {
         break;
      } else
      if ('!' == qifline [0]) break;
@@ -260,6 +279,12 @@ char * xaccReadQIFAccount (int fd, Account * acc)
 
      /* check for end-of-transaction marker */
      if (NSTRNCMP (qifline, "^^")) {
+        break;
+     } else
+     if (NSTRNCMP (qifline, "^\n")) {
+        break;
+     } else
+     if (NSTRNCMP (qifline, "^\r")) {
         break;
      } else
      if ('!' == qifline [0]) break;
@@ -471,28 +496,66 @@ double xaccParseQIFAmount (char * str)
 /********************************************************************\
 \********************************************************************/
 
-Account *
-xaccGetXferQIFAccount (Account *acc, char *qifline)
+static int
+GuessAccountType (char * qifline)
+{
+   int acc_type = EXPENSE;
+
+   /* Guessing Bank is dangerous, since it could be "Bank Charges"
+    * if (strstr (qifline, "Bank")) {
+    *    acc_type = BANK;
+    * } else
+    */
+
+   if (strstr (qifline, "Bills")) {
+      acc_type = EXPENSE;
+   } else
+
+   if (strstr (qifline, "Cash")) {
+      acc_type = CASH;
+   } else
+
+   if (strstr (qifline, "Income")) {
+      acc_type = INCOME;
+   } else
+
+   if (strstr (qifline, "Card")) {
+      acc_type = CREDIT;
+   } else
+
+   {
+      acc_type = EXPENSE;
+   }
+
+   return acc_type;
+}
+
+/********************************************************************\
+\********************************************************************/
+
+static Account *
+GetSubQIFAccount (AccountGroup *rootgrp, char *qifline, int acc_type)
 {
    Account *xfer_acc;
-   AccountGroup *rootgrp;
-   char * tmp;
+   char * sub_ptr;
+   int i;
 
-   /* remove square brackets from name, remove carriage return ... */
-   qifline = &qifline[1];
-   if ('[' == qifline[0]) {
-      qifline = &qifline[1];
-      tmp = strchr (qifline, ']');
-      if (tmp) *tmp = 0x0;
+   /* search for colons in name -- this indicates a sub-account */
+   sub_ptr = strchr (qifline, ':');
+   if (sub_ptr) {
+      *sub_ptr = 0;
    }
-   tmp = strchr (qifline, '\r');
-   if(tmp) *tmp = 0x0;
-   tmp = strchr (qifline, '\n');
-   if(tmp) *tmp = 0x0;
 
-   /* see if the account exists */
-   rootgrp = xaccGetRootGroupOfAcct (acc);
-   xfer_acc = xaccGetAccountFromName (rootgrp, qifline);
+   /* see if the account exists; but search only one level down,
+    * not the full account tree */
+   xfer_acc = NULL;
+   for (i=0; i<rootgrp->numAcc; i++) {
+      Account *acc = rootgrp->account[i];
+      if (!strcmp(acc->accountName, qifline)) {
+         xfer_acc = acc;
+         break;
+      }
+   }
 
    /* if not, create it */
    if (!xfer_acc) {
@@ -500,9 +563,53 @@ xaccGetXferQIFAccount (Account *acc, char *qifline)
       xfer_acc->accountName = XtNewString (qifline);
       xfer_acc->description = XtNewString ("");
       xfer_acc->notes = XtNewString ("");
-      xfer_acc->type = BANK;
+
+      if (0 > acc_type) acc_type = GuessAccountType (qifline);
+      xfer_acc->type = acc_type;
       insertAccount (rootgrp, xfer_acc);
    }
+
+   /* if this account name had sub-accounts, get those */
+   if (sub_ptr) {
+      sub_ptr ++;
+      rootgrp = xfer_acc->children;
+      if (!rootgrp) {
+         rootgrp = mallocAccountGroup();
+         xfer_acc->children = rootgrp;
+         rootgrp->parent = xfer_acc;
+      }
+      xfer_acc = GetSubQIFAccount (rootgrp, sub_ptr, acc_type);
+   }
+   return xfer_acc;
+}
+
+/********************************************************************\
+\********************************************************************/
+
+Account *
+xaccGetXferQIFAccount (Account *acc, char *qifline)
+{
+   Account *xfer_acc;
+   AccountGroup *rootgrp;
+   char * tmp;
+   int acc_type = -1;
+
+   /* remove square brackets from name, remove carriage return ... */
+   qifline = &qifline[1];
+   if ('[' == qifline[0]) {
+      qifline = &qifline[1];
+      tmp = strchr (qifline, ']');
+      if (tmp) *tmp = 0x0;
+      acc_type = BANK;
+   }
+   tmp = strchr (qifline, '\r');
+   if(tmp) *tmp = 0x0;
+   tmp = strchr (qifline, '\n');
+   if(tmp) *tmp = 0x0;
+
+   /* see if the account exists, create it if not */
+   rootgrp = xaccGetRootGroupOfAcct (acc);
+   xfer_acc = GetSubQIFAccount (rootgrp, qifline, acc_type);
 
    return xfer_acc;
 }
@@ -529,6 +636,8 @@ xaccGetSecurityQIFAccount (Account *acc, char *qifline)
    tmp = strchr (qifline, '\n');
    if(tmp) *tmp = 0x0;
 
+   /* hack alert -- search for colons in name, do an algorithm
+    * similar to Xfer routine above  */
    /* see if the account exists */
    rootgrp = xaccGetRootGroupOfAcct (acc);
    xfer_acc = xaccGetAccountFromName (rootgrp, qifline);
@@ -740,6 +849,12 @@ char * xaccReadQIFTransaction (int fd, Account *acc)
      if (NSTRNCMP (qifline, "^^")) {
         break;
      } else
+     if (NSTRNCMP (qifline, "^\n")) {
+        break;
+     } else
+     if (NSTRNCMP (qifline, "^\r")) {
+        break;
+     } else
      if ('!' == qifline [0]) break;
      qifline = xaccReadQIFLine (fd);
 
@@ -829,11 +944,11 @@ char * xaccReadQIFTransList (int fd, Account *acc)
    char * qifline;
 
    if (!acc) return 0x0;
-   do { 
-      qifline = xaccReadQIFTransaction (fd, acc);
-
+   qifline = xaccReadQIFTransaction (fd, acc);
+   while (qifline) {
       if ('!' == qifline[0]) break;
-   } while (qifline);
+      qifline = xaccReadQIFTransaction (fd, acc);
+   } 
    return qifline;
 }
 
@@ -848,6 +963,9 @@ char * xaccReadQIFTransList (int fd, Account *acc)
  * Args:   datafile - the file to load the data from                * 
  * Return: the struct with the program data in it                   * 
 \********************************************************************/
+
+#define STRSTR(x,y) ((NSTRNCMP(x,y)) ||  (NSTRNCMP((&(x)[1]), y)))
+
 AccountGroup *
 xaccReadQIFData( char *datafile )
   {
@@ -878,7 +996,7 @@ xaccReadQIFData( char *datafile )
   grp = mallocAccountGroup();
   
   while (qifline) {
-     if (NSTRNCMP (qifline, "!Type:Bank")) {
+     if (STRSTR (qifline, "Type:Bank")) {
         Account *acc   = mallocAccount();
         DEBUG ("got bank\n");
 
@@ -892,19 +1010,19 @@ xaccReadQIFData( char *datafile )
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Type:Cat")) {
+     if (STRSTR (qifline, "Type:Cat")) {
         DEBUG ("got category\n");
         qifline = xaccReadQIFAccList (fd, grp, 1);
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Type:Class")) {
+     if (STRSTR (qifline, "Type:Class")) {
         DEBUG ("got class\n");
         qifline = xaccReadQIFDiscard (fd);
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Type:Invst")) {
+     if (STRSTR (qifline, "Type:Invst")) {
         Account *acc   = mallocAccount();
         DEBUG ("got Invst\n");
 
@@ -918,27 +1036,27 @@ xaccReadQIFData( char *datafile )
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Type:Memorized")) {
+     if (STRSTR (qifline, "Type:Memorized")) {
         DEBUG ("got memorized\n");
         qifline = xaccReadQIFDiscard (fd);
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Option:AutoSwitch")) {
+     if (STRSTR (qifline, "Option:AutoSwitch")) {
         DEBUG ("got autoswitch on\n");
         skip = 1;
         qifline = xaccReadQIFDiscard (fd);
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Clear:AutoSwitch")) {
+     if (STRSTR (qifline, "Clear:AutoSwitch")) {
         DEBUG ("got autoswitch clear\n");
         skip = 0;
         qifline = xaccReadQIFDiscard (fd);
         continue;
      } else
 
-     if (NSTRNCMP (qifline, "!Account")) {
+     if (STRSTR (qifline, "Account")) {
         if (skip) {
            /* loop and read all of the account names and descriptions */
            /* no actual dollar data is expected to be read here ... */
