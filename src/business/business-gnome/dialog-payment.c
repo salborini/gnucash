@@ -75,7 +75,7 @@ static void
 gnc_payment_ok_cb (GtkWidget *widget, gpointer data)
 {
   PaymentWindow *pw = data;
-  char *text;
+  const char *text;
   Account *post, *acc;
   gnc_numeric amount;
 
@@ -130,7 +130,7 @@ gnc_payment_ok_cb (GtkWidget *widget, gpointer data)
   /* Ok, now post the damn thing */
   gnc_suspend_gui_refresh ();
   {
-    char *memo, *num;
+    const char *memo, *num;
     Timespec date;
     
     /* Obtain all our ancillary information */
@@ -268,13 +268,13 @@ new_payment_window (GncOwner *owner, GNCBook *book, gnc_numeric initial_payment)
 
   /* Connect the dialog buttons */
   gnome_dialog_button_connect (GNOME_DIALOG (pw->dialog), 0,
-			       gnc_payment_ok_cb, pw);
+			       G_CALLBACK (gnc_payment_ok_cb), pw);
   gnome_dialog_button_connect (GNOME_DIALOG (pw->dialog), 1,
-			       gnc_payment_cancel_cb, pw);
+			       G_CALLBACK (gnc_payment_cancel_cb), pw);
 
   /* Setup various signal handlers */
-  gtk_signal_connect (GTK_OBJECT (pw->dialog), "destroy",
-		      gnc_payment_window_destroy_cb, pw);
+  g_signal_connect (G_OBJECT (pw->dialog), "destroy",
+		    G_CALLBACK (gnc_payment_window_destroy_cb), pw);
 
   /* Register with the component manager */
   pw->component_id =

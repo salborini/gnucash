@@ -551,7 +551,7 @@ static void
 gnc_help_window_search_button_cb(GtkButton * button, gpointer data)
 {
   gnc_help_window * help = data;
-  char            * search_string = 
+  const char * search_string = 
     gtk_entry_get_text(GTK_ENTRY(help->search_entry));
   DBT             key, value;
   int             err=1;
@@ -560,13 +560,15 @@ gnc_help_window_search_button_cb(GtkButton * button, gpointer data)
   memset(&key, 0, sizeof(DBT));
   memset(&value, 0, sizeof(DBT));
 
-  key.data    = search_string;
+  key.data    = g_strdup (search_string);
   key.size    = strlen(search_string);
 
   /* do the search */
   if(help->index_db) {
     err = help->index_db->get(help->index_db, &key, &value, 0);
   }
+
+  g_free (key.data);
 
   if(err == 0) {
     /* the data in the DB is a newline-separated list of filenames */
@@ -786,7 +788,7 @@ gnc_help_window_destroy(gnc_help_window * help)
   }
 
   /* take care of the gnc-html object specially */
-  gtk_widget_ref(gnc_html_get_widget(help->html));
+  g_object_ref(gnc_html_get_widget(help->html));
   gnc_html_destroy(help->html);
 
   gtk_widget_destroy(GTK_WIDGET(help->toplevel)); 

@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include <gnome.h>
+#include <gconf/gconf-client.h>
 
 #include "dialog-utils.h"
 #include "global-options.h"
@@ -64,7 +65,9 @@ dispatch_menu_paths[GNC_DISP_LAST] = {
 gncUIWidget
 gnc_ui_get_toplevel (void)
 {
-  GList *containers = gtk_container_get_toplevels ();
+  GList *containers = gtk_window_list_toplevels ();
+  GList *containerstop = containers;
+
   GnomeApp *app = NULL;
   
   for (; containers; containers = containers->next)
@@ -77,7 +80,7 @@ gnc_ui_get_toplevel (void)
 
     app = GNOME_APP (w);
 
-    gnc_mdi = gtk_object_get_data (GTK_OBJECT (w), "gnc_mdi");
+    gnc_mdi = g_object_get_data (G_OBJECT (w), "gnc_mdi");
     if (!gnc_mdi)
       continue;
 
@@ -85,6 +88,7 @@ gnc_ui_get_toplevel (void)
 
     break;
   }
+  g_list_free (containerstop);
 
   if (app)
     return GTK_WIDGET (app);
@@ -144,11 +148,11 @@ gnc_mdi_show_progress (const char *message, double percentage)
 
   if (percentage < 0) {
     gnome_appbar_refresh(appbar);
-    gnome_appbar_set_progress(appbar, 0.0);
+    gnome_appbar_set_progress_percentage(appbar, 0.0);
   } else {
     if (message)
       gnome_appbar_set_status(appbar, message);
-    gnome_appbar_set_progress(appbar, percentage/100);
+    gnome_appbar_set_progress_percentage(appbar, percentage/100);
   }
 
   /* make sure new text is up */
@@ -306,7 +310,7 @@ gnc_mdi_update_widgets(GNCMDIChildInfo *mc, gboolean topmost)
 GtkWidget *
 gnc_mdi_child_find_menu_item(GNCMDIChildInfo *mc, gchar *path)
 {
-  GnomeDockItem *di;
+  BonoboDockItem *di;
   GtkWidget *menubar;
   GtkWidget *menu;
   GtkWidget *menuitem;
@@ -319,7 +323,7 @@ gnc_mdi_child_find_menu_item(GNCMDIChildInfo *mc, gchar *path)
   if (di == NULL)
     return(NULL);
 
-  menubar = gnome_dock_item_get_child (di);
+  menubar = bonobo_dock_item_get_child (di);
   if (menubar == NULL)
     return(NULL);
 
@@ -359,7 +363,7 @@ gnc_mdi_child_find_toolbar_item(GNCMDIChildInfo *mc, gchar *name)
   g_return_val_if_fail(mc != NULL, NULL);
   g_return_val_if_fail(mc->toolbar != NULL, NULL);
 
-  transl = L_(name);
+  transl = g_strdup(L_(name));
   toolbar = GTK_TOOLBAR(mc->toolbar);
   for (pos = 0; pos < toolbar->num_children; pos++) {
     child = g_list_nth_data(toolbar->children, pos);
@@ -369,6 +373,7 @@ gnc_mdi_child_find_toolbar_item(GNCMDIChildInfo *mc, gchar *name)
     if (strcasecmp(label, transl) == 0)
       return(child->widget);
   }
+  g_free (transl);
   return(NULL);
 }
 
@@ -545,7 +550,7 @@ gnc_mdi_show_statusbar (GNCMDIChildInfo *mc)
 void
 gnc_mdi_show_summarybar (GNCMDIChildInfo *mc)
 {
-  GnomeDockItem *summarybar;
+  BonoboDockItem *summarybar;
   guint dc1, dc2, dc3, dc4;
 
   ENTER("mc=%p, mc->app=%p", mc, mc ? mc->app : 0);
@@ -554,7 +559,7 @@ gnc_mdi_show_summarybar (GNCMDIChildInfo *mc)
     return;
   }
 
-  summarybar = gnome_dock_get_item_by_name(GNOME_DOCK(mc->app->dock),
+  summarybar = bonobo_dock_get_item_by_name(BONOBO_DOCK(mc->app->dock),
 					   "Summary Bar",
 					   &dc1, &dc2, &dc3, &dc4);
   if (!summarybar) {
@@ -676,7 +681,7 @@ gnc_mdi_app_destroyed_cb (GnomeApp * app, gpointer user_data)
     GList * child; 
 
     if (toolbar)
-      gtk_widget_unref (toolbar);
+      g_object_unref (toolbar);
 
     gtk_object_set_user_data (GTK_OBJECT (app), NULL);
 
@@ -687,7 +692,7 @@ gnc_mdi_app_destroyed_cb (GnomeApp * app, gpointer user_data)
       if (mc && mc->toolbar && mc->app && (mc->app == app))
       {
         /* we need to pull the toolbar out to prevent its being destroyed */
-        gtk_widget_ref (mc->toolbar);
+        g_object_ref (mc->toolbar);
         gtk_container_remove (GTK_CONTAINER(mc->toolbar->parent), mc->toolbar);
       }
     }
@@ -705,12 +710,12 @@ gnc_mdi_app_created_cb (GnomeMDI * mdi, GnomeApp * app, gpointer data)
   gnome_app_enable_layout_config (app, TRUE);
 
   /* flag the app as gnc mdi created */
-  gtk_object_set_data (GTK_OBJECT (app), "gnc_mdi", mainwin);
+  g_object_set_data (G_OBJECT (app), "gnc_mdi", mainwin);
 
   /* add a signal to preserve the toolbar on destroy */ 
-  gtk_signal_connect (GTK_OBJECT (app), "destroy", 
-                      GTK_SIGNAL_FUNC (gnc_mdi_app_destroyed_cb),
-                      mainwin);
+  g_signal_connect (G_OBJECT (app), "destroy", 
+                    G_CALLBACK (gnc_mdi_app_destroyed_cb),
+                    mainwin);
   LEAVE(" ");
 }
 
@@ -816,25 +821,27 @@ gnc_mdi_child_changed_cb (GnomeMDI * mdi, GnomeMDIChild * prev_child,
   GnomeUIInfo      * hintinfo;
   GtkWidget        * oldbar;
   GnomeApp         * new_app = NULL; 
-  GnomeDockItemBehavior behavior;
+  BonoboDockItemBehavior behavior;
+  GConfClient      * client;
 
   ENTER(" ");
   if (prev_child)
   {
-    prevwin = gtk_object_get_user_data (GTK_OBJECT(prev_child));
+    prevwin = g_object_get_data (G_OBJECT(prev_child), "gnc-mdi-child-info");
     if (mdi->mode != GNOME_MDI_TOPLEVEL)
       gnc_mdi_update_widgets(prevwin, FALSE);
   }
 
   if (mdi && mdi->active_child)
   {
-    childwin = gtk_object_get_user_data (GTK_OBJECT(mdi->active_child));
+    childwin = g_object_get_data (G_OBJECT(mdi->active_child), "gnc-mdi-child-info");
     new_app = gnome_mdi_get_app_from_view (childwin->contents);
   }
 
-  behavior = GNOME_DOCK_ITEM_BEH_EXCLUSIVE;
-  if (!gnome_preferences_get_toolbar_detachable ())
-    behavior |= GNOME_DOCK_ITEM_BEH_LOCKED;
+  behavior = BONOBO_DOCK_ITEM_BEH_EXCLUSIVE;
+  client = gconf_client_get_default ();
+  if (!gconf_client_get_bool (client, "/desktop/gnome/interface/toolbar_detachable", NULL))
+    behavior |= BONOBO_DOCK_ITEM_BEH_LOCKED;
 
   if (childwin && childwin->toolbar)
   {
@@ -858,7 +865,7 @@ gnc_mdi_child_changed_cb (GnomeMDI * mdi, GnomeMDIChild * prev_child,
        * changed) */
       if (GTK_WIDGET(childwin->toolbar)->parent)
       {
-        gtk_widget_ref (GTK_WIDGET(childwin->toolbar));
+        g_object_ref (GTK_WIDGET(childwin->toolbar));
         gtk_container_remove (GTK_CONTAINER
                               (GTK_WIDGET(childwin->toolbar)->parent),
                               GTK_WIDGET(childwin->toolbar));
@@ -868,7 +875,7 @@ gnc_mdi_child_changed_cb (GnomeMDI * mdi, GnomeMDIChild * prev_child,
       gnome_app_add_toolbar (GNOME_APP(childwin->app), 
                              GTK_TOOLBAR(childwin->toolbar),
                              "Toolbar", behavior,
-                             GNOME_DOCK_TOP, 1, 0, 0);
+                             BONOBO_DOCK_TOP, 1, 0, 0);
 
       gtk_toolbar_set_style (GTK_TOOLBAR(childwin->toolbar), 
                              gnc_get_toolbar_style ());
@@ -884,7 +891,7 @@ gnc_mdi_child_changed_cb (GnomeMDI * mdi, GnomeMDIChild * prev_child,
       gnome_app_add_toolbar (GNOME_APP(childwin->app), 
                              GTK_TOOLBAR(childwin->toolbar),
                              "Toolbar", behavior,
-                             GNOME_DOCK_TOP, 1, 0, 0);
+                             BONOBO_DOCK_TOP, 1, 0, 0);
 
       gtk_toolbar_set_style (GTK_TOOLBAR(childwin->toolbar), 
                              gnc_get_toolbar_style ());
@@ -894,10 +901,10 @@ gnc_mdi_child_changed_cb (GnomeMDI * mdi, GnomeMDIChild * prev_child,
 
     oldbar = gtk_object_get_user_data (GTK_OBJECT(new_app));
     if (oldbar)
-      gtk_widget_unref (oldbar);
+      g_object_unref (oldbar);
 
     if (childwin->toolbar)
-      gtk_widget_ref (childwin->toolbar);
+      g_object_ref (childwin->toolbar);
 
     gtk_object_set_user_data (GTK_OBJECT(new_app), childwin->toolbar);
   }
@@ -1057,17 +1064,17 @@ gnc_mdi_new (const char *app_name,
   gnc_mdi->component_id = gnc_register_gui_component (GNC_MDI_CM_CLASS,
                                                       NULL, NULL, gnc_mdi);
 
-  gtk_signal_connect (GTK_OBJECT(gnc_mdi->mdi), "destroy",
-                      GTK_SIGNAL_FUNC(gnc_mdi_destroy_cb),
-                      gnc_mdi);
+  g_signal_connect (G_OBJECT (gnc_mdi->mdi), "destroy",
+                    G_CALLBACK (gnc_mdi_destroy_cb),
+                    gnc_mdi);
 
-  gtk_signal_connect (GTK_OBJECT(gnc_mdi->mdi), "app_created",
-                      GTK_SIGNAL_FUNC(gnc_mdi_app_created_cb),
-                      gnc_mdi);
+  g_signal_connect (G_OBJECT (gnc_mdi->mdi), "app-created",
+                    G_CALLBACK (gnc_mdi_app_created_cb),
+                    gnc_mdi);
 
-  gtk_signal_connect (GTK_OBJECT(gnc_mdi->mdi), "child_changed",
-                      GTK_SIGNAL_FUNC(gnc_mdi_child_changed_cb),
-                      gnc_mdi);
+  g_signal_connect (G_OBJECT (gnc_mdi->mdi), "child-changed",
+                    G_CALLBACK (gnc_mdi_child_changed_cb),
+                    gnc_mdi);
 
   gnc_mdi->toolbar_change_callback_id =
     gnc_register_option_change_callback (gnc_mdi_configure_toolbar_cb, 
@@ -1163,9 +1170,9 @@ gnc_mdi_get_current (void)
 gboolean
 gnc_mdi_has_apps (void)
 {
-  GList *toplevels;
+  GList *toplevels, *containerstop;
 
-  for (toplevels = gtk_container_get_toplevels ();
+  for (containerstop = toplevels = gtk_window_list_toplevels ();
        toplevels;
        toplevels = toplevels->next)
   {
@@ -1174,15 +1181,18 @@ gnc_mdi_has_apps (void)
     if (!GNOME_IS_APP (toplevels->data))
       continue;
 
+#if 0
     if (GTK_OBJECT_DESTROYED (toplevels->data))
       continue;
+#endif
 
-    gnc_mdi = gtk_object_get_data (GTK_OBJECT (toplevels->data), "gnc_mdi");
+    gnc_mdi = g_object_get_data (G_OBJECT (toplevels->data), "gnc_mdi");
     if (!gnc_mdi)
       continue;
 
     return TRUE;
   }
+  g_list_free (containerstop);
 
   return FALSE;
 }
@@ -1197,7 +1207,7 @@ gnc_app_set_title (GnomeApp *app)
 
   g_return_if_fail (app != NULL);
 
-  mainwin = gtk_object_get_data (GTK_OBJECT (app), "gnc_mdi");
+  mainwin = g_object_get_data (G_OBJECT (app), "gnc_mdi");
   if (!mainwin || !mainwin->mdi)
     return;
 
@@ -1207,7 +1217,7 @@ gnc_app_set_title (GnomeApp *app)
   child = gnome_mdi_get_child_from_view (view);
   if (!child) return;
 
-  childwin = gtk_object_get_user_data (GTK_OBJECT (child));
+  childwin = g_object_get_data (G_OBJECT (child), "gnc-mdi-child-info");
   if (!childwin) return;
 
   gnc_mdi_child_set_title (childwin);
@@ -1335,8 +1345,7 @@ gnc_mdi_create_child_toolbar (GNCMDIInfo * mi, GNCMDIChildInfo * child)
   g_free (child->toolbar_info);
   child->toolbar_info = tbinfo;
 
-  tb = GTK_TOOLBAR (gtk_toolbar_new (GTK_ORIENTATION_HORIZONTAL,
-                                     GTK_TOOLBAR_BOTH));
+  tb = GTK_TOOLBAR (gtk_toolbar_new ());
 
   child->toolbar = GTK_WIDGET (tb);
 

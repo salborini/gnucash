@@ -31,6 +31,7 @@
 
 #include <gnome.h>
 #include <time.h>
+#include <gconf/gconf-client.h>
 
 #include "gnc-split-reg.h"
 
@@ -294,7 +295,7 @@ gnc_split_reg_class_init( GNCSplitRegClass *class )
     gnc_split_reg_signals[ signals[i].s ] =
       gtk_signal_new( signals[i].signal_name,
                       GTK_RUN_LAST,
-                      object_class->type, signals[i].defaultOffset,
+                      GTK_CLASS_TYPE(object_class), signals[i].defaultOffset,
                       gtk_signal_default_marshaller, GTK_TYPE_NONE, 0 );
   }
   /* Setup the non-default-marshalled signals; 'i' is still valid, here. */
@@ -302,14 +303,16 @@ gnc_split_reg_class_init( GNCSplitRegClass *class )
   gnc_split_reg_signals[ INCLUDE_DATE_SIGNAL ] =
     gtk_signal_new( "include-date",
                     GTK_RUN_LAST,
-                    object_class->type,
+                    GTK_CLASS_TYPE(object_class),
                     signals[i++].defaultOffset,
                     gtk_marshal_NONE__INT, /* time_t == int */
                     GTK_TYPE_NONE, 1, GTK_TYPE_INT );
 
   g_assert( i == LAST_SIGNAL );
 
+#if 0
   gtk_object_class_add_signals (object_class, gnc_split_reg_signals, LAST_SIGNAL);
+#endif
 
   /* Setup the default handlers. */
   class->enter_ent_cb    = gsr_default_enter_handler;
@@ -443,12 +446,12 @@ gsr_create_menus( GNCSplitReg *gsr )
   gtk_widget_hide( mbar );
 
   gsr->edit_menu = glade_xml_get_widget( xml, "menu_edit_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->edit_menu) );
+  g_object_ref( GTK_OBJECT(gsr->edit_menu) );
   mi = glade_xml_get_widget( xml, "menu_edit" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM( mi ) );
 
   gsr->view_menu = glade_xml_get_widget( xml, "menu_view_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->view_menu) );
+  g_object_ref( GTK_OBJECT(gsr->view_menu) );
   mi = glade_xml_get_widget( xml, "menu_view" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(mi) );
 
@@ -456,7 +459,7 @@ gsr_create_menus( GNCSplitReg *gsr )
   gsr->sort_submenu = glade_xml_get_widget( xml, "menu_sort_order_menu" );
 
   gsr->action_menu = glade_xml_get_widget( xml, "menu_actions_menu" );
-  gtk_object_ref( GTK_OBJECT(gsr->action_menu) );
+  g_object_ref( GTK_OBJECT(gsr->action_menu) );
   mi = glade_xml_get_widget( xml, "menu_actions" );
   gtk_menu_item_remove_submenu( GTK_MENU_ITEM(mi) );
 
@@ -1137,10 +1140,6 @@ gnc_split_reg_reverse_trans_cb (GtkWidget *w, gpointer data)
   GNCSplitReg *gsr = data;
   gsr_emit_simple_signal( gsr, "reverse_txn" );
 }
-
-/* Remove when porting to gtk2.0 */
-#define GTK_STOCK_CANCEL           GNOME_STOCK_BUTTON_CANCEL
-#define GTK_STOCK_DELETE           "Delete"
 
 void
 gsr_default_reinit_handler( GNCSplitReg *gsr, gpointer data )
@@ -2109,6 +2108,7 @@ gsr_create_popup_menu( GNCSplitReg *gsr )
 {
   GtkWidget *popup, *menuitem;
   GladeXML *xml;
+  GConfClient *client;
 
   xml = gnc_glade_xml_new( "register.glade", "register_popup" );
   popup = glade_xml_get_widget( xml, "register_popup" );
@@ -2116,8 +2116,9 @@ gsr_create_popup_menu( GNCSplitReg *gsr )
                                      gnc_glade_autoconnect_full_func,
                                      gsr );
 
+  client = gconf_client_get_default ();
   /* Glade insists on making this a tearoff menu. */
-  if (gnome_preferences_get_menus_have_tearoff()) {
+  if (gconf_client_get_string (client, "/desktop/gnome/interface/menus_have_tearoff", NULL)) {
     GtkMenuShell *ms = GTK_MENU_SHELL(popup);
     GtkWidget *tearoff;
 

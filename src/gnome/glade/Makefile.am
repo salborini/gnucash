@@ -12,6 +12,7 @@ glade_DATA = \
 	register.glade \
 	stocks.glade \
 	tax.glade \
+	totd.glade \
 	userpass.glade \
 	sched-xact.glade
 

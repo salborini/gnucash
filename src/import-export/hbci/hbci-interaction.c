@@ -39,6 +39,9 @@
 #include "dialog-pass.h"
 
 #include <openhbci.h>
+#ifndef OPENHBCI_VERSION_BUILD
+#  define OPENHBCI_VERSION_BUILD 0
+#endif
 
 #define PREF_TAB_ONLINE_BANKING N_("Online Banking & Importing")
 

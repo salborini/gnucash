@@ -249,11 +249,11 @@ gnc_vendor_name_changed_cb (GtkWidget *widget, gpointer data)
   if (!vw)
     return;
 
-  name = gtk_entry_get_text (GTK_ENTRY (vw->company_entry));
+  name = gtk_editable_get_chars (GTK_EDITABLE (vw->company_entry), 0, -1);
   if (!name || *name == '\0')
-    name = _("<No name>");
+    name = g_strdup (_("<No name>"));
 
-  id = gtk_entry_get_text (GTK_ENTRY (vw->id_entry));
+  id = gtk_editable_get_chars (GTK_EDITABLE (vw->id_entry), 0, -1);
 
   fullname = g_strconcat (name, " (", id, ")", NULL);
 
@@ -264,6 +264,8 @@ gnc_vendor_name_changed_cb (GtkWidget *widget, gpointer data)
 
   gtk_window_set_title (GTK_WINDOW (vw->dialog), title);
 
+  g_free (name);
+  g_free (id);
   g_free (fullname);
   g_free (title);
 }

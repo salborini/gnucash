@@ -70,8 +70,7 @@ gnc_table_save_state (Table *table)
 
         widths = gnc_header_widths_new ();
 
-        if (!GTK_OBJECT_DESTROYED(GTK_OBJECT(sheet)))
-                gnucash_sheet_get_header_widths (sheet, widths);
+        gnucash_sheet_get_header_widths (sheet, widths);
 
         alist = SCM_EOL;
         if (gnc_lookup_boolean_option("_+Advanced", "Save Window Geometry", TRUE))
@@ -134,7 +133,7 @@ table_destroy_cb (Table *table)
 
         sheet = GNUCASH_SHEET (table->ui_data);
 
-        gtk_widget_unref (GTK_WIDGET(sheet));
+        g_object_unref (GTK_WIDGET(sheet));
 
         table->ui_data = NULL;
 }
@@ -160,7 +159,7 @@ gnc_table_init_gui (gncUIWidget widget, void *data)
         table->gui_handlers.destroy = table_destroy_cb;
         table->ui_data = sheet;
 
-        gtk_widget_ref (GTK_WIDGET(sheet));
+        g_object_ref (GTK_WIDGET(sheet));
 
         /* config the cell-block styles */
 

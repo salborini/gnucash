@@ -265,7 +265,8 @@ static void
 gnc_employee_name_changed_cb (GtkWidget *widget, gpointer data)
 {
   EmployeeWindow *ew = data;
-  char *name, *id, *fullname, *title;
+  char *fullname, *title;
+  const char *name, *id;
 
   if (!ew)
     return;

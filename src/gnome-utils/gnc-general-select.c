@@ -114,15 +114,17 @@ gnc_general_select_class_init (GNCGeneralSelectClass *klass)
         general_select_signals[SELECTION_CHANGED] =
                 gtk_signal_new("changed",
                                GTK_RUN_FIRST,
-                               object_class->type,
+                               GTK_CLASS_TYPE(object_class),
                                GTK_SIGNAL_OFFSET(GNCGeneralSelectClass,
                                                  changed),
                                gtk_marshal_NONE__NONE,
                                GTK_TYPE_NONE, 0);
 
+#if 0
         gtk_object_class_add_signals(object_class,
                                      general_select_signals,
                                      LAST_SIGNAL);
+#endif
 
 	container_class->forall = gnc_general_select_forall;
 
@@ -189,8 +191,8 @@ create_children (GNCGeneralSelect *gsl, GNCGeneralSelectType type)
 	  gsl->button = gtk_button_new_with_label (_("View..."));
 
 	gtk_box_pack_start (GTK_BOX (gsl), gsl->button, FALSE, FALSE, 0);
-        gtk_signal_connect (GTK_OBJECT (gsl->button), "clicked",
-                            select_cb, gsl);
+	g_signal_connect (G_OBJECT (gsl->button), "clicked",
+			  G_CALLBACK (select_cb), gsl);
         gtk_widget_show (gsl->button);
 }
 
