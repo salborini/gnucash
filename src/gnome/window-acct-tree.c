@@ -47,6 +47,7 @@
 #include "gnc-html.h"
 #include "gnc-menu-extensions.h"
 #include "gnc-split-reg.h"
+#include "gnc-tree-model-account.h"
 #include "gnc-ui.h"
 #include "gtkselect.h"
 #include "io-gncxml-v2.h"
@@ -58,14 +59,66 @@
 #include "window-reconcile.h"
 #include "window-register.h"
 
+#include "egg-action-group.h"
+#include "egg-menu-merge.h"
+#include "egg-toggle-action.h"
+
 static short module = MOD_GUI;
 #define WINDOW_ACCT_TREE_CM_CLASS "window-acct-tree"
 
+static void gnc_acct_tree_window_cmd_open_account (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_open_subaccounts (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_edit_account (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_reconcile (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_transfer (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_stock_split (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_new_account (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_delete_account (EggAction *action, gpointer data);
+static void gnc_acct_tree_window_cmd_view_options (EggAction *action, gpointer data);
+
+static EggActionGroupEntry acct_tree_popups_entries [] = {
+	/* Toplevel */
+	{ "FakeToplevel", (""), NULL, NULL, NULL, NULL, NULL },
+
+	/* Accounts */
+	{ "OpenAccount", N_("_Open"), GTK_STOCK_OPEN, "<control>o",
+	  N_("Open the selected account"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_open_account), NULL },
+	{ "OpenSubaccounts", N_("Open _Subaccounts"), GTK_STOCK_OPEN, NULL,
+	  N_("Open the selected account and all its subaccounts"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_open_subaccounts), NULL },
+	{ "EditAccount", N_("_Edit"), GTK_STOCK_PROPERTIES, "<control>e",
+	  N_("Edit the selected account"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_edit_account), NULL },
+	{ "Reconcile", N_("_Reconcile..."), NULL, "<control>r",
+	  N_("Reconcile the selected account"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_reconcile), NULL },
+	{ "Transfer", N_("_Transfer..."), NULL, "<control>t",
+	  N_("Transfer funds from one account to another"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_transfer), NULL },
+	{ "StockSplit", N_("Stock S_plit..."), NULL, NULL,
+	  N_("Record a stock split or a stock merger"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_stock_split), NULL },
+	{ "NewAccount", N_("_New"), GTK_STOCK_NEW, NULL,
+	  N_("Create a new account"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_new_account), NULL },
+	{ "DeleteAccount", N_("_Delete"), GTK_STOCK_DELETE, NULL,
+	  N_("Delete selected account"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_delete_account), NULL },
+
+	/* View Options */
+	{ "AccountViewOptions", N_("Options"), GTK_STOCK_PROPERTIES, NULL,
+	  N_("Edit the account view options"),
+	  G_CALLBACK (gnc_acct_tree_window_cmd_view_options), NULL },
+};
+static guint acct_tree_popups_n_entries = G_N_ELEMENTS (acct_tree_popups_entries);
 
 /* acct tree window information structure */
 struct GNCAcctTreeWin_p 
 {
-  GtkWidget   * account_tree;
+  GtkTreeView *account_tree_view;
+
+  EggMenuMerge *ui_merge;
 
   SCM         euro_change_callback_id;
   SCM         name_change_callback_id;
@@ -121,6 +174,7 @@ gnc_acct_tree_window_add_sensitive(GNCAcctTreeWin * win, GtkWidget *widget)
   win->account_sensitives = g_list_append(win->account_sensitives, widget);
 }
 
+#if 0
 /**
  * gnc_acct_tree_window_find_popup_item
  *
@@ -148,6 +202,7 @@ gnc_acct_tree_window_find_popup_item(GNCAcctTreeWin * win, GtkWidget *popup,
       gnc_acct_tree_window_add_sensitive(win, menuitem);
     }
 }
+#endif
 
 /********************************************************************
  * ACCOUNT WINDOW FUNCTIONS 
@@ -162,7 +217,7 @@ static GtkWidget *
 gnc_acct_tree_view_labeler(GnomeMDIChild * child, GtkWidget * current,
                            gpointer user_data)
 {
-  GNCMDIChildInfo * mc = gtk_object_get_user_data(GTK_OBJECT(child));
+  GNCMDIChildInfo * mc = g_object_get_data (G_OBJECT (child), "gnc-mdi-child-info");
   GNCAcctTreeWin   * win = NULL;
   char             * name = NULL;
 
@@ -232,7 +287,7 @@ gnc_acct_tree_view_new(GnomeMDIChild * child, gpointer user_data)
   GNCMDIInfo        * maininfo = user_data;
   GNCMDIChildInfo   * mc = g_new0(GNCMDIChildInfo, 1);
   GNCAcctTreeWin     * win = gnc_acct_tree_window_new(child->name);
-  GtkWidget          * popup;
+  /* GtkWidget          * popup; */
   char		     * name_id;
   char               * name;
 
@@ -247,7 +302,7 @@ gnc_acct_tree_view_new(GnomeMDIChild * child, gpointer user_data)
 
   mc->menu_tweaking = gnc_acct_tree_tweak_menu;
 
-  gtk_object_set_user_data(GTK_OBJECT(child), mc);
+  g_object_set_data (G_OBJECT (child), "gnc-mdi-child-info", mc);
 
   /* set the child name that will get used to save app state */
   name_id = g_strdup_printf("id=%d", win->options_id);
@@ -256,8 +311,8 @@ gnc_acct_tree_view_new(GnomeMDIChild * child, gpointer user_data)
   g_free (name_id);
   g_free (name);
 
-  gtk_signal_connect(GTK_OBJECT(child), "destroy", 
-                     gnc_acct_tree_view_destroy, mc);
+  g_signal_connect (G_OBJECT (child), "destroy",
+		    G_CALLBACK (gnc_acct_tree_view_destroy), mc);
 
   gnc_mdi_add_child (maininfo, mc);
 
@@ -274,6 +329,7 @@ gnc_acct_tree_view_new(GnomeMDIChild * child, gpointer user_data)
   gnc_mdi_create_child_toolbar(maininfo, mc);
 
   if (mc->menu_info) {
+#if 0
     popup = gnc_mainwin_account_tree_attach_popup
       (GNC_MAINWIN_ACCOUNT_TREE (win->account_tree),
        mc->menu_info->moreinfo, maininfo);
@@ -282,6 +338,7 @@ gnc_acct_tree_view_new(GnomeMDIChild * child, gpointer user_data)
     gnc_acct_tree_window_find_popup_item(win, popup, "Edit Account");
     gnc_acct_tree_window_find_popup_item(win, popup, "Delete Account");
     gnc_acct_tree_window_find_popup_item(win, popup, "Reconcile...");
+#endif
   }
 
   /*
@@ -353,7 +410,7 @@ gnc_acct_tree_window_toolbar_open_cb (GtkWidget *widget, gpointer data)
   {
     const char *message = _("To open an account, you must first\n"
                             "choose an account to open.");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
     return;
   }
 
@@ -380,7 +437,7 @@ gnc_acct_tree_window_toolbar_edit_cb (GtkWidget *widget, gpointer data)
   {
     const char *message = _("To edit an account, you must first\n"
                             "choose an account to edit.\n");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
   }
 }
 
@@ -463,7 +520,7 @@ gnc_acct_tree_window_delete_common (Account *account)
 	Split *s = splits->data;
 	Transaction *txn = xaccSplitGetParent (s);
 	if (xaccTransGetReadOnly (txn)) {
-	  gnc_error_dialog (acct_has_ro_splits, name);
+	  gnc_error_dialog (NULL, acct_has_ro_splits, name);
 	  return;
 	}
       }
@@ -477,7 +534,7 @@ gnc_acct_tree_window_delete_common (Account *account)
 
       /* Check for RO txns in the children -- disallow deletion if there are any */
       if (delete_res.has_ro_splits) {
-	gnc_error_dialog (child_has_ro_splits, name);
+	gnc_error_dialog (NULL, child_has_ro_splits, name);
 	return;
 
       } else if (delete_res.has_splits) 
@@ -486,7 +543,7 @@ gnc_acct_tree_window_delete_common (Account *account)
 	format = children ? no_splits : no_splits_no_children;
     }
 
-    if (gnc_verify_dialog(FALSE, format, name)) {
+    if (gnc_verify_dialog(NULL, FALSE, format, name)) {
       gnc_suspend_gui_refresh ();
       
       xaccAccountBeginEdit (account);
@@ -500,7 +557,7 @@ gnc_acct_tree_window_delete_common (Account *account)
   {
     const char *message = _("To delete an account, you must first\n"
                             "choose an account to delete.\n");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
   }
 }
 
@@ -524,7 +581,7 @@ gnc_acct_tree_find_account_from_gncmdi(GNCMDIInfo * info)
   Account         * account;
 
   child = gnome_mdi_get_active_child(info->mdi);
-  mc = gtk_object_get_user_data(GTK_OBJECT(child));
+  mc = g_object_get_data(G_OBJECT(child), "gnc-mdi-child-info");
   win = mc->user_data;
   account = gnc_acct_tree_window_get_current_account(win);
 
@@ -543,7 +600,7 @@ gnc_acct_tree_window_menu_open_subs_cb(GtkWidget * widget,
   if (account == NULL) {
     const char *message = _("To open an account, you must first\n"
                             "choose an account to open.");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
     return;
   }
   else {
@@ -572,7 +629,7 @@ gnc_acct_tree_window_menu_edit_cb (GtkWidget * widget,
   {
     const char *message = _("To edit an account, you must first\n"
                             "choose an account to edit.\n");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
   }
 }
 
@@ -594,12 +651,11 @@ gnc_acct_tree_window_menu_reconcile_cb(GtkWidget * widget,
   {
     const char *message = _("To reconcile an account, you must first\n"
                             "choose an account to reconcile.");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
   }
 }
 
 static void
-
 gnc_acct_tree_window_menu_transfer_cb (GtkWidget * widget, 
 				       GNCMDIInfo * info)
 {
@@ -649,7 +705,7 @@ gnc_acct_tree_window_menu_scrub_cb(GtkWidget * widget,
   if (account == NULL)
   {
     const char *message = _("You must select an account to check and repair.");
-    gnc_error_dialog (message);
+    gnc_error_dialog (NULL, message);
     return;
   }
 
@@ -672,7 +728,7 @@ gnc_acct_tree_window_menu_scrub_sub_cb(GtkWidget * widget,
   if (account == NULL)
   {
     const char *message = _("You must select an account to check and repair.");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
     return;
   }
 
@@ -710,7 +766,7 @@ gnc_acct_tree_window_menu_open_cb (GtkWidget *widget, GNCMDIInfo * info)
   if (account == NULL) {
     const char *message = _("To open an account, you must first\n"
                             "choose an account to open.");
-    gnc_error_dialog(message);
+    gnc_error_dialog(NULL, message);
     return;
   }
   else {
@@ -722,6 +778,7 @@ gnc_acct_tree_window_menu_open_cb (GtkWidget *widget, GNCMDIInfo * info)
 }
 
 
+#if 0
 static void
 gnc_acct_tree_window_activate_cb(GNCMainWinAccountTree *tree,
                                  Account *account,
@@ -832,11 +889,12 @@ gnc_acct_tree_window_configure (GNCAcctTreeWin * info)
 
   gnc_mainwin_account_tree_set_view_info (tree, new_avi);
 }
+#endif 
 
 static void
 gnc_euro_change (gpointer data)
 {
-  gnc_acct_tree_window_configure (data);
+  /* gnc_acct_tree_window_configure (data); */
   gnc_gui_refresh_all ();
 }
 
@@ -1047,6 +1105,7 @@ gnc_acct_tree_window_create_menu(GNCAcctTreeWin * main_info,
 }
 
 
+#if 0
 static void
 gnc_acct_tree_window_select_cb(GNCMainWinAccountTree *tree, 
                                Account *account, 
@@ -1058,12 +1117,23 @@ gnc_acct_tree_window_select_cb(GNCMainWinAccountTree *tree,
   
   gnc_acct_tree_window_set_sensitives(win, sensitive);
 }
+#endif
 
 
 Account * 
 gnc_acct_tree_window_get_current_account(GNCAcctTreeWin * win) {
-  return gnc_mainwin_account_tree_get_current_account
-    (GNC_MAINWIN_ACCOUNT_TREE(win->account_tree));
+  GtkTreeSelection *selection;
+  GtkTreeModel *model;
+  GtkTreeIter iter;
+  Account *account;
+
+  selection = gtk_tree_view_get_selection (win->account_tree_view);
+  if (!gtk_tree_selection_get_selected (selection, &model, &iter))
+    return NULL;
+
+  account = gnc_tree_model_account_get_account (GNC_TREE_MODEL_ACCOUNT (model), &iter);
+
+  return account;
 }
 
 
@@ -1100,20 +1170,96 @@ gnc_acct_tree_window_destroy(GNCAcctTreeWin * win) {
   g_free (win);
 }
 
+static gboolean
+gnc_acct_tree_button_press_cb (GtkWidget *widget,
+			       GdkEventButton *event,
+			       gpointer data)
+{
+  GNCAcctTreeWin *treewin = (GNCAcctTreeWin *)data;
+  const gchar *popup;
+  gchar *path;
+  GtkWidget *menu;
+
+  if (event->button == 3) {
+    /* Show a different popup menu if no account is selected. */
+    popup = "AccountTreeSelectedPopup";
+
+    path = g_strconcat ("/popups/", popup, NULL);
+    menu = egg_menu_merge_get_widget (treewin->ui_merge, path);
+    g_free (path);
+
+    g_return_val_if_fail (menu != NULL, FALSE);
+
+    gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, NULL, event->button, event->time);
+
+    return TRUE;
+  }
+
+  return FALSE;
+}
 
 GNCAcctTreeWin *
 gnc_acct_tree_window_new(const gchar * url)  {
   GNCAcctTreeWin * treewin = g_new0(GNCAcctTreeWin, 1);
+  EggMenuMerge *merge;
+  EggActionGroup *action_group;
+  gint i;
+  gchar *fname;
   SCM find_options = scm_c_eval_string("gnc:find-acct-tree-window-options");
   SCM temp;
   int options_id;
   URLType type;
+  GtkTreeModel *model;
+  GtkCellRenderer *renderer;
+  GtkTreeViewColumn *column;
 
   treewin->euro_change_callback_id =
     gnc_register_option_change_callback(gnc_euro_change, treewin,
                                         "International",
                                         "Enable EURO support");
-  treewin->account_tree = gnc_mainwin_account_tree_new();
+
+  for (i = 0; i < acct_tree_popups_n_entries; i++) {
+    acct_tree_popups_entries[i].user_data = treewin;
+  }
+
+  merge = egg_menu_merge_new ();
+
+  action_group = egg_action_group_new ("PopupsActions");
+  egg_action_group_add_actions (action_group, acct_tree_popups_entries,
+				acct_tree_popups_n_entries);
+  egg_menu_merge_insert_action_group (merge, action_group, 0);
+
+  fname = g_strconcat (GNC_UI_DIR, "/", "acct-tree-ui.xml", NULL);
+  egg_menu_merge_add_ui_from_file (merge, fname, NULL);
+  g_free (fname);
+  /* gtk_window_add_accel_group (GTK_WINDOW (window), merge->accel_group); */
+  egg_menu_merge_ensure_update (merge);
+
+  treewin->ui_merge = merge;
+
+  model = gnc_tree_model_account_new (gnc_book_get_group (gnc_get_current_book ()));
+  
+  treewin->account_tree_view = GTK_TREE_VIEW (gtk_tree_view_new ());
+  g_signal_connect (G_OBJECT (treewin->account_tree_view), "button-press-event",
+		    G_CALLBACK (gnc_acct_tree_button_press_cb), treewin);
+  gtk_tree_view_set_model (treewin->account_tree_view, model);
+  g_object_unref (G_OBJECT (model));
+
+  renderer = gtk_cell_renderer_text_new ();
+  column = gtk_tree_view_column_new_with_attributes (_("Account Name"),
+						     renderer,
+						     "text", GNC_TREE_MODEL_ACCOUNT_COL_NAME,
+						     NULL);
+  gtk_tree_view_append_column (treewin->account_tree_view, column);
+  gtk_tree_view_set_expander_column (treewin->account_tree_view, column);
+
+  renderer = gtk_cell_renderer_text_new ();
+  column = gtk_tree_view_column_new_with_attributes (_("Description"),
+						     renderer,
+						     "text", GNC_TREE_MODEL_ACCOUNT_COL_DESCRIPTION,
+						     NULL);
+  gtk_tree_view_append_column (treewin->account_tree_view, column);
+
   treewin->options = SCM_BOOL_F;
   scm_protect_object(treewin->options);
   treewin->editor_dialog = NULL;
@@ -1155,37 +1301,32 @@ gnc_acct_tree_window_new(const gchar * url)  {
   }
 
   treewin->odb     = gnc_option_db_new(treewin->options);
-  
-  gtk_signal_connect(GTK_OBJECT(treewin->account_tree), "activate_account",
-		     GTK_SIGNAL_FUNC (gnc_acct_tree_window_activate_cb), 
-                     treewin);
 
-  gtk_signal_connect(GTK_OBJECT(treewin->account_tree), "select_account",
-                     GTK_SIGNAL_FUNC(gnc_acct_tree_window_select_cb), 
-                     treewin);
+#if 0
+  g_signal_connect (G_OBJECT (treewin->account_tree), "activate_account",
+		    G_CALLBACK (gnc_acct_tree_window_activate_cb), treewin);
 
-  gtk_signal_connect(GTK_OBJECT(treewin->account_tree), "unselect_account",
-                     GTK_SIGNAL_FUNC(gnc_acct_tree_window_select_cb), 
-                     treewin);
-  
+  g_signal_connect (G_OBJECT (treewin->account_tree), "select_account",
+		    G_CALLBACK (gnc_acct_tree_window_select_cb), treewin);
+
+  g_signal_connect (G_OBJECT (treewin->account_tree), "unselect_account",
+		    G_CALLBACK (gnc_acct_tree_window_select_cb), treewin);
+#endif
+
   /* Show everything now that it is created */
-  gtk_widget_show (treewin->account_tree);
+  gtk_widget_show (GTK_WIDGET (treewin->account_tree_view));
 
-  gnc_acct_tree_window_configure (treewin);
-
-  /* gnc_refresh_main_window (); */
-  gnc_account_tree_refresh 
-    (GNC_MAINWIN_ACCOUNT_TREE (treewin->account_tree)->acc_tree);
+  /* gnc_acct_tree_window_configure (treewin); */
 
   gnc_acct_tree_window_set_sensitives(treewin, FALSE); 
 
-  gtk_widget_grab_focus(treewin->account_tree);
+  gtk_widget_grab_focus(GTK_WIDGET (treewin->account_tree_view));
   return treewin;
 } 
 
 GtkWidget * 
 gnc_acct_tree_window_get_widget(GNCAcctTreeWin * win) {
-  return win->account_tree;
+  return GTK_WIDGET (win->account_tree_view);
 }
 
 SCM 
@@ -1209,13 +1350,23 @@ gnc_options_dialog_apply_cb(GNCOptionWin * propertybox,
   if(!win) return;
 
   gnc_option_db_commit(win->odb);
-  gnc_acct_tree_window_configure(win);
+  /* gnc_acct_tree_window_configure(win); */
 }
 
 static void
 gnc_options_dialog_help_cb(GNCOptionWin * propertybox,
-                           gpointer user_data) {
-  gnome_ok_dialog("Set the account tree options you want using this dialog.");
+			   gpointer user_data)
+{
+  GtkWidget *dialog;
+
+  dialog = gtk_message_dialog_new (NULL,
+				   GTK_DIALOG_DESTROY_WITH_PARENT,
+				   GTK_MESSAGE_INFO,
+				   GTK_BUTTONS_OK,
+				   "Set the account tree options you want using this dialog.");
+
+  gtk_dialog_run (GTK_DIALOG (dialog));
+  gtk_widget_destroy (dialog);
 }
 
 static void
@@ -1242,13 +1393,13 @@ gnc_acct_tree_window_toolbar_options_cb(GtkWidget * widget, gpointer data) {
     
     gnc_options_dialog_set_apply_cb(win->editor_dialog, 
                                     gnc_options_dialog_apply_cb,
-                                    (gpointer)win);
+                                    win);
     gnc_options_dialog_set_help_cb(win->editor_dialog, 
                                    gnc_options_dialog_help_cb,
-                                   (gpointer)win);
+                                   win);
     gnc_options_dialog_set_close_cb(win->editor_dialog, 
                                     gnc_options_dialog_close_cb,
-                                    (gpointer)win);    
+                                    win);
   }
 }
 
@@ -1412,3 +1563,47 @@ gnc_acct_tree_tweak_menu (GNCMDIChildInfo * mc)
 		 (gpointer)FALSE);
 }
 
+static void
+gnc_acct_tree_window_cmd_open_account (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_open_subaccounts (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_edit_account (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_reconcile (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_transfer (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_stock_split (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_new_account (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_delete_account (EggAction *action, gpointer data)
+{
+}
+
+static void
+gnc_acct_tree_window_cmd_view_options (EggAction *action, gpointer data)
+{
+}

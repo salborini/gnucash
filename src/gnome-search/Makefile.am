@@ -13,8 +13,9 @@ AM_CFLAGS = \
   ${GTKHTML_CFLAGS} \
   ${GDK_PIXBUF_CFLAGS} \
   ${GLADE_CFLAGS} \
-  ${GNOME_INCLUDEDIR} \
-  ${GLIB_CFLAGS} 
+  ${GNOME_CFLAGS} \
+  ${GLIB_CFLAGS} \
+  ${GNOME_PRINT_CFLAGS}
 
 libgncmod_gnome_search_la_SOURCES = \
   gncmod-gnome-search.c \
@@ -52,11 +53,11 @@ libgncmod_gnome_search_la_LDFLAGS = -module
 libgncmod_gnome_search_la_LIBADD = \
   ${top_builddir}/src/gnc-module/libgncmodule.la \
   ${GUILE_LIBS} \
-  ${GNOME_LIBDIR} \
-  ${GNOMEUI_LIBS} \
+  ${GNOME_LIBS} \
   ${GTKHTML_LIBS} \
   ${GLADE_LIBS} \
-  ${GLIB_LIBS}
+  ${GLIB_LIBS} \
+  ${GNOME_PRINT_LIBS}
 
 libgw_gnome_search_la_SOURCES = gw-gnome-search.c
 libgw_gnome_search_la_LDFLAGS = -module ${G_WRAP_LINK_ARGS}

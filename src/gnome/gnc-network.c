@@ -220,7 +220,7 @@ gnc_network_auth_check(gpointer data) {
       gnc_html_show_url(na->html, URL_TYPE_ACTION, na->url, NULL, 0);
     }
     else {
-      gnc_warning_dialog(_("GnuCash Network authorization failed."));      
+      gnc_warning_dialog(NULL, _("GnuCash Network authorization failed."));      
       gnc_passphrase = NULL;
     }
     /* clean up */ 
@@ -378,7 +378,7 @@ gnc_network_make_keypair_check(gpointer data) {
         return TRUE;
       }
       else {
-        gnc_error_dialog(_("Passphrases did not match."));
+        gnc_error_dialog(NULL, _("Passphrases did not match."));
         gnc_network_make_keypair_handler(mk->html, mk->eb, data);
         gnc_network_free_make_keypair_info(mk);
         return FALSE;

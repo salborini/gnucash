@@ -57,27 +57,30 @@ static short module = MOD_GUI;
 
 
 /** Static function declarations **************************************/
-static void gnc_account_tree_init(GNCAccountTree *tree);
-static void gnc_account_tree_class_init(GNCAccountTreeClass *klass);
-static gint gnc_account_tree_key_press(GtkWidget *widget, GdkEventKey *event);
-static gint gnc_account_tree_button_press(GtkWidget *widget,
- 					  GdkEventButton *event);
-static void gnc_account_tree_select_row(GtkCTree *ctree,
-					GtkCTreeNode *row,
-					gint column);
-static void gnc_account_tree_unselect_row(GtkCTree *ctree,
-					  GtkCTreeNode *row,
-					  gint column);
-static GtkCTreeNode * gnc_account_tree_insert_row(GNCAccountTree *tree,
-						  GtkCTreeNode *parent,
-						  GtkCTreeNode *sibling,
-						  Account *acc);
-static void gnc_account_tree_fill(GNCAccountTree *tree,
-                                  GHashTable *expanded_accounts,
-				  GtkCTreeNode *parent,
-				  AccountGroup *accts);
+static void gnc_account_tree_init (GNCAccountTree *tree);
+static void gnc_account_tree_class_init (GNCAccountTreeClass *klass);
+static void gnc_account_tree_finalize (GObject *object);
+static void gnc_account_tree_dispose (GObject *object);
+
+static gint gnc_account_tree_key_press (GtkWidget *widget, GdkEventKey *event);
+static gint gnc_account_tree_button_press (GtkWidget *widget,
+ 					   GdkEventButton *event);
+static void gnc_account_tree_select_row (GtkCTree *ctree,
+					 GtkCTreeNode *row,
+					 gint column);
+static void gnc_account_tree_unselect_row (GtkCTree *ctree,
+					   GtkCTreeNode *row,
+					   gint column);
+static GtkCTreeNode * gnc_account_tree_insert_row (GNCAccountTree *tree,
+						   GtkCTreeNode *parent,
+						   GtkCTreeNode *sibling,
+						   Account *acc);
+static void gnc_account_tree_fill (GNCAccountTree *tree,
+                                   GHashTable *expanded_accounts,
+				   GtkCTreeNode *parent,
+				   AccountGroup *accts);
+static void gnc_account_tree_set_view_info_real (GNCAccountTree *tree);
 static void gnc_account_tree_update_column_visibility (GNCAccountTree *tree);
-static void gnc_account_tree_destroy(GtkObject *object);
 
 struct _acct_tree_defaults {
   gboolean auto_resize;
@@ -91,44 +94,44 @@ struct _acct_tree_defaults {
   {/* CODE */		FALSE, GTK_JUSTIFY_LEFT,  "code",		N_("Account Code")},
   {/* DESCRIPTION */	TRUE,  GTK_JUSTIFY_LEFT,  "description",	N_("Description")},
   {/* PRESENT */	TRUE,  GTK_JUSTIFY_RIGHT, "present",		N_("Present")},
-  {/* PRESENT_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "present_report",	N_("Present")},
+  {/* PRESENT_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "present_report",	N_("Present (Report)")},
   {/* BALANCE */	TRUE,  GTK_JUSTIFY_RIGHT, "balance",		N_("Balance")},
-  {/* BALANCE_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "balance_report",	N_("Balance")},
+  {/* BALANCE_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "balance_report",	N_("Balance (Report)")},
   {/* CLEARED */	TRUE,  GTK_JUSTIFY_RIGHT, "cleared",		N_("Cleared")},
-  {/* CLEARED_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "cleared_report",	N_("Cleared")},
+  {/* CLEARED_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "cleared_report",	N_("Cleared (Report)")},
   {/* RECNCLD */	TRUE,  GTK_JUSTIFY_RIGHT, "reconciled",		N_("Reconciled")},
-  {/* RECNCLD_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "reconciled_report",	N_("Reconciled")},
+  {/* RECNCLD_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "reconciled_report",	N_("Reconciled (Report)")},
   {/* FUTURE_MIN */	TRUE,  GTK_JUSTIFY_RIGHT, "future_min",		N_("Future Minimum")},
-  {/* FUT_MIN_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "future_min_report",	N_("Future Minimum")},
+  {/* FUT_MIN_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "future_min_report",	N_("Future Minimum (Report)")},
   {/* TOTAL */		TRUE,  GTK_JUSTIFY_RIGHT, "total",		N_("Total")},
-  {/* TOTAL_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "total_report",	N_("Total")},
+  {/* TOTAL_REPORT */	TRUE,  GTK_JUSTIFY_RIGHT, "total_report",	N_("Total (Report)")},
   {/* NOTES */		FALSE, GTK_JUSTIFY_LEFT,  "notes",		N_("Notes")},
   {/* TAX_INFO */	FALSE, GTK_JUSTIFY_LEFT,  "tax-info",		N_("Tax Info")},
 };
 
-GtkType
+GType
 gnc_account_tree_get_type (void)
 {
-  static GtkType gnc_account_tree_type = 0;
+  static GType gnc_account_tree_type = 0;
 
-  if (!gnc_account_tree_type)
-  {
-    static const GtkTypeInfo gnc_account_tree_info =
-    {
-      "GNCAccountTree",
-      sizeof (GNCAccountTree),
+  if (gnc_account_tree_type == 0) {
+    static const GTypeInfo gnc_account_tree_info = {
       sizeof (GNCAccountTreeClass),
-      (GtkClassInitFunc) gnc_account_tree_class_init,
-      (GtkObjectInitFunc) gnc_account_tree_init,
-      /* reserved_1 */ NULL,
-      /* reserved_2 */ NULL,
-      (GtkClassInitFunc) NULL
+      NULL,
+      NULL,
+      (GClassInitFunc) gnc_account_tree_class_init,
+      NULL,
+      NULL,
+      sizeof (GNCAccountTree),
+      0,
+      (GInstanceInitFunc) gnc_account_tree_init
     };
-
-    gnc_account_tree_type = gtk_type_unique (GTK_TYPE_CTREE,
-					     &gnc_account_tree_info);
+		
+    gnc_account_tree_type = g_type_register_static (GTK_TYPE_CTREE,
+						    "GNCAccountTree",
+						    &gnc_account_tree_info, 0);
   }
-
+	
   return gnc_account_tree_type;
 }
 
@@ -150,20 +153,23 @@ refresh_handler (GHashTable *changes, gpointer user_data)
 GtkWidget *
 gnc_account_tree_new (void)
 {
-  GtkWidget *tree;
+  GNCAccountTree *tree;
   gint component_id;
 
-  tree = GTK_WIDGET(gtk_type_new(gnc_account_tree_get_type()));
+  tree = g_object_new (GNC_TYPE_ACCOUNT_TREE,
+		       "n-columns", 12,
+		       "tree-column", 0,
+		       NULL);
 
   component_id = gnc_register_gui_component (ACCOUNT_TREE_CM_CLASS,
                                              refresh_handler, NULL,
-                                             tree);
+					     GTK_WIDGET (tree));
 
   gnc_gui_component_watch_entity_type (component_id,
                                        GNC_ID_ACCOUNT,
                                        GNC_EVENT_MODIFY | GNC_EVENT_DESTROY);
 
-  return tree;
+  return GTK_WIDGET (tree);
 }
 
 
@@ -211,26 +217,18 @@ gnc_account_tree_init (GNCAccountTree *tree)
   for (i = 0; i < NUM_ACCOUNT_FIELDS; i++)
     tree->column_headings[i] = gettext(acct_tree_defaults[i].field_name);
 
+#ifdef OLD
   gtk_ctree_construct(GTK_CTREE(tree),
                       NUM_ACCOUNT_FIELDS, 0,
                       (gchar **) tree->column_headings);
+#else
+  for (i = 0; i < NUM_ACCOUNT_FIELDS; i++) {
+    gtk_clist_set_column_title (GTK_CLIST (tree), i, tree->column_headings[i]);
+  }
+#endif
 
   gtk_clist_set_shadow_type(GTK_CLIST(tree), GTK_SHADOW_IN);
   gtk_clist_column_titles_passive(GTK_CLIST(tree));
-
-  style = gtk_widget_get_style(GTK_WIDGET(tree));
-  font = (style != NULL) ? style->font : NULL;
-
-  for (i = 0; i < NUM_ACCOUNT_FIELDS; i++) {
-    gtk_clist_set_column_auto_resize(GTK_CLIST(tree), i,
-				     acct_tree_defaults[i].auto_resize);
-    gtk_clist_set_column_justification(GTK_CLIST(tree), i,
-				       acct_tree_defaults[i].justification);
-    if (font != NULL) {
-      width = gdk_string_width(font, tree->column_headings[i]);
-      gtk_clist_set_column_min_width(GTK_CLIST(tree), i, width + 5);
-    }
-  }
 
   tree->deficit_style = NULL;
 
@@ -251,65 +249,60 @@ gnc_account_tree_init (GNCAccountTree *tree)
 static void
 gnc_account_tree_class_init(GNCAccountTreeClass *klass)
 {
-  GtkObjectClass    *object_class;
+  GObjectClass      *object_class;
   GtkWidgetClass    *widget_class;
-  GtkContainerClass *container_class;
-  GtkCListClass     *clist_class;
   GtkCTreeClass     *ctree_class;
+  
+  object_class = G_OBJECT_CLASS (klass);
+  widget_class = GTK_WIDGET_CLASS (klass);
+  ctree_class = GTK_CTREE_CLASS (klass);
 
-  object_class =    (GtkObjectClass*) klass;
-  widget_class =    (GtkWidgetClass*) klass;
-  container_class = (GtkContainerClass*) klass;
-  clist_class =     (GtkCListClass*) klass;
-  ctree_class =     (GtkCTreeClass*) klass;
-
-  parent_class = gtk_type_class(GTK_TYPE_CTREE);
+  parent_class = g_type_class_peek_parent (klass);
 
   account_tree_signals[SELECT_ACCOUNT] =
-    gtk_signal_new("select_account",
-		   GTK_RUN_FIRST,
-		   object_class->type,
-		   GTK_SIGNAL_OFFSET(GNCAccountTreeClass,
-				     select_account),
-		   gtk_marshal_NONE__POINTER,
-		   GTK_TYPE_NONE, 1,
-		   GTK_TYPE_POINTER);
+    g_signal_new ("select_account",
+		  G_OBJECT_CLASS_TYPE (object_class),
+		  G_SIGNAL_RUN_FIRST,
+		  G_STRUCT_OFFSET(GNCAccountTreeClass, select_account),
+		  NULL,
+		  NULL,
+		  g_cclosure_marshal_VOID__POINTER,
+		  G_TYPE_NONE,
+		  1,
+		  G_TYPE_POINTER);
 
   account_tree_signals[UNSELECT_ACCOUNT] =
-    gtk_signal_new("unselect_account",
-		   GTK_RUN_FIRST,
-		   object_class->type,
-		   GTK_SIGNAL_OFFSET(GNCAccountTreeClass,
-				     unselect_account),
-		   gtk_marshal_NONE__POINTER,
-		   GTK_TYPE_NONE, 1,
-		   GTK_TYPE_POINTER);
+    g_signal_new ("unselect_account",
+		  G_OBJECT_CLASS_TYPE (object_class),
+		  G_SIGNAL_RUN_FIRST,
+		  G_STRUCT_OFFSET(GNCAccountTreeClass, unselect_account),
+		  NULL,
+		  NULL,
+		  g_cclosure_marshal_VOID__POINTER,
+		  G_TYPE_NONE,
+		  1,
+		  G_TYPE_POINTER);
 
   account_tree_signals[ACTIVATE_ACCOUNT] =
-    gtk_signal_new("activate_account",
-		   GTK_RUN_FIRST,
-		   object_class->type,
-		   GTK_SIGNAL_OFFSET(GNCAccountTreeClass,
-				     activate_account),
-		   gtk_marshal_NONE__POINTER,
-		   GTK_TYPE_NONE, 1,
-		   GTK_TYPE_POINTER);
+    g_signal_new ("activate_account",
+		  G_OBJECT_CLASS_TYPE (object_class),
+		  G_SIGNAL_RUN_FIRST,
+		  G_STRUCT_OFFSET(GNCAccountTreeClass, activate_account),
+		  NULL,
+		  NULL,
+		  g_cclosure_marshal_VOID__POINTER,
+		  G_TYPE_NONE,
+		  1,
+		  G_TYPE_POINTER);
 
-  gtk_object_class_add_signals(object_class,
-			       account_tree_signals,
-			       LAST_SIGNAL);
-
-  object_class->destroy = gnc_account_tree_destroy;
+  object_class->finalize = gnc_account_tree_finalize;
+  object_class->dispose = gnc_account_tree_dispose;
 
   widget_class->key_press_event = gnc_account_tree_key_press;
   widget_class->button_press_event = gnc_account_tree_button_press;
 
   ctree_class->tree_select_row   = gnc_account_tree_select_row;
   ctree_class->tree_unselect_row = gnc_account_tree_unselect_row;
-
-  klass->select_account   = NULL;
-  klass->unselect_account = NULL;
-  klass->activate_account = NULL;
 }
 
 /********************************************************************\
@@ -418,7 +411,7 @@ gnc_account_tree_refresh(GNCAccountTree * tree)
 void
 gnc_account_tree_set_view_info(GNCAccountTree *tree, AccountViewInfo *info)
 {
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
   g_return_if_fail(info != NULL);
 
   tree->avi = *info;
@@ -438,7 +431,7 @@ gnc_account_tree_set_view_info(GNCAccountTree *tree, AccountViewInfo *info)
 void
 gnc_account_tree_get_view_info(GNCAccountTree *tree, AccountViewInfo *info)
 {
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
   g_return_if_fail(info != NULL);
 
   *info = tree->avi;
@@ -460,7 +453,7 @@ gnc_account_tree_expand_account(GNCAccountTree *tree, Account *account)
   GtkCTreeNode *node;
 
   g_return_if_fail(tree != NULL);
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
 
   ctree = GTK_CTREE(tree);
 
@@ -489,7 +482,7 @@ gnc_account_tree_toggle_account_expansion (GNCAccountTree *tree,
   GtkCTreeNode *node;
 
   g_return_if_fail(tree != NULL);
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
 
   ctree = GTK_CTREE(tree);
 
@@ -515,7 +508,7 @@ gnc_account_tree_expand_all (GNCAccountTree *tree)
   GtkCTree *ctree;
 
   g_return_if_fail (tree != NULL);
-  g_return_if_fail (IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail (GNC_IS_ACCOUNT_TREE(tree));
 
   ctree = GTK_CTREE(tree);
 
@@ -921,7 +914,7 @@ gnc_account_tree_set_view_filter(GNCAccountTree *tree,
                                  gpointer user_data)
 {
   g_return_if_fail(tree != NULL);
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
 
   tree->view_filter = filter;
   tree->view_filter_data = user_data;
@@ -942,7 +935,7 @@ gnc_account_tree_set_selectable_filter (GNCAccountTree *tree,
                                         gpointer user_data)
 {
   g_return_if_fail(tree != NULL);
-  g_return_if_fail(IS_GNC_ACCOUNT_TREE(tree));
+  g_return_if_fail(GNC_IS_ACCOUNT_TREE(tree));
 
   tree->selectable_filter = filter;
   tree->selectable_filter_data = user_data;
@@ -1208,7 +1201,18 @@ gnc_account_tree_insert_row(GNCAccountTree *tree,
 }
 
 static void
-gnc_account_tree_destroy(GtkObject *object)
+gnc_account_tree_finalize (GObject *object)
+{
+  GNCAccountTree *tree = GNC_ACCOUNT_TREE(object);
+
+  g_list_free(tree->current_accounts);
+  tree->current_accounts = NULL;
+
+  G_OBJECT_CLASS (parent_class)->finalize (object);
+}
+
+static void
+gnc_account_tree_dispose (GObject *object)
 {
   GNCAccountTree *tree = GNC_ACCOUNT_TREE(object);
 
@@ -1216,13 +1220,9 @@ gnc_account_tree_destroy(GtkObject *object)
 
   if (tree->deficit_style != NULL)
   {
-    gtk_style_unref(tree->deficit_style);
+    g_object_unref(tree->deficit_style);
     tree->deficit_style = NULL;
   }
 
-  g_list_free(tree->current_accounts);
-  tree->current_accounts = NULL;
-
-  if (GTK_OBJECT_CLASS(parent_class)->destroy)
-    (* GTK_OBJECT_CLASS(parent_class)->destroy) (object);
+  G_OBJECT_CLASS (parent_class)->dispose (object);
 }

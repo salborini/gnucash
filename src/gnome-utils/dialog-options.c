@@ -43,6 +43,7 @@
 #include "guile-util.h"
 #include "messages.h"
 #include "option-util.h"
+#include "gdk/gdkfont.h"
 #include "guile-mappings.h"
 #include "gnc-date-format.h"
 
@@ -626,7 +627,7 @@ radiobutton_destroy_cb (GtkObject *obj, gpointer data)
 {
   GtkTooltips *tips = data;
 
-  gtk_object_unref (GTK_OBJECT (tips));
+  g_object_unref (GTK_OBJECT (tips));
 }
 
 static GtkWidget *
@@ -653,7 +654,7 @@ gnc_option_create_radiobutton_widget(char *name, GNCOption *option)
 
   /* Create the tooltips */
   tooltips = gtk_tooltips_new ();
-  gtk_object_ref (GTK_OBJECT (tooltips));
+  g_object_ref (GTK_OBJECT (tooltips));
   gtk_object_sink (GTK_OBJECT (tooltips));
 
   /* Iterate over the options and create a radio button for each one */
@@ -1185,7 +1186,7 @@ gnc_build_options_dialog_contents(GNCOptionWin *propertybox,
   propertybox->tips = gtk_tooltips_new();
   propertybox->option_db = odb;
 
-  gtk_object_ref (GTK_OBJECT (propertybox->tips));
+  g_object_ref (GTK_OBJECT (propertybox->tips));
   gtk_object_sink (GTK_OBJECT (propertybox->tips));
 
   num_sections = gnc_option_db_num_sections(odb);
@@ -1221,7 +1222,7 @@ gnc_build_options_dialog_contents(GNCOptionWin *propertybox,
   }
 
   if (default_page >= 0) {
-    gtk_notebook_set_page(GTK_NOTEBOOK(propertybox->notebook), default_page);
+    gtk_notebook_set_current_page(GTK_NOTEBOOK(propertybox->notebook), default_page);
     gtk_list_select_item(GTK_LIST(propertybox->page_list), default_page);
   } else {
     /* GTKList doesn't default to selecting the first item. */
@@ -1280,7 +1281,7 @@ gnc_options_dialog_cancel_stub_cb(GtkWidget * w, gpointer data)
 
   container = window->container;
 
-  gtk_widget_ref (container);
+  g_object_ref (container);
 
   gtk_signal_handler_block_by_func(GTK_OBJECT(container),
                                    GTK_SIGNAL_FUNC
@@ -1293,13 +1294,13 @@ gnc_options_dialog_cancel_stub_cb(GtkWidget * w, gpointer data)
     gtk_widget_hide(container);
 
   /* at this point, window may point to freed data */
-  if (!GTK_OBJECT_DESTROYED (container))
+  if (!container)
     gtk_signal_handler_unblock_by_func(GTK_OBJECT(container),
                                        GTK_SIGNAL_FUNC
                                        (gnc_options_dialog_destroy_stub_cb),
                                        data);
 
-  gtk_widget_unref (container);
+  g_object_unref (container);
 }
 
 static void
@@ -1336,8 +1337,32 @@ gnc_options_dialog_list_select_cb(GtkWidget * list, GtkWidget * item,
   g_return_if_fail (win);
 
   index = gtk_list_child_position(GTK_LIST(list), item);
-  gtk_notebook_set_page(GTK_NOTEBOOK(win->notebook), index);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(win->notebook), index);
 }
+
+void
+gnc_options_register_stocks (void)
+{
+#if 0
+	static gboolean done = FALSE;
+	
+	GtkStockItem items[] = {
+		{ GTK_STOCK_APPLY		,"gnc_option_apply_button",	0, 0, NULL },
+		{ GTK_STOCK_HELP		,"gnc_options_dialog_help",	0, 0, NULL },
+		{ GTK_STOCK_OK			,"gnc_options_dialog_ok",	0, 0, NULL },
+		{ GTK_STOCK_CANCEL		,"gnc_options_dialog_cancel",	0, 0, NULL },
+	};
+
+	if (done) 
+	{
+		return;
+	}
+	done = TRUE;
+
+	gtk_stock_add (items, G_N_ELEMENTS (items));
+#endif
+}
+
 
 GNCOptionWin *
 gnc_options_dialog_new(gboolean make_toplevel, gchar *title)
@@ -1359,7 +1384,7 @@ gnc_options_dialog_new(gboolean make_toplevel, gchar *title)
   hbox     =  gtk_hbox_new(FALSE, 5);
 
   if(make_toplevel) {
-    retval->container = gtk_window_new(GDK_WINDOW_TOPLEVEL);
+    retval->container = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     if(title)
     {
       gtk_window_set_title(GTK_WINDOW(retval->container), title);
@@ -1367,7 +1392,7 @@ gnc_options_dialog_new(gboolean make_toplevel, gchar *title)
   }
   else {
     retval->container = vbox;
-    gtk_widget_ref(vbox);
+    g_object_ref(vbox);
     gtk_object_sink(GTK_OBJECT(vbox));
   }
 
@@ -1381,10 +1406,10 @@ gnc_options_dialog_new(gboolean make_toplevel, gchar *title)
 
   gtk_container_set_border_width(GTK_CONTAINER (buttonbox), 5);
 
-  apply_button = gnome_stock_button (GNOME_STOCK_BUTTON_APPLY);
-  help_button  = gnome_stock_button (GNOME_STOCK_BUTTON_HELP);
-  ok_button    = gnome_stock_button (GNOME_STOCK_BUTTON_OK);
-  cancel_button = gnome_stock_button (GNOME_STOCK_BUTTON_CANCEL);
+  apply_button =  gtk_button_new_from_stock (GTK_STOCK_APPLY);
+  help_button  =  gtk_button_new_from_stock (GTK_STOCK_HELP);
+  ok_button    =  gtk_button_new_from_stock (GTK_STOCK_OK);
+  cancel_button = gtk_button_new_from_stock (GTK_STOCK_CANCEL);
   separator = gtk_hseparator_new();
 
   gtk_widget_set_sensitive (apply_button, FALSE);
@@ -1487,14 +1512,14 @@ gnc_options_dialog_destroy(GNCOptionWin * win)
                                 (gnc_options_dialog_destroy_stub_cb),
                                 win);
   if(!win->toplevel) {
-    gtk_widget_unref(win->container);
+    g_object_unref(win->container);
   }
   else {
     gtk_widget_destroy(win->container);
   }
 
   if(win->tips) {
-    gtk_object_unref (GTK_OBJECT(win->tips));
+    g_object_unref (GTK_OBJECT(win->tips));
   }
 
   win->container = NULL;
@@ -1563,7 +1588,7 @@ gnc_options_dialog_close_cb(GNCOptionWin *propertybox,
 {
   GNCOptionWin **options_dialog = user_data;
 
-  if (!GTK_OBJECT_DESTROYED (GTK_OBJECT (propertybox->container)))
+  if (!propertybox->container)
     gtk_widget_destroy (propertybox->container);
 
   *options_dialog = NULL;
@@ -1580,7 +1605,7 @@ gnc_show_options_dialog(void)
 
   if (gnc_option_db_num_sections(global_options) == 0)
   {
-    gnc_warning_dialog(_("No options!"));
+    gnc_warning_dialog(NULL, _("No options!"));
     return;
   }
 
@@ -1700,10 +1725,9 @@ gnc_option_set_ui_widget_text (GNCOption *option, GtkBox *page_box,
   gtk_container_add(GTK_CONTAINER(frame), scroll);
 
   *enclosing = gtk_hbox_new(FALSE, 10);
-  value = gtk_text_new(NULL, NULL);
-  gtk_text_set_word_wrap(GTK_TEXT(value), TRUE);
-  gtk_text_set_editable(GTK_TEXT(value), TRUE);
-
+  value = gtk_text_view_new();
+  gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(value), GTK_WRAP_WORD);
+  gtk_text_view_set_editable(GTK_TEXT_VIEW(value), TRUE);
   gtk_container_add (GTK_CONTAINER (scroll), value);
 
   gnc_option_set_widget (option, value);
@@ -2013,10 +2037,11 @@ gnc_option_set_ui_widget_number_range (GNCOption *option, GtkBox *page_box,
 
       string = g_strnfill(num_digits, '8');
       
-      width = gdk_text_measure(style->font, string, num_digits);
+      width = gdk_text_measure(gdk_font_from_description (style->font_desc), 
+                 string, num_digits);
 
       /* sync with gtkspinbutton.c. why doesn't it do this itself? */
-      width += 11 + (2 * style->klass->xthickness);
+      width += 11 + (2 * style->xthickness);
 
       g_free(string);
 
@@ -2810,7 +2835,7 @@ static SCM
 gnc_option_get_ui_value_font (GNCOption *option, GtkWidget *widget)
 {
   GnomeFontPicker *picker = GNOME_FONT_PICKER(widget);
-  char * string;
+  const gchar * string;
 
   string = gnome_font_picker_get_font_name(picker);
   return (scm_makfrom0str(string));
@@ -2918,6 +2943,8 @@ GNCOptionDef_t * gnc_options_ui_get_option (const char *option_name)
 
 void gnc_options_ui_initialize (void)
 {
+
+  gnc_options_register_stocks ();
   g_return_if_fail (optionTable == NULL);
   optionTable = g_hash_table_new (g_str_hash, g_str_equal);
 

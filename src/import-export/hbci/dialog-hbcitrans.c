@@ -187,6 +187,7 @@ gnc_hbci_dialog_new (GtkWidget *parent,
   GladeXML *xml;
   const HBCI_Bank *bank;
   HBCITransDialog *td;
+  gboolean successful;
 
   td = g_new0(HBCITransDialog, 1);
   
@@ -224,50 +225,28 @@ gnc_hbci_dialog_new (GtkWidget *parent,
     GtkWidget *exec_later_button;
     GtkWidget *add_templ_button;
         
-    g_assert 
-      (heading_label = glade_xml_get_widget (xml, "heading_label"));
-    g_assert 
-      (td->recp_name_entry = glade_xml_get_widget (xml, "recp_name_entry"));
-    g_assert 
-      (recp_name_heading = glade_xml_get_widget (xml, "recp_name_heading"));
-    g_assert
-      (td->recp_account_entry = glade_xml_get_widget (xml, "recp_account_entry"));
-    g_assert
-      (recp_account_heading = glade_xml_get_widget (xml, "recp_account_heading"));
-    g_assert
-      (td->recp_bankcode_entry = glade_xml_get_widget (xml, "recp_bankcode_entry"));
-    g_assert
-      (recp_bankcode_heading = glade_xml_get_widget (xml, "recp_bankcode_heading"));
-    g_assert
-      (td->recp_bankname_label = glade_xml_get_widget (xml, "recp_bankname_label"));
-    g_assert
-      (amount_hbox = glade_xml_get_widget (xml, "amount_hbox"));
-    g_assert
-      (td->purpose_entry = glade_xml_get_widget (xml, "purpose_entry"));
-    g_assert
-      (td->purpose_cont_entry = glade_xml_get_widget (xml, "purpose_cont_entry"));
-    g_assert
-      (orig_name_label = glade_xml_get_widget (xml, "orig_name_label"));
-    g_assert
-      (orig_account_label = glade_xml_get_widget (xml, "orig_account_label"));
-    g_assert
-      (orig_bankname_label = glade_xml_get_widget (xml, "orig_bankname_label"));
-    g_assert
-      (orig_bankcode_label = glade_xml_get_widget (xml, "orig_bankcode_label"));
-    g_assert
-      (orig_name_heading = glade_xml_get_widget (xml, "orig_name_heading"));
-    g_assert
-      (orig_account_heading = glade_xml_get_widget (xml, "orig_account_heading"));
-    g_assert
-      (orig_bankname_heading = glade_xml_get_widget (xml, "orig_bankname_heading"));
-    g_assert
-      (orig_bankcode_heading = glade_xml_get_widget (xml, "orig_bankcode_heading"));
-    g_assert
-      (exec_later_button = glade_xml_get_widget (xml, "exec_later_button"));
-    g_assert
-      (td->template_option = glade_xml_get_widget (xml, "template_optionmenu"));
-    g_assert
-      (add_templ_button = glade_xml_get_widget (xml, "add_templ_button"));
+    heading_label = glade_xml_get_widget (xml, "heading_label");
+    td->recp_name_entry = glade_xml_get_widget (xml, "recp_name_entry");
+    recp_name_heading = glade_xml_get_widget (xml, "recp_name_heading");
+    td->recp_account_entry = glade_xml_get_widget (xml, "recp_account_entry");
+    recp_account_heading = glade_xml_get_widget (xml, "recp_account_heading");
+    td->recp_bankcode_entry = glade_xml_get_widget (xml, "recp_bankcode_entry");
+    recp_bankcode_heading = glade_xml_get_widget (xml, "recp_bankcode_heading");
+    td->recp_bankname_label = glade_xml_get_widget (xml, "recp_bankname_label");
+    amount_hbox = glade_xml_get_widget (xml, "amount_hbox");
+    td->purpose_entry = glade_xml_get_widget (xml, "purpose_entry");
+    td->purpose_cont_entry = glade_xml_get_widget (xml, "purpose_cont_entry");
+    orig_name_label = glade_xml_get_widget (xml, "orig_name_label");
+    orig_account_label = glade_xml_get_widget (xml, "orig_account_label");
+    orig_bankname_label = glade_xml_get_widget (xml, "orig_bankname_label");
+    orig_bankcode_label = glade_xml_get_widget (xml, "orig_bankcode_label");
+    orig_name_heading = glade_xml_get_widget (xml, "orig_name_heading");
+    orig_account_heading = glade_xml_get_widget (xml, "orig_account_heading");
+    orig_bankname_heading = glade_xml_get_widget (xml, "orig_bankname_heading");
+    orig_bankcode_heading = glade_xml_get_widget (xml, "orig_bankcode_heading");
+    exec_later_button = glade_xml_get_widget (xml, "exec_later_button");
+    td->template_option = glade_xml_get_widget (xml, "template_optionmenu");
+    add_templ_button = glade_xml_get_widget (xml, "add_templ_button");
 
     td->amount_edit = gnc_amount_edit_new();
     gtk_box_pack_start_defaults(GTK_BOX(amount_hbox), td->amount_edit);
@@ -382,6 +361,7 @@ int gnc_hbci_dialog_run_until_ok(HBCITransDialog *td,
     /* Was cancel pressed or dialog closed? 0 == execute now, 1 ==
        scheduled for later execution (currently unimplemented) */
     if ((result != 0) && (result != 1)) {
+      gtk_widget_destroy (GTK_WIDGET (td->dialog));
       return -1;
     }
 
@@ -394,7 +374,7 @@ int gnc_hbci_dialog_run_until_ok(HBCITransDialog *td,
       HBCI_Value_toReadableString (HBCI_Transaction_value (trans)));*/
     if (HBCI_Value_getValue (HBCI_Transaction_value (td->hbci_trans)) == 0.0) {
       gtk_widget_show_all (td->dialog); 
-      values_ok = !gnc_verify_dialog_parented
+      values_ok = !gnc_verify_dialog
 	(GTK_WIDGET (td->dialog),
 	 TRUE,
 	 "%s",
@@ -483,7 +463,7 @@ check_ktoblzcheck(GtkWidget *parent, const HBCITransDialog *td,
   switch (blzresult) {
   case 2:
     gtk_widget_show_all (parent); 
-    values_ok = gnc_verify_dialog_parented
+    values_ok = gnc_verify_dialog
       (parent,
        TRUE,
        _("The internal check of the destination account number '%s' \n"
@@ -576,7 +556,7 @@ gnc_hbci_trans_dialog_execute(HBCITransDialog *td, HBCI_API *api,
     /* HBCI_API_executeOutbox failed. */
     if ((HBCI_OutboxJob_status (job) == HBCI_JOB_STATUS_DONE) &&
 	(HBCI_OutboxJob_result (job) == HBCI_JOB_RESULT_FAILED)) 
-      successful = !gnc_verify_dialog_parented
+      successful = !gnc_verify_dialog
 	(td->parent, 
 	 FALSE,
 	 "%s",

@@ -303,16 +303,16 @@ static void logMsg (const char *msg, void *user_data)
 
 void add_log_text (GNCInteractor *data, const char *msg)
 {
-  int pos;
+  /*int pos;*/
   g_assert(data);
   
-  pos = gtk_text_get_length (GTK_TEXT (data->log_text));
-  gtk_editable_insert_text (GTK_EDITABLE (data->log_text),
-			    msg, strlen (msg),
-			    &pos);
-  gtk_editable_insert_text (GTK_EDITABLE (data->log_text),
-			    "\n", 1,
-			    &pos);
+  /* pos = gtk_text_get_length (GTK_TEXT_VIEW (data->log_text)); */
+  gtk_text_buffer_insert_at_cursor
+      (gtk_text_view_get_buffer(GTK_TEXT_VIEW (data->log_text)),
+       msg, -1);
+  gtk_text_buffer_insert_at_cursor
+      (gtk_text_view_get_buffer(GTK_TEXT_VIEW (data->log_text)),
+       "\n", -1);
 }
 
 static void destr(void *user_data) 
@@ -326,7 +326,7 @@ on_button_clicked (GtkButton *button,
 		   gpointer user_data)
 {
   GNCInteractor *data = user_data;
-  char *name;
+  const char *name;
   g_assert(data);
   
   name = gtk_widget_get_name (GTK_WIDGET (button));
@@ -355,18 +355,18 @@ gnc_hbci_new_pmonitor(GNCInteractor *data)
 
   xml = gnc_glade_xml_new ("hbci.glade", "HBCI_connection_dialog");
 
-  g_assert (dialog = glade_xml_get_widget (xml, "HBCI_connection_dialog"));
+  (dialog = glade_xml_get_widget (xml, "HBCI_connection_dialog"));
   data->dialog = dialog;
-  g_assert (data->job_entry = glade_xml_get_widget (xml, "job_entry"));
-  g_assert (data->action_entry = glade_xml_get_widget (xml, "action_entry"));
-  g_assert (data->action_progress = 
+  (data->job_entry = glade_xml_get_widget (xml, "job_entry"));
+  (data->action_entry = glade_xml_get_widget (xml, "action_entry"));
+  (data->action_progress = 
 	    glade_xml_get_widget (xml, "action_progress"));
-  g_assert (data->log_text = glade_xml_get_widget (xml, "log_text"));
-  g_assert (data->abort_button = glade_xml_get_widget (xml, "abort_button"));
+  (data->log_text = glade_xml_get_widget (xml, "log_text"));
+  (data->abort_button = glade_xml_get_widget (xml, "abort_button"));
   gtk_widget_set_sensitive (GTK_WIDGET (data->abort_button), FALSE);
-  g_assert (data->close_button = glade_xml_get_widget (xml, "close_button"));
-  g_assert (data->close_checkbutton = 
-	    glade_xml_get_widget (xml, "close_checkbutton"));
+  (data->close_button = glade_xml_get_widget (xml, "close_button"));
+  (data->close_checkbutton = 
+   glade_xml_get_widget (xml, "close_checkbutton"));
 
   gtk_toggle_button_set_active 
     (GTK_TOGGLE_BUTTON (data->close_checkbutton), 

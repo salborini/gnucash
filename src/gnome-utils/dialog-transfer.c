@@ -28,8 +28,8 @@
 
 #include "dialog-transfer.h"
 #include "dialog-utils.h"
+#include "eggtreemodelfilter.h"
 #include "global-options.h"
-#include "gnc-account-tree.h"
 #include "gnc-amount-edit.h"
 #include "gnc-book.h"
 #include "gnc-component-manager.h"
@@ -38,8 +38,9 @@
 #include "gnc-euro.h"
 #include "gnc-exp-parser.h"
 #include "gnc-gui-query.h"
-#include "gnc-ui.h"
 #include "gnc-pricedb.h"
+#include "gnc-tree-model-account.h"
+#include "gnc-ui.h"
 #include "messages.h"
 #include "Transaction.h"
 #include "Account.h"
@@ -47,7 +48,8 @@
 
 #define DIALOG_TRANSFER_CM_CLASS "dialog-transfer"
 
-#define PRECISION 100000
+#define PRECISION 1000000
+
 typedef enum
 {
   XFER_DIALOG_FROM,
@@ -71,16 +73,16 @@ struct _xferDialog
   GtkWidget * conv_reverse;
 
   GtkWidget *	from_window;
-  GNCAccountTree * from;
+  GtkTreeView * from_tree_view;
   gnc_commodity *	from_commodity;
   GtkWidget *	to_window;
-  GNCAccountTree * to;
+  GtkTreeView * to_tree_view;
   gnc_commodity *	to_commodity;
 
   QuickFill * qf;     /* Quickfill on transfer descriptions, 
                          defaults to matching on the "From" account. */
 
-  gboolean quickfill_to;  /* match on the "To" account instead. */
+  XferDirection quickfill;	/* direction match on the account instead. */
 
   /* stored data for the description quickfill functionality */
   gint desc_start_selection;
@@ -94,7 +96,7 @@ struct _xferDialog
   GtkWidget * from_show_button;
   GtkWidget * to_show_button;
 
-  GtkWidget * curr_transfer_frame;
+  GtkWidget * curr_xfer_frame;
 
   GtkWidget * price_edit;
   GtkWidget * to_amount_edit;
@@ -137,8 +139,24 @@ typedef struct _acct_list_item acct_list_item;
 static void gnc_xfer_update_to_amount (XferDialog *xferData);
 static void gnc_xfer_dialog_update_conv_info(XferDialog *xferData);
 
+static Account *gnc_transfer_dialog_get_selected_account (XferDialog *dialog,
+							  XferDirection direction);
+static void gnc_transfer_dialog_set_selected_account (XferDialog *dialog,
+						      Account *account,
+						      XferDirection direction);
 
 /** Implementations **********************************************/
+
+static gnc_numeric
+gnc_xfer_dialog_compute_price (XferDialog *xferData)
+{
+  gnc_numeric from_amt, to_amt;
+
+  from_amt = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->amount_edit));
+  to_amt = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->to_amount_edit));
+
+  return(gnc_numeric_div(to_amt, from_amt, GNC_DENOM_AUTO, GNC_DENOM_REDUCE));
+}
 
 /* (maybe) update the price from the pricedb. */
 static void
@@ -192,12 +210,9 @@ gnc_xfer_dialog_update_price (XferDialog *xferData)
 static void
 gnc_xfer_dialog_toggle_cb(GtkToggleButton *button, gpointer data)
 {
-  GNCAccountTree *tree = GNC_ACCOUNT_TREE(data);
+  EggTreeModelFilter *model = EGG_TREE_MODEL_FILTER (data);
 
-  if (gtk_toggle_button_get_active(button))
-    gnc_account_tree_show_income_expense(tree);
-  else
-    gnc_account_tree_hide_income_expense(tree);
+  egg_tree_model_filter_refilter (model);
 }
 
 static void
@@ -235,8 +250,7 @@ gnc_xfer_dialog_set_price_auto (XferDialog *xferData,
   if (gnc_numeric_zero_p (from_rate) || gnc_numeric_zero_p (to_rate))
     gnc_xfer_dialog_update_price (xferData);
 
-  price = gnc_numeric_div (to_rate, from_rate, GNC_DENOM_AUTO, 
-                           GNC_DENOM_SIGFIGS(6) | GNC_RND_ROUND);
+  price = gnc_numeric_div (to_rate, from_rate, GNC_DENOM_AUTO, GNC_DENOM_REDUCE);
 
   gnc_amount_edit_set_amount (GNC_AMOUNT_EDIT(xferData->price_edit), price);
 
@@ -251,17 +265,17 @@ gnc_xfer_dialog_curr_acct_activate(XferDialog *xferData)
   gboolean curr_active;
 
   from_account = 
-    gnc_account_tree_get_current_account(GNC_ACCOUNT_TREE(xferData->from));
+    gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
 
   to_account = 
-    gnc_account_tree_get_current_account(GNC_ACCOUNT_TREE(xferData->to));
+    gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
 
   curr_active = (xferData->exch_rate ||
 		 ((from_account != NULL) && (to_account != NULL)))
 		 && !gnc_commodity_equiv(xferData->from_commodity,
 					 xferData->to_commodity);
 
-  gtk_widget_set_sensitive(xferData->curr_transfer_frame, curr_active);
+  gtk_widget_set_sensitive(xferData->curr_xfer_frame, curr_active);
   gtk_widget_set_sensitive(xferData->price_edit,
 			   curr_active && gtk_toggle_button_get_active
 			   (GTK_TOGGLE_BUTTON(xferData->price_radio)));
@@ -314,13 +328,8 @@ gnc_xfer_dialog_reload_quickfill( XferDialog *xferData )
   Split *split;
   Transaction *trans;
   Account *account;
-  
-  if( xferData->quickfill_to )
-    account = gnc_account_tree_get_current_account(
-                                      GNC_ACCOUNT_TREE(xferData->to));
-  else
-    account = gnc_account_tree_get_current_account(
-                                      GNC_ACCOUNT_TREE(xferData->from));
+
+  account = gnc_transfer_dialog_get_selected_account (xferData, xferData->quickfill);
 
   /* get a new QuickFill to use */
   gnc_quickfill_destroy( xferData->qf );
@@ -339,14 +348,15 @@ gnc_xfer_dialog_reload_quickfill( XferDialog *xferData )
 
 
 static void
-gnc_xfer_dialog_from_tree_select_cb(GNCAccountTree *tree,
-				    Account *account, gpointer data)
+gnc_xfer_dialog_from_tree_selection_changed_cb (GtkTreeSelection *selection,
+						gpointer data)
 {
   XferDialog *xferData = data;
   GNCPrintAmountInfo print_info;
   gnc_commodity *commodity;
+  Account *account;
 
-  account = gnc_account_tree_get_current_account(tree);
+  account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
   commodity = xaccAccountGetCommodity(account);
   gtk_label_set_text(GTK_LABEL(xferData->from_currency_label), 
 		     gnc_commodity_get_printname(commodity));
@@ -363,20 +373,20 @@ gnc_xfer_dialog_from_tree_select_cb(GNCAccountTree *tree,
                                 xaccAccountGetCommoditySCU (account));
 
   /* Reload the xferDialog quickfill if it is based on the from account */
-  if( !xferData->quickfill_to )
+  if (xferData->quickfill == XFER_DIALOG_FROM)
     gnc_xfer_dialog_reload_quickfill(xferData);
 }
 
 
 static void
-gnc_xfer_dialog_to_tree_select_cb(GNCAccountTree *tree,
-				  Account *account, gpointer data)
+gnc_xfer_dialog_to_tree_selection_changed_cb (GtkTreeSelection *selection, gpointer data)
 {
   XferDialog *xferData = data;
   GNCPrintAmountInfo print_info;
   gnc_commodity *commodity;
+  Account *account;
 
-  account = gnc_account_tree_get_current_account(tree);
+  account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
   commodity = xaccAccountGetCommodity(account);
   gtk_label_set_text(GTK_LABEL(xferData->to_currency_label),
 		     gnc_commodity_get_printname(commodity));
@@ -393,73 +403,93 @@ gnc_xfer_dialog_to_tree_select_cb(GNCAccountTree *tree,
                                 xaccAccountGetCommoditySCU (account));
 
   /* Reload the xferDialog quickfill if it is based on the to account */
-  if( xferData->quickfill_to )
+  if (xferData->quickfill == XFER_DIALOG_TO)
     gnc_xfer_dialog_reload_quickfill(xferData);
 }
 
-
-static void
-gnc_xfer_dialog_fill_tree_frame(XferDialog *xferData,
-                                XferDirection direction)
+static gboolean
+gnc_xfer_dialog_show_inc_exp_visible_cb (GtkTreeModel *tree_model,
+					 GtkTreeIter *iter,
+					 gpointer data)
 {
-  const char *show_inc_exp_message = _("Show the income and expense accounts");
-  GNCAccountTree *atree;
-  GtkWidget *scroll_win;
-  GtkWidget *button;
-  GtkWidget *tree;
+  GncTreeModelAccount *model;
+  GtkCheckButton *show_button;
+  Account *account;
 
-  tree = gnc_account_tree_new();
-  atree = GNC_ACCOUNT_TREE (tree);
+  g_return_val_if_fail (GNC_IS_TREE_MODEL_ACCOUNT (tree_model), FALSE);
+  g_return_val_if_fail (GTK_IS_CHECK_BUTTON (data), FALSE);
 
-  if (direction == XFER_DIALOG_TO)
-    xferData->to = atree;
-  else
-    xferData->from = atree;
-  gtk_clist_column_titles_hide(GTK_CLIST(tree));
-  gnc_account_tree_hide_all_but_name(GNC_ACCOUNT_TREE(tree));
-  gnc_account_tree_hide_income_expense(GNC_ACCOUNT_TREE(tree));
-  gnc_account_tree_refresh(GNC_ACCOUNT_TREE(tree));
+  model = GNC_TREE_MODEL_ACCOUNT (tree_model);
+  show_button = GTK_CHECK_BUTTON (data);
 
-  scroll_win = gnc_glade_lookup_widget (xferData->dialog,
-                                        (direction == XFER_DIALOG_TO) ?
-                                        "to_window" : "from_window");
-
-  if (direction == XFER_DIALOG_TO)
-    xferData->to_window = scroll_win;
-  else
-    xferData->from_window = scroll_win;
-
-  gtk_container_add(GTK_CONTAINER(scroll_win), tree);
-
-  {
-    GtkStyle *st = gtk_widget_get_style(tree);
-    GdkFont *font = NULL;
-    gint height;
-
-    if (st != NULL)
-      font = st->font;
-
-    if (font != NULL)
-    {
-      height = gdk_char_height(font, 'X');
-      gtk_widget_set_usize(scroll_win, 0, (height + 6) * 10);
-    }
+  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (show_button))) {
+    return TRUE;
   }
 
-  button = gnc_glade_lookup_widget (xferData->dialog,
-                                    (direction == XFER_DIALOG_TO) ?
-                                    "to_show_button" : "from_show_button");
+  account = gnc_tree_model_account_get_account (model, iter);
 
-  if (direction == XFER_DIALOG_TO)
-    xferData->to_show_button = button;
-  else
-    xferData->from_show_button = button;
+  return xaccAccountGetType (account) != INCOME && xaccAccountGetType (account) != EXPENSE; 
+}
 
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(button), FALSE);
-  gtk_tooltips_set_tip(xferData->tips, button, show_inc_exp_message, NULL);
+static void
+gnc_xfer_dialog_fill_tree_view(XferDialog *xferData,
+			       XferDirection direction)
+{
+  GtkTreeView *tree_view;
+  GtkTreeModel *account_model, *filter_model;
+  const char *show_inc_exp_message = _("Show the income and expense accounts");
+  GtkWidget *scroll_win;
+  GtkCheckButton *button;
+  GtkTreeSelection *selection;
+  GtkCellRenderer *renderer;
+  GtkTreeViewColumn *column;
 
-  gtk_signal_connect(GTK_OBJECT(button), "toggled",
-		     GTK_SIGNAL_FUNC(gnc_xfer_dialog_toggle_cb), tree);
+  tree_view = GTK_TREE_VIEW (gnc_glade_lookup_widget (xferData->dialog,
+				(direction == XFER_DIALOG_TO) ? "to_tree_view" : "from_tree_view"));
+  button = GTK_CHECK_BUTTON (gnc_glade_lookup_widget (xferData->dialog,
+				(direction == XFER_DIALOG_TO) ? "to_show_button" : "from_show_button"));
+  scroll_win = gnc_glade_lookup_widget (xferData->dialog,
+				(direction == XFER_DIALOG_TO) ? "to_window" : "from_window");
+
+  account_model = gnc_tree_model_account_new (gnc_book_get_group (gnc_get_current_book ()));
+  filter_model = egg_tree_model_filter_new (account_model, NULL);
+  egg_tree_model_filter_set_visible_func (EGG_TREE_MODEL_FILTER (filter_model),
+					  gnc_xfer_dialog_show_inc_exp_visible_cb,
+					  button, NULL);
+
+  gtk_tree_view_set_model (tree_view, filter_model);
+  g_object_unref (account_model);
+  g_object_unref (filter_model);
+
+  selection = gtk_tree_view_get_selection (tree_view);
+  gtk_tree_selection_set_mode (selection, GTK_SELECTION_BROWSE);
+
+  renderer = gtk_cell_renderer_text_new ();
+  column = gtk_tree_view_column_new_with_attributes (_("Account Name"),
+						     renderer,
+						     "text", GNC_TREE_MODEL_ACCOUNT_COL_NAME,
+						     NULL);
+  gtk_tree_view_append_column (tree_view, column);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), FALSE);
+  gtk_tooltips_set_tip (xferData->tips, GTK_WIDGET (button), show_inc_exp_message, NULL);
+
+  g_signal_connect (G_OBJECT (button), "toggled",
+		    G_CALLBACK (gnc_xfer_dialog_toggle_cb), filter_model);
+
+  if (direction == XFER_DIALOG_TO) {
+    xferData->to_tree_view = tree_view;
+    xferData->to_window = scroll_win;
+    xferData->to_show_button = GTK_WIDGET (button);
+    g_signal_connect (G_OBJECT (selection), "changed",
+		      G_CALLBACK (gnc_xfer_dialog_to_tree_selection_changed_cb), xferData);
+  } else {
+    xferData->from_tree_view = tree_view;
+    xferData->from_window = scroll_win;
+    xferData->from_show_button = GTK_WIDGET (button);
+    g_signal_connect (G_OBJECT (selection), "changed",
+		      G_CALLBACK (gnc_xfer_dialog_from_tree_selection_changed_cb), xferData);
+  }
 }
 
 
@@ -475,10 +505,10 @@ gnc_parse_error_dialog (XferDialog *xferData, const char *error_string)
   if (error_string == NULL)
     error_string = "";
 
-  gnc_error_dialog_parented (GTK_WINDOW(xferData->dialog),
-			     "%s\n\n%s: %s.",
-			     error_string, _("Error"),
-			     parse_error_string);
+  gnc_error_dialog (xferData->dialog,
+		    "%s\n\n%s: %s.",
+		    error_string, _("Error"),
+		    parse_error_string);
 }
 
 /*** Callbacks for description quickfill. ***/
@@ -492,7 +522,7 @@ gnc_parse_error_dialog (XferDialog *xferData, const char *error_string)
 static gboolean
 gnc_xfer_dialog_quickfill( XferDialog *xferData )
 {
-  char *desc;
+  const char *desc;
   Account *match_account;  /* the matched text was from this account */
   Split *split;            /* the split to autocomplete from */
   Split *other = NULL;     /* the other split of the transaction */
@@ -502,10 +532,7 @@ gnc_xfer_dialog_quickfill( XferDialog *xferData )
   if( !xferData )
     return( FALSE );
 
-  if( xferData->quickfill_to )
-    match_account = gnc_account_tree_get_current_account( xferData->to );
-  else
-    match_account = gnc_account_tree_get_current_account( xferData->from );
+  match_account = gnc_transfer_dialog_get_selected_account (xferData, xferData->quickfill);
 
   desc = gtk_entry_get_text( GTK_ENTRY(xferData->description_entry) );
 
@@ -554,18 +581,14 @@ gnc_xfer_dialog_quickfill( XferDialog *xferData )
   if( ( other = xaccSplitGetOtherSplit( split ) ) &&
       ( other_acct = xaccSplitGetAccount( other ) ) )
   {
-    GNCAccountTree *other_tree;
     GNCAccountType other_type;
     GtkWidget *other_button;
     
-    if( xferData->quickfill_to )
-    {
-      other_tree = xferData->from;
+    if (xferData->quickfill == XFER_DIALOG_FROM) {
       other_button = xferData->from_show_button;
     }
     else
     {
-      other_tree = xferData->to;
       other_button = xferData->to_show_button;
     }
 
@@ -577,7 +600,7 @@ gnc_xfer_dialog_quickfill( XferDialog *xferData )
     if( (other_type == EXPENSE) || (other_type == INCOME) )
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(other_button), TRUE);
 
-    gnc_account_tree_select_account(other_tree, other_acct, TRUE);
+    gnc_transfer_dialog_set_selected_account (xferData, other_acct, xferData->quickfill);
 
     changed = TRUE;
   }
@@ -667,20 +690,20 @@ gnc_xfer_description_insert_cb(GtkEntry *entry,
    && ( match_str = gnc_quickfill_string( match ) ) 
    && safe_strcmp( new_text, old_text ) )
   {
-    gtk_signal_handler_block_by_data (GTK_OBJECT (entry), xferData );
+    g_signal_handlers_block_matched (G_OBJECT (entry),
+				     G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, xferData);
 
     gtk_entry_set_text( entry, match_str );
 
-    gtk_signal_handler_unblock_by_data (GTK_OBJECT (entry), xferData );
+    g_signal_handlers_unblock_matched (G_OBJECT (entry),
+				       G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, xferData);
 
     /* stop the current insert */
-    gtk_signal_emit_stop_by_name( GTK_OBJECT( entry ), "insert_text" );
+    g_signal_stop_emission_by_name (G_OBJECT (entry), "insert_text");
 
     /* This doesn't seem to fix the selection problems, why? */
-    gtk_entry_select_region( entry, 0, 0 );
-    gtk_editable_claim_selection( GTK_EDITABLE(entry),
-                                  FALSE,
-                                  GDK_CURRENT_TIME );
+    gtk_entry_select_region (entry, 0, 0);
+    gtk_old_editable_claim_selection (GTK_OLD_EDITABLE (entry), FALSE, GDK_CURRENT_TIME);
 
     /* Store off data for the key_press_cb or
      * the button_release_cb to make use of. */
@@ -704,8 +727,8 @@ common_post_quickfill_handler(guint32 time, XferDialog *xferData )
 {
   GtkEntry *entry = GTK_ENTRY(xferData->description_entry);
   gint current_pos   = gtk_editable_get_position( GTK_EDITABLE(entry) );
-  gint current_start = GTK_EDITABLE(entry)->selection_start_pos;
-  gint current_end   = GTK_EDITABLE(entry)->selection_end_pos;
+  gint current_start = GTK_OLD_EDITABLE(entry)->selection_start_pos;
+  gint current_end   = GTK_OLD_EDITABLE(entry)->selection_end_pos;
   gboolean did_something = FALSE;   /* was the selection or position changed? */
 
   if( current_pos != xferData->desc_cursor_position )
@@ -721,7 +744,7 @@ common_post_quickfill_handler(guint32 time, XferDialog *xferData )
   {
     gtk_entry_select_region( entry, xferData->desc_start_selection,
                                     xferData->desc_end_selection );
-    gtk_editable_claim_selection( GTK_EDITABLE(entry), TRUE, time );
+    gtk_old_editable_claim_selection( GTK_OLD_EDITABLE(entry), TRUE, time );
     did_something = TRUE;
   }
 
@@ -782,8 +805,8 @@ gnc_xfer_description_key_press_cb( GtkEntry *entry,
          * field.  Unselect the current field, though.
          */
         gtk_entry_select_region( GTK_ENTRY(xferData->description_entry), 0, 0 );
-        gtk_editable_claim_selection( GTK_EDITABLE(xferData->description_entry),
-                                      FALSE, event->time );
+        gtk_old_editable_claim_selection( GTK_OLD_EDITABLE(xferData->description_entry),
+                                          FALSE, event->time );
       }
       break;
   }
@@ -795,7 +818,7 @@ gnc_xfer_description_key_press_cb( GtkEntry *entry,
     done_with_input = common_post_quickfill_handler( event->time, xferData );
 
   if( done_with_input )
-    gtk_signal_emit_stop_by_name( GTK_OBJECT(entry), "key_press_event" );
+    g_signal_stop_emission_by_name (G_OBJECT (entry), "key_press_event");
 
   return( done_with_input );
 }
@@ -828,8 +851,10 @@ gnc_xfer_dialog_update_conv_info (XferDialog *xferData)
   from_mnemonic = gnc_commodity_get_mnemonic(xferData->from_commodity);
   to_mnemonic = gnc_commodity_get_mnemonic(xferData->to_commodity);
 
-  price = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->price_edit));
-  if (gnc_numeric_zero_p(price)) {
+  // price = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->price_edit));
+  price = gnc_xfer_dialog_compute_price(xferData);
+
+  if (gnc_numeric_check(price) || gnc_numeric_zero_p(price)) {
     string = g_strdup_printf("1 %s = x %s", from_mnemonic, to_mnemonic);
     gtk_label_set_text(GTK_LABEL(xferData->conv_forward), string);
     g_free(string);
@@ -872,9 +897,9 @@ gnc_xfer_update_to_amount (XferDialog *xferData)
   gnc_numeric amount, price, to_amount;
   Account *account;
 
-  account = gnc_account_tree_get_current_account(xferData->to);
+  account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
   if (account == NULL)
-    account = gnc_account_tree_get_current_account(xferData->from);
+    account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
 
   if (account == NULL)
   {
@@ -942,61 +967,21 @@ gnc_xfer_to_amount_update_cb(GtkWidget *widget, GdkEventFocus *event,
                              gpointer data)
 {
   XferDialog *xferData = data;
-  gnc_numeric amount, price, to_amount;
+  gnc_numeric price;
   Account *account;
 
-  account = gnc_account_tree_get_current_account(xferData->to);
+  account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
   if (account == NULL)
-    account = gnc_account_tree_get_current_account(xferData->from);
+    account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
 
   gnc_amount_edit_evaluate (GNC_AMOUNT_EDIT (xferData->to_amount_edit));
 
-  amount = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->amount_edit));
-  to_amount = gnc_amount_edit_get_amount
-    (GNC_AMOUNT_EDIT(xferData->to_amount_edit));
-  price = gnc_numeric_div (to_amount, amount, PRECISION, GNC_RND_ROUND);
+  price = gnc_xfer_dialog_compute_price(xferData);
+  price = gnc_numeric_convert (price, PRECISION, GNC_RND_ROUND);
   gnc_amount_edit_set_amount(GNC_AMOUNT_EDIT(xferData->price_edit), price);
   gnc_xfer_dialog_update_conv_info(xferData);
 
   return FALSE;
-}
-
-
-static void
-gnc_xfer_dialog_select_account(XferDialog *xferData, Account *account,
-                               XferDirection direction)
-{
-  GNCAccountTree *tree;
-  GtkWidget *show_button;
-  gboolean is_income_expense;
-  GNCAccountType type;
-
-  if (xferData == NULL)
-    return;
-  if (account == NULL)
-    return;
-
-  switch (direction)
-  {
-    case XFER_DIALOG_FROM:
-      tree = xferData->from;
-      show_button = xferData->from_show_button;
-      break;
-    case XFER_DIALOG_TO:
-      tree = xferData->to;
-      show_button = xferData->to_show_button;
-      break;
-    default:
-      return;
-  }
-
-  type = xaccAccountGetType(account);
-  is_income_expense = (type == EXPENSE) || (type == INCOME);
-
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_button),
-                               is_income_expense);
-
-  gnc_account_tree_select_account(tree, account, TRUE);
 }
 
 
@@ -1011,7 +996,7 @@ gnc_xfer_dialog_select_account(XferDialog *xferData, Account *account,
 void
 gnc_xfer_dialog_select_from_account(XferDialog *xferData, Account *account)
 {
-  gnc_xfer_dialog_select_account(xferData, account, XFER_DIALOG_FROM);
+  gnc_transfer_dialog_set_selected_account (xferData, account, XFER_DIALOG_FROM);
 }
 
 
@@ -1026,7 +1011,7 @@ gnc_xfer_dialog_select_from_account(XferDialog *xferData, Account *account)
 void
 gnc_xfer_dialog_select_to_account(XferDialog *xferData, Account *account)
 {
-  gnc_xfer_dialog_select_account(xferData, account, XFER_DIALOG_TO);
+  gnc_transfer_dialog_set_selected_account (xferData, account, XFER_DIALOG_TO);
 }
 
 void
@@ -1063,7 +1048,7 @@ gnc_xfer_dialog_lock_account_tree(XferDialog *xferData,
                                   XferDirection direction,
 				  gboolean hide)
 {
-  GNCAccountTree *tree;
+  GtkTreeView *tree_view;
   GtkWidget *show_button;
   GtkWidget *scroll_win;
 
@@ -1073,12 +1058,12 @@ gnc_xfer_dialog_lock_account_tree(XferDialog *xferData,
   switch (direction)
   {
     case XFER_DIALOG_FROM:
-      tree = xferData->from;
+      tree_view = xferData->from_tree_view;
       scroll_win = xferData->from_window;
       show_button = xferData->from_show_button;
       break;
     case XFER_DIALOG_TO:
-      tree = xferData->to;
+      tree_view = xferData->to_tree_view;
       scroll_win = xferData->to_window;
       show_button = xferData->to_show_button;
       break;
@@ -1086,7 +1071,7 @@ gnc_xfer_dialog_lock_account_tree(XferDialog *xferData,
       return;
   }
 
-  gtk_widget_set_sensitive( GTK_WIDGET(tree), FALSE );
+  gtk_widget_set_sensitive( GTK_WIDGET(tree_view), FALSE );
   gtk_widget_set_sensitive( GTK_WIDGET(show_button), FALSE );
 
   if (hide) {
@@ -1198,9 +1183,9 @@ gnc_xfer_dialog_set_amount(XferDialog *xferData, gnc_numeric amount)
   if (xferData == NULL)
     return;
 
-  account = gnc_account_tree_get_current_account(xferData->from);
+  account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
   if (account == NULL)
-    account = gnc_account_tree_get_current_account(xferData->to);
+    account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
 
   gnc_amount_edit_set_amount (GNC_AMOUNT_EDIT (xferData->amount_edit), amount);
 }
@@ -1293,7 +1278,7 @@ gnc_xfer_dialog_set_exchange_rate(XferDialog *xferData, gnc_numeric exchange_rat
 }
 
 static void
-gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
+gnc_xfer_dialog_response_cb (GtkDialog *dialog, gint response_id, gpointer data)
 {
   XferDialog *xferData = data;
   Account *to_account;
@@ -1301,7 +1286,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
   gnc_commodity *from_commodity;
   gnc_commodity *to_commodity;
   gnc_numeric amount, to_amount;
-  char * string;
+  const char *string;
   Timespec ts;
 
   gboolean curr_trans;
@@ -1311,8 +1296,14 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
   Split *to_split;
 
   ENTER(" ");
-  from_account = gnc_account_tree_get_current_account(xferData->from);
-  to_account   = gnc_account_tree_get_current_account(xferData->to);
+  if (response_id != GTK_RESPONSE_OK) {
+    gnc_close_gui_component_by_data (DIALOG_TRANSFER_CM_CLASS, xferData);
+    LEAVE("not ok");
+    return;
+  }
+
+  from_account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_FROM);
+  to_account = gnc_transfer_dialog_get_selected_account (xferData, XFER_DIALOG_TO);
 
   if (xferData->exch_rate == NULL)
   {
@@ -1321,7 +1312,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
       const char *message = _("You must specify an account to transfer from,\n"
 			      "or to, or both, for this transaction.\n"
 			      "Otherwise, it will not be recorded.");
-      gnc_error_dialog_parented(GTK_WINDOW(xferData->dialog), message);
+      gnc_error_dialog(xferData->dialog, message);
       LEAVE("bad account");
       return;
     }
@@ -1330,7 +1321,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
     {
       const char *message = _("You can't transfer from and to the same "
 			      "account!");
-      gnc_error_dialog_parented(GTK_WINDOW(xferData->dialog), message);
+      gnc_error_dialog(xferData->dialog, message);
       LEAVE("same account");
       return;
     }
@@ -1348,7 +1339,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
       else
 	name = xaccAccountGetFullName(to_account,
 				      gnc_get_account_separator ());
-      gnc_error_dialog_parented(GTK_WINDOW(xferData->dialog), placeholder_format, name);
+      gnc_error_dialog(xferData->dialog, placeholder_format, name);
       g_free(name);
       LEAVE("placeholder");
       return;
@@ -1359,7 +1350,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
       const char *message = _("You can't transfer from a non-currency account.  "
 			      "Try reversing the \"from\" and \"to\" accounts "
 			      "and making the \"amount\" negative.");
-      gnc_error_dialog_parented(GTK_WINDOW(xferData->dialog), message);
+      gnc_error_dialog(xferData->dialog, message);
       LEAVE("non-currency");
       return;
     }
@@ -1381,7 +1372,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
   if (gnc_numeric_zero_p (amount))
   {
     const char *message = _("You must enter an amount to transfer.");
-    gnc_error_dialog_parented(GTK_WINDOW(xferData->dialog), message);
+    gnc_error_dialog(xferData->dialog, message);
     LEAVE("invalid from amount");
     return;
   }
@@ -1423,7 +1414,7 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
 
   if (xferData->exch_rate)
   {
-    gnc_numeric to_amt, from_amt;
+    gnc_numeric price;
 
     /* If we've got the price-button set, then make sure we update the
      * to-amount before we use it.
@@ -1431,12 +1422,8 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(xferData->price_radio)))
       gnc_xfer_update_to_amount(xferData);
 
-    from_amt = gnc_amount_edit_get_amount (GNC_AMOUNT_EDIT(xferData->amount_edit));
-    to_amt = gnc_amount_edit_get_amount (GNC_AMOUNT_EDIT(xferData->to_amount_edit));
-
-    *(xferData->exch_rate) =
-      gnc_numeric_abs (gnc_numeric_div (to_amt, from_amt, GNC_DENOM_AUTO,
-					GNC_DENOM_REDUCE));
+    price = gnc_xfer_dialog_compute_price(xferData);
+    *(xferData->exch_rate) = gnc_numeric_abs(price);
   }
   else
   {
@@ -1523,20 +1510,20 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
 	gnc_numeric value;
 
 	/* compute the price -- maybe we need to swap? */
-	value = gnc_amount_edit_get_amount(GNC_AMOUNT_EDIT(xferData->price_edit));
+	value = gnc_xfer_dialog_compute_price(xferData);
 	value = gnc_numeric_abs (value);
 
 	/* Try to be consistent about how quotes are installed. */
 	if (from == gnc_default_currency()) {
 	  tmp = from; from = to; to = tmp;
 	  value = gnc_numeric_div (gnc_numeric_create(1,1), value,
-				   PRECISION, GNC_RND_ROUND);
+				   GNC_DENOM_AUTO, GNC_DENOM_REDUCE);
 	} else if ((to != gnc_default_currency()) &&
 		   (strcmp (gnc_commodity_get_mnemonic(from),
 			    gnc_commodity_get_mnemonic(to)) < 0)) {
 	  tmp = from; from = to; to = tmp;
 	  value = gnc_numeric_div (gnc_numeric_create(1,1), value,
-				   PRECISION, GNC_RND_ROUND);
+				   GNC_DENOM_AUTO, GNC_DENOM_REDUCE);
 	}
 
 	price = gnc_price_create (xferData->book);
@@ -1567,17 +1554,6 @@ gnc_xfer_dialog_ok_cb(GtkWidget * widget, gpointer data)
   LEAVE("ok");
 }
 
-
-static void
-gnc_xfer_dialog_cancel_cb(GtkWidget * widget, gpointer data)
-{
-  XferDialog *xferData = data; 
-
-  DEBUG("close component");
-  gnc_close_gui_component_by_data (DIALOG_TRANSFER_CM_CLASS, xferData);
-}
-
-
 static int
 gnc_xfer_dialog_close_cb(GnomeDialog *dialog, gpointer data)
 {
@@ -1589,18 +1565,22 @@ gnc_xfer_dialog_close_cb(GnomeDialog *dialog, gpointer data)
     xferData->transaction_cb(NULL, xferData->transaction_user_data);
 
   entry = gnc_amount_edit_gtk_entry(GNC_AMOUNT_EDIT(xferData->amount_edit));
-  gtk_signal_disconnect_by_data(GTK_OBJECT(entry), xferData);
+  g_signal_handlers_disconnect_matched (G_OBJECT (entry), G_SIGNAL_MATCH_DATA,
+					0, 0, NULL, NULL, xferData);
 
   entry = gnc_amount_edit_gtk_entry(GNC_AMOUNT_EDIT(xferData->price_edit));
-  gtk_signal_disconnect_by_data(GTK_OBJECT(entry), xferData);
+  g_signal_handlers_disconnect_matched (G_OBJECT (entry), G_SIGNAL_MATCH_DATA,
+					0, 0, NULL, NULL, xferData);
 
   entry = gnc_amount_edit_gtk_entry(GNC_AMOUNT_EDIT(xferData->to_amount_edit));
-  gtk_signal_disconnect_by_data(GTK_OBJECT(entry), xferData);
+  g_signal_handlers_disconnect_matched (G_OBJECT (entry), G_SIGNAL_MATCH_DATA,
+					0, 0, NULL, NULL, xferData);
 
   entry = xferData->description_entry;
-  gtk_signal_disconnect_by_data(GTK_OBJECT(entry), xferData);
+  g_signal_handlers_disconnect_matched (G_OBJECT (entry), G_SIGNAL_MATCH_DATA,
+					0, 0, NULL, NULL, xferData);
 
-  gtk_object_unref (GTK_OBJECT (xferData->tips));
+  g_object_unref (G_OBJECT (xferData->tips));
 
   DEBUG("unregister component");
   gnc_unregister_gui_component_by_data (DIALOG_TRANSFER_CM_CLASS, xferData);
@@ -1617,7 +1597,7 @@ gnc_xfer_dialog_close_cb(GnomeDialog *dialog, gpointer data)
 
 
 static void
-gnc_xfer_dialog_create(GtkWidget * parent, XferDialog *xferData)
+gnc_xfer_dialog_create(GtkWidget *parent, XferDialog *xferData)
 {
   GtkWidget *dialog;
   GladeXML  *xml;
@@ -1630,26 +1610,21 @@ gnc_xfer_dialog_create(GtkWidget * parent, XferDialog *xferData)
 
   /* parent */
   if (parent != NULL)
-    gnome_dialog_set_parent(GNOME_DIALOG(dialog), GTK_WINDOW(parent));
+    gtk_window_set_transient_for (GTK_WINDOW (dialog), GTK_WINDOW (parent));
 
   /* default to ok */
-  gnome_dialog_set_default(GNOME_DIALOG(dialog), 0);
+  gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
 
-  gnome_dialog_button_connect(GNOME_DIALOG(dialog), 0,
-                              GTK_SIGNAL_FUNC(gnc_xfer_dialog_ok_cb),
-                              xferData);
-
-  gnome_dialog_button_connect(GNOME_DIALOG(dialog), 1,
-                              GTK_SIGNAL_FUNC(gnc_xfer_dialog_cancel_cb),
-                              xferData);
-
-  gtk_signal_connect(GTK_OBJECT(dialog), "close",
-                     GTK_SIGNAL_FUNC(gnc_xfer_dialog_close_cb), xferData);
+  g_signal_connect (G_OBJECT (dialog), "response", G_CALLBACK (gnc_xfer_dialog_response_cb), xferData);
+  g_signal_connect (G_OBJECT (dialog), "close", G_CALLBACK (gnc_xfer_dialog_close_cb), xferData);
 
   xferData->tips = gtk_tooltips_new();
 
-  gtk_object_ref (GTK_OBJECT (xferData->tips));
+  g_object_ref (G_OBJECT (xferData->tips));
   gtk_object_sink (GTK_OBJECT (xferData->tips));
+
+  /* default to quickfilling off of the "From" account. */
+  xferData->quickfill = XFER_DIALOG_FROM;
 
   /* amount & date widgets */
   {
@@ -1665,16 +1640,16 @@ gnc_xfer_dialog_create(GtkWidget * parent, XferDialog *xferData)
     xferData->amount_edit = amount;
 
     entry = gnc_amount_edit_gtk_entry (GNC_AMOUNT_EDIT (amount));
-    gtk_signal_connect(GTK_OBJECT(entry), "focus-out-event",
-                       GTK_SIGNAL_FUNC(gnc_xfer_amount_update_cb), xferData);
+    g_signal_connect (G_OBJECT (entry), "focus-out-event",
+		      G_CALLBACK (gnc_xfer_amount_update_cb), xferData);
 
-    date = gnc_date_edit_new(time(NULL), FALSE, FALSE);
+    date = gnc_date_edit_new(time (NULL), FALSE, FALSE);
     hbox = glade_xml_get_widget (xml, "date_hbox");
 
     gtk_box_pack_end(GTK_BOX(hbox), date, TRUE, TRUE, 0);
     xferData->date_entry = date;
-    gtk_signal_connect(GTK_OBJECT(date), "date_changed",
-		       GTK_SIGNAL_FUNC(gnc_xfer_date_changed_cb), xferData);
+    g_signal_connect (G_OBJECT (date), "date_changed",
+		      G_CALLBACK (gnc_xfer_date_changed_cb), xferData);
   }
 
   {
@@ -1682,40 +1657,30 @@ gnc_xfer_dialog_create(GtkWidget * parent, XferDialog *xferData)
 
     entry = glade_xml_get_widget (xml, "num_entry");
     xferData->num_entry = entry;
-    gnome_dialog_editable_enters(GNOME_DIALOG(dialog), GTK_EDITABLE(entry));
+    /* gnome_dialog_editable_enters (GNOME_DIALOG (dialog), GTK_EDITABLE (entry)); */
 
     entry = glade_xml_get_widget (xml, "description_entry");
     xferData->description_entry = entry;
 
     /* Get signals from the Description for quickfill. */
-    gtk_signal_connect(GTK_OBJECT(entry), "insert_text",
-                       GTK_SIGNAL_FUNC(gnc_xfer_description_insert_cb),
-                       xferData);
-    gtk_signal_connect(GTK_OBJECT(entry), "button_release_event",
-                       GTK_SIGNAL_FUNC(gnc_xfer_description_button_release_cb),
-                       xferData);
-    gtk_signal_connect_after
-      (GTK_OBJECT(entry), "key_press_event",
-       GTK_SIGNAL_FUNC(gnc_xfer_description_key_press_cb), xferData);
+    g_signal_connect (G_OBJECT (entry), "insert_text",
+		      G_CALLBACK (gnc_xfer_description_insert_cb), xferData);
+    g_signal_connect (G_OBJECT (entry), "button_release_event",
+		      G_CALLBACK (gnc_xfer_description_button_release_cb), xferData);
+    g_signal_connect_after (G_OBJECT (entry), "key_press_event",
+			    G_CALLBACK (gnc_xfer_description_key_press_cb), xferData);
 
     entry = glade_xml_get_widget (xml, "memo_entry");
     xferData->memo_entry = entry;
-    gnome_dialog_editable_enters(GNOME_DIALOG(dialog), GTK_EDITABLE(entry));
+    /* gnome_dialog_editable_enters (GNOME_DIALOG (dialog), GTK_EDITABLE (entry)); */
   }
 
   /* from and to */
   {
     GtkWidget *label;
 
-    gnc_xfer_dialog_fill_tree_frame(xferData, XFER_DIALOG_TO);
-    gnc_xfer_dialog_fill_tree_frame(xferData, XFER_DIALOG_FROM);
-
-    gtk_signal_connect(GTK_OBJECT(xferData->from), "select_account",
-		       GTK_SIGNAL_FUNC(gnc_xfer_dialog_from_tree_select_cb),
-		       xferData);
-    gtk_signal_connect(GTK_OBJECT(xferData->to), "select_account",
-		       GTK_SIGNAL_FUNC(gnc_xfer_dialog_to_tree_select_cb),
-		       xferData);
+    gnc_xfer_dialog_fill_tree_view (xferData, XFER_DIALOG_TO);
+    gnc_xfer_dialog_fill_tree_view (xferData, XFER_DIALOG_FROM);
 
     label = glade_xml_get_widget (xml, "from_currency_label");
     xferData->from_currency_label = label;
@@ -1739,50 +1704,39 @@ gnc_xfer_dialog_create(GtkWidget * parent, XferDialog *xferData)
     GtkWidget *button;
 
     frame = glade_xml_get_widget (xml, "curr_transfer_frame");
-    xferData->curr_transfer_frame = frame;
+    xferData->curr_xfer_frame = frame;
 
     edit = gnc_amount_edit_new();
     gnc_amount_edit_set_print_info(GNC_AMOUNT_EDIT(edit),
-                                   gnc_default_price_print_info ());
+                                   gnc_default_print_info (FALSE));
     gnc_amount_edit_set_fraction(GNC_AMOUNT_EDIT(edit), PRECISION);
     hbox = glade_xml_get_widget (xml, "price_hbox");
     gtk_box_pack_start(GTK_BOX(hbox), edit, TRUE, TRUE, 0);
     xferData->price_edit = edit;
     entry = gnc_amount_edit_gtk_entry (GNC_AMOUNT_EDIT (edit));
-    gtk_signal_connect(GTK_OBJECT(entry), "focus-out-event",
-                       GTK_SIGNAL_FUNC(gnc_xfer_price_update_cb), xferData);
-    gnome_dialog_editable_enters(GNOME_DIALOG(dialog), GTK_EDITABLE(entry));
+    g_signal_connect (G_OBJECT (entry), "focus-out-event",
+		      G_CALLBACK (gnc_xfer_price_update_cb), xferData);
+    /* gnome_dialog_editable_enters (GNOME_DIALOG (dialog), GTK_EDITABLE (entry)); */
 
     edit = gnc_amount_edit_new();
     hbox = glade_xml_get_widget (xml, "to_amount_hbox");
     gtk_box_pack_start(GTK_BOX(hbox), edit, TRUE, TRUE, 0);
     xferData->to_amount_edit = edit;
     entry = gnc_amount_edit_gtk_entry (GNC_AMOUNT_EDIT (edit));
-    gtk_signal_connect(GTK_OBJECT(entry), "focus-out-event",
-                       GTK_SIGNAL_FUNC(gnc_xfer_to_amount_update_cb),
-		       xferData);
-    gnome_dialog_editable_enters(GNOME_DIALOG(dialog), GTK_EDITABLE(entry));
+    g_signal_connect (G_OBJECT (entry), "focus-out-event",
+		      G_CALLBACK (gnc_xfer_to_amount_update_cb), xferData);
+    /* gnome_dialog_editable_enters(GNOME_DIALOG(dialog), GTK_EDITABLE(entry)); */
 
     button = glade_xml_get_widget (xml, "price_radio");
     xferData->price_radio = button;
-    gtk_signal_connect(GTK_OBJECT(xferData->price_radio), "toggled",
-		       GTK_SIGNAL_FUNC(price_amount_radio_toggled_cb),
-		       xferData);
+    g_signal_connect (G_OBJECT (xferData->price_radio), "toggled",
+		      G_CALLBACK (price_amount_radio_toggled_cb), xferData);
 
     button = glade_xml_get_widget (xml, "amount_radio");
     xferData->amount_radio = button;
-    gtk_signal_connect(GTK_OBJECT(xferData->amount_radio), "toggled",
-		       GTK_SIGNAL_FUNC(price_amount_radio_toggled_cb),
-		       xferData);
+    g_signal_connect (G_OBJECT (xferData->amount_radio),
+		      "toggled", G_CALLBACK (price_amount_radio_toggled_cb), xferData);
   }
-
-  gtk_clist_set_selection_mode(GTK_CLIST(xferData->from),
-                               GTK_SELECTION_BROWSE);
-  gtk_clist_set_selection_mode(GTK_CLIST(xferData->to),
-                               GTK_SELECTION_BROWSE);
-
-  /* default to quickfilling off of the "From" account. */
-  xferData->quickfill_to = FALSE;
   LEAVE(" ");
 }
 
@@ -1792,7 +1746,7 @@ close_handler (gpointer user_data)
   XferDialog *xferData = user_data;
 
   DEBUG(" ");
-  gnome_dialog_close (GNOME_DIALOG (xferData->dialog));
+  gtk_widget_destroy (GTK_WIDGET (xferData->dialog));
 }
 
 /********************************************************************\
@@ -1817,6 +1771,7 @@ gnc_xfer_dialog (GtkWidget * parent, Account * initial)
   xferData->desc_start_selection = 0;
   xferData->desc_end_selection = 0;
   xferData->desc_didquickfill = FALSE;
+  xferData->quickfill = XFER_DIALOG_FROM;
   xferData->transaction_cb = NULL;
 
   if (initial) {
@@ -1946,8 +1901,7 @@ void gnc_xfer_dialog_add_user_specified_button( XferDialog *xferData,
     GtkWidget *box    = gnc_glade_lookup_widget (xferData->dialog,
                                                  "transfermain-vbox" );
     gtk_box_pack_end( GTK_BOX(box), button, FALSE, FALSE, 0 );
-    gtk_signal_connect( GTK_OBJECT(button), "clicked",
-                        GTK_SIGNAL_FUNC( callback ), user_data );
+    g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (callback), user_data);
     gtk_widget_show( button );
   }
 }
@@ -1955,12 +1909,12 @@ void gnc_xfer_dialog_add_user_specified_button( XferDialog *xferData,
 void gnc_xfer_dialog_toggle_currency_frame( XferDialog *xferData, 
                                             gboolean show_frame )
 {
-  if( xferData && xferData->curr_transfer_frame )
+  if( xferData && xferData->curr_xfer_frame )
   {
     if( show_frame )
-      gtk_widget_show( xferData->curr_transfer_frame );
+      gtk_widget_show( xferData->curr_xfer_frame );
     else
-      gtk_widget_hide( xferData->curr_transfer_frame );
+      gtk_widget_hide( xferData->curr_xfer_frame );
   }
 }
 
@@ -1985,7 +1939,7 @@ gboolean gnc_xfer_dialog_run_until_done( XferDialog *xferData )
     xferData->result_p = &result_ok;
     while( TRUE )
     {
-      gnome_dialog_run( GNOME_DIALOG(xferData->dialog) );
+      gtk_dialog_run (GTK_DIALOG (xferData->dialog));
 
         /* See if the dialog is still there.  For various reasons, the
          * user could have hit OK but remained in the dialog.  We don't
@@ -2017,12 +1971,103 @@ void
 gnc_xfer_dialog_quickfill_to_account(XferDialog *xferData,
                                      gboolean qf_to_account )
 {
-  gboolean old = xferData->quickfill_to;
-  xferData->quickfill_to = qf_to_account;
+  XferDirection old = xferData->quickfill;
+
+  xferData->quickfill = qf_to_account ? XFER_DIALOG_TO : XFER_DIALOG_FROM;
 
   /* reload the quickfill if necessary */
-  if( old != qf_to_account )
+  if( old != xferData->quickfill )
     gnc_xfer_dialog_reload_quickfill( xferData );
+}
+
+static Account *
+gnc_transfer_dialog_get_selected_account (XferDialog *dialog,
+					  XferDirection direction)
+{
+  GtkTreeView *tree_view;
+  GtkTreeSelection *selection;
+  GtkTreeModel *model;
+  EggTreeModelFilter *filter_model;
+  GncTreeModelAccount *account_model;
+  GtkTreeIter filter_iter;
+  GtkTreeIter account_iter;
+  Account *account;
+
+  switch (direction) {
+   case XFER_DIALOG_FROM:
+    tree_view = dialog->from_tree_view;
+    break;
+   case XFER_DIALOG_TO:
+    tree_view = dialog->to_tree_view;
+    break;
+   default:
+    g_assert_not_reached ();
+    return NULL;
+  }
+
+  selection = gtk_tree_view_get_selection (tree_view);
+  if (!gtk_tree_selection_get_selected (selection, &model, &filter_iter))
+    return NULL;
+
+  filter_model = EGG_TREE_MODEL_FILTER (model);
+  account_model = GNC_TREE_MODEL_ACCOUNT (egg_tree_model_filter_get_model (filter_model));
+
+  egg_tree_model_filter_convert_iter_to_child_iter (filter_model, &account_iter, &filter_iter);
+
+  account = gnc_tree_model_account_get_account (account_model, &account_iter);
+
+  return account;
+}
+
+static void
+gnc_transfer_dialog_set_selected_account (XferDialog *dialog,
+					  Account *account,
+					  XferDirection direction)
+{
+  GtkTreeView *tree_view;
+  GtkCheckButton *show_button;
+  GtkTreeSelection *selection;
+  EggTreeModelFilter *filter_model;
+  GncTreeModelAccount *account_model;
+  GtkTreeIter filter_iter;
+  GtkTreeIter account_iter;
+  GNCAccountType type;
+  GtkTreePath *path;
+
+  g_return_if_fail (account != NULL);
+
+  switch (direction) {
+   case XFER_DIALOG_FROM:
+    tree_view = dialog->from_tree_view;
+    show_button = GTK_CHECK_BUTTON (dialog->from_show_button);
+    break;
+   case XFER_DIALOG_TO:
+    tree_view = dialog->to_tree_view;
+    show_button = GTK_CHECK_BUTTON (dialog->to_show_button);
+    break;
+   default:
+    g_assert_not_reached ();
+    return;
+  }
+
+  type = xaccAccountGetType (account);
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (show_button),
+				(type == EXPENSE) || (type == INCOME));
+
+  selection = gtk_tree_view_get_selection (tree_view);
+
+  filter_model = EGG_TREE_MODEL_FILTER (gtk_tree_view_get_model (tree_view));
+  account_model = GNC_TREE_MODEL_ACCOUNT (egg_tree_model_filter_get_model (filter_model));
+
+  gnc_tree_model_account_get_iter_from_account (account_model, account, &account_iter);
+
+  egg_tree_model_filter_convert_child_iter_to_iter (filter_model, &filter_iter, &account_iter);
+
+  path = gtk_tree_model_get_path (GTK_TREE_MODEL (filter_model), &filter_iter);
+  gtk_tree_view_expand_to_path (tree_view, path);
+  gtk_tree_path_free (path);
+
+  gtk_tree_selection_select_iter (selection, &filter_iter);
 }
 
 

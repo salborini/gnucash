@@ -226,10 +226,10 @@ gnc_parse_error_dialog (StockSplitInfo *info, const char *error_string)
   if (error_string == NULL)
     error_string = "";
 
-  gnc_error_dialog_parented (GTK_WINDOW (info->window),
-			     "%s.\n\n%s: %s.",
-			     error_string, _("Error"),
-			     parse_error_string);
+  gnc_error_dialog (info->window,
+		    "%s.\n\n%s: %s.",
+		    error_string, _("Error"),
+		    parse_error_string);
 }
 
 static void
@@ -263,7 +263,7 @@ details_next (GnomeDruidPage *druidpage,
   if (gnc_numeric_zero_p (amount))
   {
     const char *message = _("You must enter a distribution amount.");
-    gnc_error_dialog_parented (GTK_WINDOW (info->window), message);
+    gnc_error_dialog (info->window, message);
     return TRUE;
   }
 
@@ -280,7 +280,7 @@ details_next (GnomeDruidPage *druidpage,
   if (gnc_numeric_negative_p (amount))
   {
     const char *message = _("The price must be positive.");
-    gnc_error_dialog_parented (GTK_WINDOW (info->window), message);
+    gnc_error_dialog (info->window, message);
     return TRUE;
   }
 
@@ -326,7 +326,7 @@ cash_next (GnomeDruidPage *druidpage,
   if (gnc_numeric_negative_p (amount))
   {
     const char *message = _("The cash distribution must be positive.");
-    gnc_error_dialog_parented (GTK_WINDOW (info->window), message);
+    gnc_error_dialog (info->window, message);
     return TRUE;
   }
 
@@ -340,7 +340,7 @@ cash_next (GnomeDruidPage *druidpage,
     {
       const char *message = _("You must select an income account\n"
                               "for the cash distribution.");
-      gnc_error_dialog_parented (GTK_WINDOW (info->window), message);
+      gnc_error_dialog (info->window, message);
       return TRUE;
     }
 
@@ -350,7 +350,7 @@ cash_next (GnomeDruidPage *druidpage,
     {
       const char *message = _("You must select an asset account\n"
                               "for the cash distribution.");
-      gnc_error_dialog_parented (GTK_WINDOW (info->window), message);
+      gnc_error_dialog (info->window, message);
       return TRUE;
     }
   }
@@ -440,8 +440,7 @@ stock_split_finish (GnomeDruidPage *druidpage,
     pdb = gnc_book_get_pricedb (book);
 
     if (!gnc_pricedb_add_price (pdb, price))
-      gnc_error_dialog_parented (GTK_WINDOW (info->window),
-                                 _("Error adding price."));
+      gnc_error_dialog (info->window, _("Error adding price."));
 
     gnc_price_unref (price);
   }
@@ -515,6 +514,7 @@ gnc_stock_split_druid_create (StockSplitInfo *info)
 {
   GtkWidget *page;
   GladeXML *xml;
+  GdkPixbuf *pixbuf;
 
   xml = gnc_glade_xml_new ("stocks.glade", "Stock Split Druid");
 
@@ -528,10 +528,14 @@ gnc_stock_split_druid_create (StockSplitInfo *info)
   gtk_signal_connect (GTK_OBJECT (info->druid), "cancel",
                       GTK_SIGNAL_FUNC (druid_cancel), info);
 
-  gnc_druid_set_title_image (GNOME_DRUID(info->druid),
-                             "stock_split_title.png");
-  gnc_druid_set_watermark_image (GNOME_DRUID(info->druid),
-                                 "stock_split_watermark.png");
+  gnome_druid_page_edge_set_title(GNOME_DRUID_PAGE_EDGE(info->druid),
+                             "Stock Split Druid");
+  gnome_druid_page_edge_set_text (GNOME_DRUID_PAGE_EDGE(info->druid),
+                             "Enter stock split info");
+
+  pixbuf = gdk_pixbuf_new_from_file ("stock_split_watermark.png", NULL);
+  gnome_druid_page_edge_set_watermark (GNOME_DRUID_PAGE_EDGE(info->druid), pixbuf );
+  gdk_pixbuf_unref (pixbuf);
 
   /* account list */
   {
@@ -730,7 +734,8 @@ gnc_stock_split_dialog (Account * initial)
 
   if (fill_account_list (info, initial) == 0)
   {
-    gnc_warning_dialog (_("You don't have any stock accounts with balances!"));
+    gnc_warning_dialog (gnc_ui_get_toplevel(),
+			_("You don't have any stock accounts with balances!"));
     gnc_close_gui_component_by_data (DRUID_STOCK_SPLIT_CM_CLASS, info);
     return;
   }

@@ -5,15 +5,17 @@ pkglib_LTLIBRARIES = libgncmod-gnome-utils.la libgw-gnome-utils.la
 AM_CFLAGS = \
   -I${top_srcdir}/src/gnc-module \
   -I${top_srcdir}/src/engine \
+  -I${top_srcdir}/src/backend/file \
   -I${top_srcdir}/src/network-utils \
   -I${top_srcdir}/src/app-utils \
+  -I${top_srcdir}/lib/egg \
   -I${top_srcdir}/src \
   ${GUILE_INCS} \
   ${LIBGUPPI_CFLAGS} \
   ${GLIB_CFLAGS} \
   ${GLADE_CFLAGS} \
   ${GNOME_PRINT_CFLAGS} \
-  ${GNOME_INCLUDEDIR} \
+  ${GNOME_CFLAGS} \
   ${GTKHTML_CFLAGS} \
   ${G_WRAP_COMPILE_ARGS}
 
@@ -45,11 +47,19 @@ libgncmod_gnome_utils_la_SOURCES = \
   gnc-html-history.c \
   gnc-html-guppi.c \
   gnc-html.c \
+  gnc-icons.c \
   gnc-mdi-utils.c \
   gnc-menu-extensions.c \
   gnc-query-list.c \
+  gnc-tree-model-account.c \
+  gnc-tree-model-account-types.c \
+  gnc-tree-model-commodity.c \
+  gnc-tree-model-example-account.c \
+  gnc-tree-model-price.c \
+  gnc-tree-model-selection.c \
   gncmod-gnome-utils.c \
   gtkselect.c \
+  misc-gnome-utils.c \
   print-session.c \
   search-param.c \
   window-help.c
@@ -81,10 +91,18 @@ gncinclude_HEADERS = \
   gnc-html-history.h \
   gnc-html-guppi.h \
   gnc-html.h \
+  gnc-icons.h \
   gnc-mdi-utils.h \
   gnc-menu-extensions.h \
   gnc-query-list.h \
+  gnc-tree-model-account.h \
+  gnc-tree-model-account-types.h \
+  gnc-tree-model-commodity.h \
+  gnc-tree-model-example-account.h \
+  gnc-tree-model-price.h \
+  gnc-tree-model-selection.h \
   gtkselect.h \
+  misc-gnome-utils.h \
   print-session.h \
   window-help.h
 
@@ -102,10 +120,10 @@ libgncmod_gnome_utils_la_LIBADD = \
   ${top_builddir}/src/calculation/libgncmod-calculation.la \
   ${top_builddir}/src/network-utils/libgncmod-network-utils.la \
   ${top_builddir}/src/app-utils/libgncmod-app-utils.la \
+  ${top_builddir}/lib/egg/libegg.la \
   ${GUILE_LIBS} \
   ${LIBGUPPI_LIBS} \
-  ${GNOMEUI_LIBS} \
-  ${GNOME_LIBDIR} \
+  ${GNOME_LIBS} \
   ${GNOME_PRINT_LIBS} \
   ${GTKHTML_LIBS} \
   ${GDK_PIXBUF_LIBS} \

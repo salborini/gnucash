@@ -248,7 +248,8 @@
    'gnc:error-dialog
    '<gw:void>
    "gnc_error_dialog"
-   '(((<gw:mchars> caller-owned const) message))
+   '((<gtk:Widget*> window)
+     ((<gw:mchars> caller-owned const) message))
    "Show ok dialog box with given error message.")
 
   (gw:wrap-function
@@ -256,7 +257,8 @@
    'gnc:verify-dialog
    '<gw:bool>
    "gnc_verify_dialog"
-   '((<gw:bool> yes_is_default)
+   '((<gtk:Widget*> window)
+     (<gw:bool> yes_is_default)
      ((<gw:mchars> caller-owned const) message))
    "Show yes/no dialog box with given message.")
 
@@ -265,7 +267,8 @@
    'gnc:info-dialog
    '<gw:void>
    "gnc_info_dialog"
-   '(((<gw:mchars> caller-owned const) message))
+   '((<gtk:Widget*> window)
+     ((<gw:mchars> caller-owned const) message))
    "Show ok dialog box with given message.")
 
   (gw:wrap-function
@@ -273,7 +276,8 @@
    'gnc:warning-dialog
    '<gw:void>
    "gnc_warning_dialog"
-   '(((<gw:mchars> caller-owned const) message))
+   '((<gtk:Widget*> window)
+     ((<gw:mchars> caller-owned const) message))
    "Show warning dialog box with given message.")
 
   (gw:wrap-function
@@ -286,9 +290,9 @@
 
   (gw:wrap-function
    ws
-   'gnc:choose-radio-option-dialog-parented
+   'gnc:choose-radio-option-dialog
    '<gw:int>
-   "gnc_choose_radio_option_dialog_parented"
+   "gnc_choose_radio_option_dialog"
    '((<gnc:UIWidget> parent)
      ((<gw:mchars> caller-owned const) title)
      ((<gw:mchars> caller-owned const) msg)
@@ -434,34 +438,7 @@ be left empty")
   ;; druid-utils.h
   (gw:wrap-as-wct ws '<gnc:GnomeDruid> "GnomeDruid*" "const GnomeDruid*")
 
-  (gw:wrap-function
-   ws
-   'gnc:druid-set-title-image
-   '<gw:void>
-   "gnc_druid_set_title_image"
-   '((<gnc:GnomeDruid> druid)
-     ((<gw:mchars> caller-owned) image-path))
-   "Set the title image of a druid.")
-
-  (gw:wrap-function
-   ws
-   'gnc:druid-set-logo-image
-   '<gw:void>
-   "gnc_druid_set_logo_image"
-   '((<gnc:GnomeDruid> druid)
-     ((<gw:mchars> caller-owned) logo-path))
-   "Set the logo image of a druid.")
-
-  (gw:wrap-function
-   ws
-   'gnc:druid-set-watermark-image
-   '<gw:void>
-   "gnc_druid_set_watermark_image"
-   '((<gnc:GnomeDruid> druid)
-     ((<gw:mchars> caller-owned) watermark-path))
-   "Set the watermark image of a druid.")
-
-  (gw:wrap-function
+ (gw:wrap-function
    ws
    'gnc:druid-set-colors
    '<gw:void>

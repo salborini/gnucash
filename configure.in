@@ -26,10 +26,15 @@ dnl Process this file with autoconf to produce a configure script.
 ### check for various programs, and stuff (do this first because later
 ### commands depend on them):
 
-AC_INIT(src/engine/Transaction.h)
+AC_INIT(gnucash, 1.9.0, http://bugzilla.gnome.org/enter_bug.cgi?product=GnuCash)
+AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
+
+AM_CONFIG_HEADER(config.h)
+AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 AC_PREREQ(2.53)
 
 AC_PROG_CC
+AC_PROG_INTLTOOL
 
 # Comment out for production or semi-production builds.  I.E. Anything
 # that is explicitly tagged in cvs as a version.
@@ -38,17 +43,10 @@ AC_DEFINE(GNUCASH_CVS,1,[Define if built from untagged cvs])
 GNUCASH_MAJOR_VERSION=1
 GNUCASH_MINOR_VERSION=9
 GNUCASH_MICRO_VERSION=0
-GNUCASH_VERSION=$GNUCASH_MAJOR_VERSION.$GNUCASH_MINOR_VERSION.$GNUCASH_MICRO_VERSION
 
 AC_SUBST(GNUCASH_MAJOR_VERSION)
 AC_SUBST(GNUCASH_MINOR_VERSION)
 AC_SUBST(GNUCASH_MICRO_VERSION)
-
-AM_INIT_AUTOMAKE(gnucash,$GNUCASH_VERSION)
-
-AC_PROG_INTLTOOL
-
-AM_CONFIG_HEADER(config.h)
 
 AC_DEFINE_UNQUOTED(GNUCASH_MAJOR_VERSION, $GNUCASH_MAJOR_VERSION,
 	[GnuCash Major version number])
@@ -59,11 +57,18 @@ AC_DEFINE_UNQUOTED(GNUCASH_MICRO_VERSION, $GNUCASH_MICRO_VERSION,
 
 dnl Set of available languages.
 ALL_LINGUAS="da de el en_GB es es_NI fr hu it ja nb nl pl pt pt_BR ru sk sv ta uk zh_CN zh_TW"
-AM_GNU_GETTEXT([use-libtool])
+
+GETTEXT_PACKAGE=gnucash
+AC_SUBST(GETTEXT_PACKAGE)
+AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE, "$GETTEXT_PACKAGE",
+	[GetText version number])
+               
+AM_GLIB_GNU_GETTEXT
 
 
 AM_MAINTAINER_MODE
 AM_ACLOCAL_INCLUDE(macros)
+
 
 AC_PROG_INSTALL
 
@@ -102,7 +107,7 @@ AC_PROG_MAKE_SET
 AC_HEADER_STDC
 
 AC_CHECK_HEADERS(limits.h)
-AC_CHECK_FUNCS(stpcpy memcpy timegm towupper)
+AC_CHECK_FUNCS(stpcpy memcpy timegm towupper setenv putenv)
 
 STRUCT_TM_GMTOFF_CHECK
 SCANF_LLD_CHECK
@@ -112,14 +117,17 @@ if test "x$ac_cv_header_ltdl_h" = xno; then
   AC_MSG_ERROR([Cannot find ltdl.h -- libtool-devel not installed?])
 fi
 
-AM_PATH_GLIB
+AM_PATH_GLIB_2_0(2.0.0,,AC_MSG_ERROR([
+*** GLIB >= 2.0 is required to build Gnucash; please make sure you have the
+*** development headers installed. The latest version of GLIB is
+*** always available at ftp://ftp.gnome.org/pub/gnome/sources/glib/.]))
 
 if test ${no_glib}x = yesx
 then
   AC_MSG_ERROR([Cannot find glib. Check config.log])
 fi
 
-AC_CHECK_HEADERS(dlfcn.h dl.h ghttp_ssl.h utmp.h locale.h mcheck.h unistd.h wctype.h)
+AC_CHECK_HEADERS(dlfcn.h dl.h utmp.h locale.h mcheck.h unistd.h wctype.h)
 
 DL_LIB=
 AC_CHECK_FUNCS(dlopen,,[
@@ -172,8 +180,10 @@ esac
 ### Guile and g-wrap version checks (should this be something other than
 ### the Gnome check?)
 
+GUILE_LIBS=""
 GNOME_CHECK_GUILE
 AS_SCRUB_INCLUDE(GUILE_INCS)
+AC_SUBST(GUILE_LIBS)
 
 ### --------------------------------------------------------------------------
 ### G-wrap (libraries and executable)
@@ -234,7 +244,7 @@ AS_SCRUB_INCLUDE(CFLAGS)
 ### Check size of long_long - some guile's are broken.
 AC_MSG_CHECKING(if guile long_long is at least as big as gint64)
 GNC_OLDCFLAGS="$CFLAGS"
-CFLAGS="${GNOME_INCLUDEDIR} ${GUILE_INCS} ${CFLAGS} ${GLIB_CFLAGS}"
+CFLAGS="${GNOME_CFLAGS} ${GUILE_INCS} ${CFLAGS} ${GLIB_CFLAGS}"
 AC_TRY_RUN([
   #include <glib.h>
   #include <libguile/__scm.h>
@@ -256,7 +266,7 @@ CFLAGS="$GNC_OLDCFLAGS"
 # unless you've done sufficient code review/testing.
 AC_MSG_CHECKING(if unsigned long is at least as big as guint32)
 GNC_OLDCFLAGS="$CFLAGS"
-CFLAGS="${GNOME_INCLUDEDIR} ${GUILE_INCS} ${CFLAGS} ${GLIB_CFLAGS}"
+CFLAGS="${GNOME_CFLAGS} ${GUILE_INCS} ${CFLAGS} ${GLIB_CFLAGS}"
 AC_TRY_RUN([
   #include <glib.h>
   int main(int argc, char *argv[]) {
@@ -316,21 +326,36 @@ else
   AC_MSG_RESULT(yes)
 fi
 
+### --------------------------------------------------------------------------
+### See if we have pkg-config
+
+AC_PATH_PROG(PKG_CONFIG,pkg-config)
+if test "x$PKG_CONFIG" = x; then
+    # @*%&$ Ximian programmers renamed this application
+    AC_PATH_PROG(PKG_CONFIG,pkgconfig)
+    if test "x$PKG_CONFIG" = x; then
+    	AC_MSG_ERROR([Could not find the pkg-config (or pkgconfig) program.],)
+    fi
+fi
+
+
 AM_CONDITIONAL(GNC_HAVE_GUILE_WWW, test "${gnc_have_guile_www}" = yes)
 
 ### --------------------------------------------------------------------------
 ### Gnome XML -- GNOME_XML_LIB is defined by GNOME_XML_CHECK
 
-GNOME_XML_CHECK
-GNOME_XML_CFLAGS=`$GNOME_CONFIG --cflags xml`
-AS_SCRUB_INCLUDE(GNOME_XML_CFLAGS)
+PKG_CHECK_MODULES(XML, libxml-2.0)
+AS_SCRUB_INCLUDE(XML_CFLAGS)
+AC_SUBST(XML_CFLAGS)
+AC_SUBST(XML_LIBS)
 
-AC_SUBST(GNOME_XML_CFLAGS)
 
 oLIBS="$LIBS"
-LIBS="$LIBS $GNOME_XML_LIB"
-AC_CHECK_LIB(xml, xmlElemDump, [:], [
-  AC_MSG_ERROR([libxml 1.8.3 or newer required for GnuCash])
+LIBS="$LIBS $XML_LIBS"
+
+# Compile a test program to verify that the xml2 library works.
+AC_CHECK_LIB(xml2, xmlElemDump, [:], [
+  AC_MSG_ERROR([libxml2 is required for GnuCash])
   ])
 LIBS="$oLIBS"
 
@@ -369,6 +394,7 @@ fi
 
 GNC_ACCOUNTS_DIR='${GNC_SHAREDIR}/accounts'
 GNC_GLADE_DIR='${GNC_SHAREDIR}/glade'
+GNC_UI_DIR='${GNC_SHAREDIR}/ui'
 GNC_GWRAP_LIBDIR='${GNC_SHAREDIR}/guile-modules/g-wrapped'
 GNC_MODULE_DIR='${pkglibdir}'
 GNC_PIXMAP_DIR='${datadir}/pixmaps/gnucash'
@@ -377,6 +403,7 @@ AC_SUBST(GNC_ACCOUNTS_DIR)
 AC_SUBST(GNC_CONFIGDIR)
 AC_SUBST(GNC_DOC_INSTALL_DIR)
 AC_SUBST(GNC_GLADE_DIR)
+AC_SUBST(GNC_UI_DIR)
 AC_SUBST(GNC_GWRAP_LIBDIR)
 AC_SUBST(GNC_INCLUDE_DIR)
 AC_SUBST(GNC_LIBDIR)
@@ -568,7 +595,7 @@ AC_ARG_ENABLE( hbci,
   fi)
 if test x${HBCI_DIR} = xhbci ;
 then
-    AM_PATH_OPENHBCI(0.9.11)
+    AM_PATH_OPENHBCI(0.9.13)
     HBCI_LIBS="${OPENHBCI_LIBS}"
     HBCI_CFLAGS="${OPENHBCI_CFLAGS}"
 
@@ -730,47 +757,20 @@ LIBS="$LIBS -lm"
 ### --------------------------------------------------------------------------
 ### Berkeley db
 
-AC_ARG_ENABLE(prefer-db1,
-  [  --enable-prefer-db1          Prefer Berkeley DB 1.x],[prefer_db1="$enableval"],[prefer_db1=yes])
-
 DB_LIBS=
-AC_CHECK_FUNC(dbopen, [],
-if test "$prefer_db1" = "yes"; then
- AC_CHECK_LIB(db1, dbopen, DB_LIBS="-ldb1",
-  AC_CHECK_LIB(db, dbopen, DB_LIBS="-ldb",
-   AC_CHECK_LIB(db-3, __db185_open, DB_LIBS="-ldb-3",
-    AC_CHECK_LIB(db-4.0, __db185_open, DB_LIBS="-ldb-4.0",
-     AC_MSG_ERROR([Your db library is missing db 1.85 compatibility mode])
+AC_CHECK_LIB(db-3, __db185_open, DB_LIBS="-ldb-3",
+  AC_CHECK_LIB(db-4.0, __db185_open, DB_LIBS="-ldb-4.0",
+    AC_CHECK_LIB(db-4.1, __db185_open, DB_LIBS="-ldb-4.1",
+      AC_MSG_ERROR([Your db library is missing db 1.85 compatibility mode])
     )
-   )
   )
- )
-else
- AC_CHECK_LIB(db, dbopen, DB_LIBS="-ldb",
-  AC_CHECK_LIB(db1, dbopen, DB_LIBS="-ldb1",
-   AC_CHECK_LIB(db-3, __db185_open, DB_LIBS="-ldb-3",
-    AC_CHECK_LIB(db-4.0, __db185_open, DB_LIBS="-ldb-4.0",
-     AC_MSG_ERROR([Your db library is missing db 1.85 compatibility mode])
-    )
-   )
-  )
- )
-fi
 )
 
 dnl look for db headers
-if test "$prefer_db1" = "yes"; then
-	AC_CHECK_HEADERS(db_185.h db1/db.h db4/db_185.h)
-	if test "$ac_cv_header_db_185_h$ac_cv_header_db1_db_h$ac_cv_header_db4_db_185_h" = nonono; then
-	  AC_MSG_ERROR([Berkeley db library required for GnuCash])
-	fi
-	AC_DEFINE(PREFER_DB1,,Prefer DB1)
-else
-	AC_CHECK_HEADERS(db.h db_185.h db1/db.h db4/db_185.h)
+AC_CHECK_HEADERS(db_185.h db4/db_185.h)
 
-	if test "$ac_cv_header_db_h$ac_cv_header_db_185_h$ac_cv_header_db1_db_h$ac_cv_header_db4_db_185_h" = nononono; then
-	  AC_MSG_ERROR([Berkeley db library required for GnuCash])
-	fi
+  if test "$ac_cv_header_db_h$ac_cv_header_db_185_h$ac_cv_header_db1_db_h$ac_cv_header_db4_db_185_h" = nononono; then
+  AC_MSG_ERROR([Berkeley db library required for GnuCash])
 fi
 
 AC_SUBST(DB_LIBS)
@@ -804,109 +804,49 @@ AM_CONDITIONAL(GNUCASH_ENABLE_GUI, test x${gnc_build_gui} = xtrue)
 
 if test x${gnc_build_gui} = xtrue ;
 then
-    GNOME_INIT
     GNOME_COMPILE_WARNINGS
-    GNOME_CHECK_GDK_PIXBUF
-    GNOME_PRINT_CHECK
-    
-    # gnome-print-check appears tobe sort of b0rked for the time being
-    GNOME_PRINT_CFLAGS=`${GNOME_CONFIG} --cflags print`
+
+    # Look for libgnomeui by pkg-config
+    PKG_CHECK_MODULES(GNOME, libgnomeui-2.0 >= 2.2
+			       gtk+-2.0 >= 2.2)
+    AS_SCRUB_INCLUDE(GNOME_CFLAGS)
+    AC_SUBST(GNOME_CFLAGS)
+    AC_SUBST(GNOME_LIBS)
+
+    # look for gdk-pixbuf
+    PKG_CHECK_MODULES(GDK_PIXBUF, gdk-pixbuf-2.0)
+    AS_SCRUB_INCLUDE(GDK_PIXBUF_CFLAGS)
+    AC_SUBST(GDK_PIXBUF_CFLAGS)
+    AC_SUBST(GDK_PIXBUF_LIBS)
+
+    # Gnome-Print -- some people already have/need libgnomeprint-2.2
+    #PKG_CHECK_MODULES(GNOME_PRINT, libgnomeprint-2.2)
+    PKG_CHECK_MODULES(GNOME_PRINT, libgnomeprint-2.0 libgnomeprintui-2.0)
     AS_SCRUB_INCLUDE(GNOME_PRINT_CFLAGS)
+    AC_SUBST(GNOME_PRINT_CFLAGS)
+    AC_SUBST(GNOME_PRINT_LIBS)
+    
+    # There is no libguppi.  Just substitute empty stuff
+    LIBGUPPI_CFLAGS=
+    LIBGUPPI_LIBS=
+    AC_SUBST(LIBGUPPI_CFLAGS)
+    AC_SUBST(LIBGUPPI_LIBS)
     
     ### ----------------------------------------------------------------------
-    ### Check for glade
+    ### Check for glade, gtkhtml
     
-    AM_PATH_LIBGLADE
-    
-    GLADE_LIBS="$LIBGLADE_LIBS"
-    GLADE_CFLAGS="$LIBGLADE_CFLAGS"
-    
+    PKG_CHECK_MODULES(GLADE, libglade-2.0)
     AS_SCRUB_INCLUDE(GLADE_CFLAGS)
-    AC_SUBST(GLADE_LIBS)
     AC_SUBST(GLADE_CFLAGS)
-    
-    
-    ### ----------------------------------------------------------------------
-    AC_CHECK_LIB(gal, main, true,
-      [AC_MSG_ERROR([gal library not found. See the README and config.log for more info.])],
-      `$GNOME_CONFIG --libs gal`)
-    
-    AC_MSG_CHECKING([for gtkhtml < 1.1])
-    GTKHTML_LIBS=`$GNOME_CONFIG --libs gtkhtml`
-    GTKHTML_CFLAGS=`$GNOME_CONFIG --cflags gtkhtml`
+    AC_SUBST(GLADE_LIBS)
+
+    PKG_CHECK_MODULES(GTKHTML, libgtkhtml-2.0)
     AS_SCRUB_INCLUDE(GTKHTML_CFLAGS)
-    if test "x$GTKHTML_LIBS" != x; then
-	# check for gtkhtml and enable it via HAVE_LIBGTKHTML
-	# if found
-	AC_CHECK_LIB(gtkhtml, gtk_html_new,
-		     GNOMEBUILDLIBS="${GNOMEBUILDLIBS}"
-		     AC_DEFINE(HAVE_LIBGTKHTML,,We Have LIBGTKHTML),
-		     AC_MSG_ERROR([Cannot find gtkhtml. See the README and config.log for more info.]),
-		     $GTKHTML_LIBS)
-    else
-	AC_PATH_PROG(PKG_CONFIG,pkg-config)
-	if test "x$PKG_CONFIG" = x; then
-	    # @*%&$ Ximian programmers renamed this application
-	    AC_PATH_PROG(PKG_CONFIG,pkgconfig)
-	    if test "x$PKG_CONFIG" = x; then
-	    	AC_MSG_ERROR([Could not find the pkg-config (or pkgconfig) program.],)
-	    fi
-	fi
-	GTKHTML_LIBS=`$PKG_CONFIG --libs gtkhtml-1.1`
-	GTKHTML_CFLAGS=`$PKG_CONFIG --cflags gtkhtml-1.1`
-        AS_SCRUB_INCLUDE(GTKHTML_CFLAGS)
-	# check for gtkhtml and enable it via HAVE_LIBGTKHTML
-	# if found
-	AC_MSG_CHECKING([for gtkhtml >= 1.1])
-	AC_CHECK_LIB(gtkhtml-1.1, gtk_html_new,
-		     GNOMEBUILDLIBS="${GNOMEBUILDLIBS} $GTKHTML_TEST_LIB"
-		     AC_DEFINE(HAVE_LIBGTKHTML,,We Have LIBGTKHTML),
-		     AC_MSG_ERROR([Cannot find gtkhtml-1.1. See the README and config.log for more info.]),
-		     $GTKHTML_LIBS)
-    fi
-    
-    GHTTP_LIBS=`$GNOME_CONFIG --libs ghttp`
-    GHTTP_CFLAGS=`$GNOME_CONFIG --cflags ghttp`
-    
-    # Note: this doesn't croak if GHTTP_LIBS is empty! (e.g. on RH6.2)
-    AC_CHECK_LIB(ghttp, ghttp_request_new,
-                 GNOMEBUILDLIBS="${GNOMEBUILDLIBS} ghttp"
-                 AC_DEFINE(HAVE_LIBGHTTP,,We Have GHTTP)
-    	     if test "x$GHTTP_LIBS" = "x" ; then
-    		GHTTP_LIBS=-lghttp
-    	     fi,
-                 AC_MSG_ERROR([Cannot find ghttp. See the README and config.log for more info.]),
-                 $GHTTP_LIBS)
-    
-    AC_CHECK_LIB(ghttp, ghttp_enable_ssl,
-                 AC_DEFINE(HAVE_OPENSSL,,We Have OpenSSL),
-    	     AC_MSG_WARN([****** ghttp does not have SSL support.]),
-    	     $GHTTP_LIBS)
-    
-    AS_SCRUB_INCLUDE(GHTTP_CFLAGS)
-    AC_SUBST(GTKHTML_LIBS)
     AC_SUBST(GTKHTML_CFLAGS)
-    AC_SUBST(GHTTP_LIBS)
-    AC_SUBST(GHTTP_CFLAGS)
-    
-    
+    AC_SUBST(GTKHTML_LIBS)
+
+   
     ### ----------------------------------------------------------------------
-    ### guppi
-    
-    AC_ARG_ENABLE( guppi,
-      [  --disable-guppi               compile without guppi support],
-      if test $enableval = no; then
-        USE_GUPPI=0
-      else
-        USE_GUPPI=1
-      fi,
-      USE_GUPPI=1 )
-    
-    if test ${USE_GUPPI} = 0; then
-      AC_MSG_WARN([Compiling without guppi support])
-    else
-      AC_DEFINE(USE_GUPPI,,We are using guppi)
-    
     
     AC_ARG_ENABLE( efence,
       [  --enable-efence               link using efence],
@@ -918,34 +858,6 @@ then
       USE_EFENCE=0
       EFENCE_LIBS="")
     AC_SUBST(EFENCE_LIBS)
-    
-    ## Things guppi needs (actually are these guppi dependencies or gtkhtml's?)
-    
-    # LAME: if you ask gnome-config for the zvt libs, it doesn't include
-    # imlib, though it needs it so we'll just steal gtkhtml's which does.
-    AC_CHECK_LIB(zvt, main, true,
-      [AC_MSG_ERROR([libzvt development files not found. See config.log.])],
-      `$GNOME_CONFIG --libs zvt` $GTKHTML_LIBS)
-    
-    #AC_CHECK_LIB(bonobo, main, true,
-    #  [AC_MSG_ERROR([libbonobo development files not found. See config.log.])
-    #],
-    #  `$GNOME_CONFIG --libs bonobo`)
-    
-    AC_CHECK_LIB(oaf, main, true,
-      [AC_MSG_ERROR([liboaf development files not found. See config.log.])],
-      `$GNOME_CONFIG --libs oaf`)
-    
-    ## guppi itself.
-    
-    GUPPI_LIBS=`$GNOME_CONFIG --libs libguppi`
-    GUPPI_CFLAGS=`$GNOME_CONFIG --cflags libguppi`
-    AS_SCRUB_INCLUDE(GUPPI_CFLAGS)
-    LIBGUPPI_CHECK
-    AC_SUBST(GUPPI_LIBS)
-    AC_SUBST(GUPPI_CFLAGS)
-    
-    fi
     
     ### ----------------------------------------------------------------------
     ### XIM
@@ -1015,7 +927,6 @@ int main ()
         AC_MSG_ERROR([cannot continue, no long long conversion support in scanf])
         ])
 fi
-
 
 ### --------------------------------------------------------------------------
 ### GnuCash flags and libs configuration
@@ -1122,7 +1033,8 @@ chmod u+x ${srcdir}/src/bin/overrides/gnucash-make-guids
 LIBOBJS_SEDSCRIPT="s,\.[[^.]]* ,$U&,g;s,\.[[^.]]*\$\$,$U&,"
 AC_SUBST(LIBOBJS_SEDSCRIPT)
 
-AC_OUTPUT( m4/Makefile  intl/Makefile po/Makefile.in
+#AC_OUTPUT( m4/Makefile  po/Makefile.in intl/Makefile
+AC_OUTPUT( m4/Makefile 
           dnl # Makefiles
           Makefile
           accounts/Makefile
@@ -1140,10 +1052,11 @@ AC_OUTPUT( m4/Makefile  intl/Makefile po/Makefile.in
           doc/examples/Makefile
           intl-scm/Makefile
           lib/Makefile
+          lib/egg/Makefile
           lib/guile-www/Makefile
           lib/srfi/Makefile
 	  lib/libc/Makefile
-          macros/Makefile
+          po/Makefile.in
           rpm/Makefile
           src/Makefile
           src/app-file/Makefile
@@ -1184,9 +1097,10 @@ AC_OUTPUT( m4/Makefile  intl/Makefile po/Makefile.in
           src/gnc-module/test/mod-baz/Makefile
           src/gnc-module/test/misc-mods/Makefile
           src/gnome/Makefile
-          src/gnome/glade/Makefile
+	  src/gnome/glade/Makefile
+	  src/gnome/ui/Makefile
           src/gnome-utils/Makefile
-          src/gnome-utils/test/Makefile
+	  src/gnome-utils/test/Makefile
           src/gnome-search/Makefile
           src/import-export/Makefile
           src/import-export/test/Makefile

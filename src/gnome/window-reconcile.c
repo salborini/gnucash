@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <libgnomeui/gnome-window-icon.h>
+#include <gconf/gconf-client.h>
 
 #include "AccWindow.h"
 #include "Scrub.h"
@@ -1108,7 +1109,7 @@ gnc_ui_reconcile_window_delete_cb(GtkButton *button, gpointer data)
                             "transaction?");
     gboolean result;
 
-    result = gnc_verify_dialog_parented(recnData->window, FALSE, message);
+    result = gnc_verify_dialog(recnData->window, FALSE, message);
 
     if (!result)
       return;
@@ -1353,7 +1354,8 @@ gnc_recn_create_menu_bar(RecnWindow *recnData, GtkWidget *statusbar)
   menubar = gtk_menu_bar_new();
 
   accel_group = gtk_accel_group_new();
-  gtk_accel_group_attach(accel_group, GTK_OBJECT(recnData->window));
+  /* GNOME 2 Port (replace this accel_group stuff) */
+  /*gtk_accel_group_attach(accel_group, GTK_OBJECT(recnData->window));*/
 
   gnome_app_fill_menu(GTK_MENU_SHELL(menubar), reconcile_window_menu,
   		      accel_group, TRUE, 0);
@@ -1475,7 +1477,7 @@ gnc_recn_create_tool_bar(RecnWindow *recnData)
     GNOMEUIINFO_END
   };
 
-  toolbar = gtk_toolbar_new(GTK_ORIENTATION_HORIZONTAL, GTK_TOOLBAR_BOTH);
+  toolbar = gtk_toolbar_new ();
 
   gnome_app_fill_toolbar_with_data(GTK_TOOLBAR(toolbar), toolbar_info,
                                    NULL, recnData);
@@ -1698,6 +1700,7 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
   GtkWidget *statusbar;
   GtkWidget *vbox;
   GtkWidget *dock;
+  GConfClient *client;
 
   if (account == NULL)
     return NULL;
@@ -1707,6 +1710,8 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
   if (recnData)
     return recnData;
 
+  client = gconf_client_get_default ();
+  
   recnData = g_new0 (RecnWindow, 1);
 
   recnData->account = *xaccAccountGetGUID (account);
@@ -1732,7 +1737,7 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
   vbox = gtk_vbox_new(FALSE, 0);
   gtk_container_add(GTK_CONTAINER(recnData->window), vbox);
 
-  dock = gnome_dock_new();
+  dock = bonobo_dock_new();
   gtk_box_pack_start(GTK_BOX(vbox), dock, TRUE, TRUE, 0);
 
   statusbar = gnc_recn_create_status_bar(recnData);
@@ -1743,36 +1748,36 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
 
   /* The menu bar */
   {
-    GnomeDockItemBehavior behavior;
+    BonoboDockItemBehavior behavior;
     GtkWidget *dock_item;
     GtkWidget *menubar;
 
-    behavior = GNOME_DOCK_ITEM_BEH_EXCLUSIVE;
-    if (!gnome_preferences_get_menubar_detachable ())
-      behavior |= GNOME_DOCK_ITEM_BEH_LOCKED;
+    behavior = BONOBO_DOCK_ITEM_BEH_EXCLUSIVE;
+    if (!gconf_client_get_bool (client, "/desktop/gnome/interface/menubar_detachable", NULL))
+      behavior |= BONOBO_DOCK_ITEM_BEH_LOCKED;
 
-    dock_item = gnome_dock_item_new("menu", behavior);
+    dock_item = bonobo_dock_item_new("menu", behavior);
 
     menubar = gnc_recn_create_menu_bar(recnData, statusbar);
     gtk_container_set_border_width(GTK_CONTAINER(menubar), 2);
     gtk_container_add(GTK_CONTAINER(dock_item), menubar);
 
-    gnome_dock_add_item (GNOME_DOCK(dock), GNOME_DOCK_ITEM(dock_item),
-                         GNOME_DOCK_TOP, 0, 0, 0, TRUE);
+    bonobo_dock_add_item (BONOBO_DOCK(dock), BONOBO_DOCK_ITEM(dock_item),
+                         BONOBO_DOCK_TOP, 0, 0, 0, TRUE);
   }
 
   /* The tool bar */
   {
-    GnomeDockItemBehavior behavior;
+    BonoboDockItemBehavior behavior;
     GtkWidget *dock_item;
     GtkWidget *toolbar;
     SCM id;
 
-    behavior = GNOME_DOCK_ITEM_BEH_EXCLUSIVE;
-    if (!gnome_preferences_get_toolbar_detachable ())
-      behavior |= GNOME_DOCK_ITEM_BEH_LOCKED;
+    behavior = BONOBO_DOCK_ITEM_BEH_EXCLUSIVE;
+    if (!gconf_client_get_bool (client, "/desktop/gnome/interface/toolbar_detachable", NULL))
+      behavior |= BONOBO_DOCK_ITEM_BEH_LOCKED;
 
-    dock_item = gnome_dock_item_new("toolbar", behavior);
+    dock_item = bonobo_dock_item_new("toolbar", behavior);
 
     toolbar = gnc_recn_create_tool_bar(recnData);
     gtk_container_set_border_width(GTK_CONTAINER(toolbar), 2);
@@ -1782,8 +1787,8 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
                                              "General", "Toolbar Buttons");
     recnData->toolbar_change_cb_id = id;
 
-    gnome_dock_add_item (GNOME_DOCK(dock), GNOME_DOCK_ITEM(dock_item),
-                         GNOME_DOCK_TOP, 1, 0, 0, TRUE);
+    bonobo_dock_add_item (BONOBO_DOCK(dock), BONOBO_DOCK_ITEM(dock_item),
+                          BONOBO_DOCK_TOP, 1, 0, 0, TRUE);
   }
 
   /* The main area */
@@ -1795,7 +1800,7 @@ recnWindowWithBalance (GtkWidget *parent, Account *account,
     GtkWidget *credits_box;
     GtkWidget *popup;
 
-    gnome_dock_set_client_area(GNOME_DOCK(dock), frame);
+    bonobo_dock_set_client_area(BONOBO_DOCK(dock), frame);
 
     /* Force a reasonable starting size */
     gtk_widget_set_usize(GTK_WIDGET(recnData->window), 800, 600);
@@ -2069,7 +2074,7 @@ recnFinishCB (GtkWidget *w, gpointer data)
   {
     const char *message = _("The account is not balanced.\n"
                             "Are you sure you want to finish?");
-    if (!gnc_verify_dialog_parented (recnData->window, FALSE, message))
+    if (!gnc_verify_dialog (recnData->window, FALSE, message))
       return;
   }
 
@@ -2127,7 +2132,7 @@ recnPostponeCB (GtkWidget *w, gpointer data)
   {
     const char *message = _("Do you want to postpone this reconciliation "
                             "and finish it later?");
-    if (!gnc_verify_dialog_parented (recnData->window, FALSE, message))
+    if (!gnc_verify_dialog (recnData->window, FALSE, message))
       return;
   }
 
@@ -2161,7 +2166,7 @@ recnCancelCB (GtkWidget *w, gpointer data)
   {
     const char *message = _("You have made changes to this reconcile "
                             "window.\nAre you sure you want to cancel?");
-    if (!gnc_verify_dialog_parented(recnData->window, FALSE, message))
+    if (!gnc_verify_dialog(recnData->window, FALSE, message))
       return;
   }
 

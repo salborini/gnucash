@@ -65,7 +65,7 @@ option_menu_destroy_cb (GtkObject *obj, gpointer data)
 {
   GtkTooltips *tips = data;
 
-  gtk_object_unref (GTK_OBJECT (tips));
+  g_object_unref (GTK_OBJECT (tips));
 }
 
 /********************************************************************\
@@ -93,7 +93,7 @@ gnc_build_option_menu(GNCOptionInfo *option_info, gint num_options)
 
   tooltips = gtk_tooltips_new();
 
-  gtk_object_ref (GTK_OBJECT (tooltips));
+  g_object_ref (GTK_OBJECT (tooltips));
   gtk_object_sink (GTK_OBJECT (tooltips));
 
   for (i = 0; i < num_options; i++)
@@ -152,31 +152,6 @@ gnc_get_pixmap (const char *name)
 
   return pixmap;
 }
-
-
-/********************************************************************\
- * gnc_get_imlib_image                                              *
- *   returns a GdkImlibImage object given a pixmap filename         *
- *                                                                  *
- * Args: none                                                       *
- * Returns: GnomePixmap widget or NULL if there was a problem       *
- \*******************************************************************/
-GdkImlibImage *
-gnc_get_gdk_imlib_image (const char *name)
-{
-  GdkImlibImage *image;
-
-  char *fullname;
-
-  g_return_val_if_fail (name != NULL, NULL);
-
-  fullname = g_strconcat (GNC_PIXMAP_DIR, "/", name, NULL);
-  image = gdk_imlib_load_image (fullname);
-  g_free (fullname);
-
-  return image;
-}
-
 
 /********************************************************************\
  * gnc_get_toolbar_style                                            *
@@ -288,7 +263,7 @@ gnc_set_label_color(GtkWidget *label, gnc_numeric value)
 
   gtk_widget_set_style(label, style);
 
-  gtk_style_unref(style);
+  g_object_unref(style);
 }
 
 
@@ -425,23 +400,23 @@ gnc_option_menu_init(GtkWidget * w)
 
 typedef struct {
   int i;
-  GtkSignalFunc f;
+  GCallback f;
   gpointer cb_data;
 } menu_init_data;
 
 static void
 gnc_option_menu_set_one_item (gpointer loop_data, gpointer user_data)
 {
-  GtkObject *item = GTK_OBJECT(loop_data);
+  GObject *item = G_OBJECT(loop_data);
   menu_init_data *args = (menu_init_data *) user_data;
   
-  gtk_object_set_data(item, "option_index", GINT_TO_POINTER(args->i++));
-  gtk_signal_connect(item, "activate", args->f, args->cb_data);
+  g_object_set_data(item, "option_index", GINT_TO_POINTER(args->i++));
+  g_signal_connect(item, "activate", args->f, args->cb_data);
 }
 
 
 void
-gnc_option_menu_init_w_signal(GtkWidget * w, GtkSignalFunc f, gpointer cb_data)
+gnc_option_menu_init_w_signal(GtkWidget * w, GCallback f, gpointer cb_data)
 {
   GtkWidget * menu;
   menu_init_data foo;
@@ -733,13 +708,15 @@ check_realize (GtkWidget *widget, gpointer user_data)
   GList *list;
   GList *node;
   GdkGC *gc;
+  GdkFont *font;
 
   if (check_info->mask)
     return;
 
   style = gtk_widget_get_style (widget);
+  font = gdk_font_from_description(style->font_desc);
 
-  font_height = style->font->ascent + style->font->descent;
+  font_height = font->ascent + font->descent;
   check_size = (font_height > 0) ? font_height - 3 : 9;
 
   check_info->mask = gdk_pixmap_new (NULL, check_size, check_size, 1);
@@ -923,7 +900,7 @@ gnc_clist_columns_autosize (GtkCList *list)
   if (!style)
     return;
 
-  font = style->font;
+  font = gdk_font_from_description (style->font_desc);
   if (!font)
     return;
 
@@ -969,7 +946,7 @@ gnc_glade_xml_new (const char *filename, const char *root)
 
   fname = g_strconcat (GNC_GLADE_DIR, "/", filename, NULL);
 
-  xml = glade_xml_new (fname, root);
+  xml = glade_xml_new (fname, root, NULL);
 
   g_free (fname);
 
@@ -996,38 +973,36 @@ GModule *allsymbols = NULL;
 
 void
 gnc_glade_autoconnect_full_func(const gchar *handler_name,
-				GtkObject *signal_object,
+				GObject *signal_object,
 				const gchar *signal_name,
 				const gchar *signal_data,
-				GtkObject *other_object,
+				GObject *other_object,
 				gboolean signal_after,
 				gpointer user_data)
 {
-  GtkSignalFunc func;
-  GtkSignalFunc *p_func = &func;
+  GCallback func;
 
   if (allsymbols == NULL) {
     /* get a handle on the main executable -- use this to find symbols */
     allsymbols = g_module_open(NULL, 0);
   }
 
-  if (!g_module_symbol(allsymbols, handler_name, (gpointer *)p_func)) {
+  if (!g_module_symbol(allsymbols, handler_name, (gpointer *)&func)) {
     g_warning("could not find signal handler '%s'.", handler_name);
     return;
   }
 
   if (other_object) {
     if (signal_after)
-      gtk_signal_connect_object_after(signal_object, signal_name, func,
-				      other_object);
+      g_signal_connect_object (signal_object, signal_name, func,
+			       other_object, G_CONNECT_AFTER | G_CONNECT_SWAPPED);
     else
-      gtk_signal_connect_object(signal_object, signal_name, func,
-				other_object);
+      g_signal_connect_swapped (signal_object, signal_name, func, other_object);
   } else {
     if (signal_after)
-      gtk_signal_connect_after(signal_object, signal_name, func, user_data);
+      g_signal_connect_after(signal_object, signal_name, func, user_data);
     else
-      gtk_signal_connect(signal_object, signal_name, func, user_data);
+      g_signal_connect(signal_object, signal_name, func, user_data);
   }
 }
 

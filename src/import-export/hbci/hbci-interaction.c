@@ -39,6 +39,9 @@
 #include "dialog-pass.h"
 
 #include <openhbci.h>
+#ifndef OPENHBCI_VERSION_BUILD
+#  define OPENHBCI_VERSION_BUILD 0
+#endif
 
 #define PREF_TAB_ONLINE_BANKING N_("Online Banking & Importing")
 
@@ -259,9 +262,7 @@ static int msgInputPin(const HBCI_User *user,
 	g_strdup_printf (  _("The PIN needs to be at least %d characters \n"
 			     "long. Do you want to try again?"),
 			   minsize);
-      retval = gnc_verify_dialog_parented (GTK_WIDGET (data->parent), 
-					   TRUE,
-					   msg);
+      retval = gnc_verify_dialog (data->parent, TRUE, msg);
       g_free (msg);
       if (!retval)
 	break;
@@ -293,7 +294,7 @@ static int msgInsertMediumOrAbort(const HBCI_User *user,
   GNCInteractor *data = user_data;
   const HBCI_Bank * b = NULL;
   char *msgstr = NULL;
-  GNCVerifyResult retval;
+  gint retval;
   g_assert(data);
 
   if (user != NULL) {
@@ -343,12 +344,10 @@ static int msgInsertMediumOrAbort(const HBCI_User *user,
 			      "unknown user at unknown bank."));
       }
     
-  retval = gnc_ok_cancel_dialog_parented (data->parent,
-					  GNC_VERIFY_OK, 
-					  "%s", msgstr);
+  retval = gnc_ok_cancel_dialog (data->parent, GTK_RESPONSE_OK, "%s", msgstr);
   g_free (msgstr);
   
-  return (retval == GNC_VERIFY_OK);
+  return (retval == GTK_RESPONSE_OK);
 }
 
 
@@ -359,7 +358,7 @@ static int msgInsertCorrectMediumOrAbort(const HBCI_User *user,
   GNCInteractor *data = user_data;
   const HBCI_Bank * b = NULL;
   char *msgstr = NULL;
-  GNCVerifyResult retval;
+  gint retval;
   g_assert(data);
 
   if (user != NULL) {
@@ -412,12 +411,10 @@ static int msgInsertCorrectMediumOrAbort(const HBCI_User *user,
 			      "unknown user at unknown bank."));
       }
   
-  retval = gnc_ok_cancel_dialog_parented (data->parent,
-					  GNC_VERIFY_OK,
-					  "%s", msgstr);
+  retval = gnc_ok_cancel_dialog (data->parent, GTK_RESPONSE_OK, "%s", msgstr);
   g_free (msgstr);
   
-  return (retval == GNC_VERIFY_OK);
+  return (retval == GTK_RESPONSE_OK);
 }
 
 

@@ -54,7 +54,7 @@ new_tax_table_ok_cb (GtkWidget *widget, gpointer data)
 {
   NewTaxTable *ntt = data;
   TaxTableWindow *ttw;
-  char *name = NULL;
+  const char *name = NULL;
   char *message;
   Account *acc;
   gnc_numeric amount;
@@ -69,14 +69,14 @@ new_tax_table_ok_cb (GtkWidget *widget, gpointer data)
     name = gtk_entry_get_text (GTK_ENTRY (ntt->name_entry));
     if (name == NULL || *name == '\0') {
       message = _("You must provide a name for this Tax Table.");
-      gnc_error_dialog_parented (GTK_WINDOW (ntt->dialog), message);
+      gnc_error_dialog (ntt->dialog, message);
       return;
     }
     if (gncTaxTableLookupByName (ttw->book, name)) {
       message = g_strdup_printf(_(
 			 "You must provide a unique name for this Tax Table.\n"
 			 "Your choice \"%s\" is already in use."), name);
-      gnc_error_dialog_parented (GTK_WINDOW (ntt->dialog), "%s", message);
+      gnc_error_dialog (ntt->dialog, "%s", message);
       g_free (message);
       return;
     }
@@ -86,14 +86,14 @@ new_tax_table_ok_cb (GtkWidget *widget, gpointer data)
   amount = gnc_amount_edit_get_amount (GNC_AMOUNT_EDIT (ntt->amount_entry));
   if (gnc_numeric_negative_p (amount)) {
     message = _("Negative amounts are not allowed.");
-    gnc_error_dialog_parented (GTK_WINDOW (ntt->dialog), message);
+    gnc_error_dialog (ntt->dialog, message);
     return;
   }
   if (ntt->type == GNC_AMT_TYPE_PERCENT &&
       gnc_numeric_compare (amount,
 			   gnc_numeric_create (100, 1)) > 0) {
     message = _("Percentage amount must be between 0 and 100.");
-    gnc_error_dialog_parented (GTK_WINDOW (ntt->dialog), message);
+    gnc_error_dialog (ntt->dialog, message);
     return;
   }							   
 
@@ -102,7 +102,7 @@ new_tax_table_ok_cb (GtkWidget *widget, gpointer data)
     gnc_account_tree_get_current_account (GNC_ACCOUNT_TREE (ntt->acct_tree));
   if (acc == NULL) {
     message = _("You must choose a Tax Account.");
-    gnc_error_dialog_parented (GTK_WINDOW (ntt->dialog), message);
+    gnc_error_dialog (ntt->dialog, message);
     return;
   }
 
@@ -178,8 +178,8 @@ add_menu_item (GtkWidget *menu, NewTaxTable *ntt, char *label, gint type)
   GtkWidget *item;
 
   item = gtk_menu_item_new_with_label (label);
-  gtk_object_set_data (GTK_OBJECT (item), "option", GINT_TO_POINTER (type));
-  gtk_signal_connect (GTK_OBJECT (item), "activate", optionmenu_changed, ntt);
+  g_object_set_data (G_OBJECT (item), "option", GINT_TO_POINTER (type));
+  g_signal_connect (G_OBJECT (item), "activate", G_CALLBACK (optionmenu_changed), ntt);
   gtk_menu_append (GTK_MENU (menu), item);
   gtk_widget_show (item);
   return item;
@@ -198,7 +198,7 @@ make_menu (GtkWidget *omenu, NewTaxTable *ntt)
 
   gtk_option_menu_set_menu (GTK_OPTION_MENU (omenu), menu);
 
-  gtk_signal_emit_by_name (GTK_OBJECT ((current == GNC_AMT_TYPE_VALUE-1 ?
+  g_signal_emit_by_name (G_OBJECT ((current == GNC_AMT_TYPE_VALUE-1 ?
 					value : percent)), "activate", ntt);
   gtk_option_menu_set_history (GTK_OPTION_MENU (omenu), current);
   return menu;
@@ -257,10 +257,10 @@ new_tax_table_dialog (TaxTableWindow *ttw, gboolean new_table,
 
   /* Connect the dialog buttons */
   gnome_dialog_button_connect (GNOME_DIALOG (ntt->dialog), 0,
-			       new_tax_table_ok_cb, ntt);
+			       G_CALLBACK (new_tax_table_ok_cb), ntt);
 
   gnome_dialog_button_connect (GNOME_DIALOG (ntt->dialog), 1,
-			       new_tax_table_cancel_cb, ntt);
+			       G_CALLBACK (new_tax_table_cancel_cb), ntt);
 
   /* Fill in the widgets appropriately */
   if (entry) {
@@ -275,8 +275,8 @@ new_tax_table_dialog (TaxTableWindow *ttw, gboolean new_table,
 			   GTK_WINDOW (ttw->dialog));
   gtk_window_set_modal (GTK_WINDOW (ntt->dialog), TRUE);
 
-  gtk_signal_connect (GTK_OBJECT (ntt->dialog), "destroy",
-		      new_tax_table_dialog_destroy_cb, ntt);
+  g_signal_connect (G_OBJECT (ntt->dialog), "destroy",
+		    G_CALLBACK (new_tax_table_dialog_destroy_cb), ntt);
 
   /* Show what we should */
   gtk_widget_show_all (ntt->dialog);
@@ -509,14 +509,14 @@ tax_table_delete_table_cb (GtkButton *button, TaxTableWindow *ttw)
     char *message =
       g_strdup_printf (_("Tax table \"%s\" is in use.  You cannot delete it."),
 		       gncTaxTableGetName (ttw->current_table));
-    gnc_error_dialog_parented (GTK_WINDOW (ttw->dialog), "%s", message);
+    gnc_error_dialog (ttw->dialog, "%s", message);
     g_free (message);
     return;
   }
 
-  if (gnc_verify_dialog_parented (ttw->dialog, FALSE,
-				  _("Are you sure you want to delete \"%s\"?"),
-				  gncTaxTableGetName (ttw->current_table))) {
+  if (gnc_verify_dialog (ttw->dialog, FALSE,
+			 _("Are you sure you want to delete \"%s\"?"),
+			 gncTaxTableGetName (ttw->current_table))) {
     /* Ok, let's remove it */
     gnc_suspend_gui_refresh ();
     gncTaxTableBeginEdit (ttw->current_table);
@@ -554,12 +554,12 @@ tax_table_delete_entry_cb (GtkButton *button, TaxTableWindow *ttw)
   if (g_list_length (gncTaxTableGetEntries (ttw->current_table)) <= 1) {
     char *message = _("You cannot remove the last entry from the tax table.\n"
 		      "Try deleting the tax table if you want to do that.");
-    gnc_error_dialog_parented (GTK_WINDOW (ttw->dialog), message);
+    gnc_error_dialog (ttw->dialog, message);
     return;
   }
 
-  if (gnc_verify_dialog_parented (ttw->dialog, FALSE,
-			  _("Are you sure you want to delete this entry?"))) {
+  if (gnc_verify_dialog (ttw->dialog, FALSE,
+			 _("Are you sure you want to delete this entry?"))) {
     /* Ok, let's remove it */
     gnc_suspend_gui_refresh ();
     gncTaxTableBeginEdit (ttw->current_table);
@@ -652,33 +652,33 @@ gnc_ui_tax_table_window_new (GNCBook *book)
 
   /* Connect all the buttons */
   button = glade_xml_get_widget (xml, "new_table_button");
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      tax_table_new_table_cb, ttw);
+  g_signal_connect (G_OBJECT (button), "clicked",
+		    G_CALLBACK (tax_table_new_table_cb), ttw);
   button = glade_xml_get_widget (xml, "delete_table_button");
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      tax_table_delete_table_cb, ttw);
+  g_signal_connect (G_OBJECT (button), "clicked",
+		    G_CALLBACK (tax_table_delete_table_cb), ttw);
   button = glade_xml_get_widget (xml, "new_entry_button");
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      tax_table_new_entry_cb, ttw);
+  g_signal_connect (G_OBJECT (button), "clicked",
+		    G_CALLBACK (tax_table_new_entry_cb), ttw);
   button = glade_xml_get_widget (xml, "edit_entry_button");
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      tax_table_edit_entry_cb, ttw);
+  g_signal_connect (G_OBJECT (button), "clicked",
+		    G_CALLBACK (tax_table_edit_entry_cb), ttw);
   button = glade_xml_get_widget (xml, "delete_entry_button");
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      tax_table_delete_entry_cb, ttw);
+  g_signal_connect (G_OBJECT (button), "clicked",
+		    G_CALLBACK (tax_table_delete_entry_cb), ttw);
 
   /* Set the row-select callbacks */
-  gtk_signal_connect (GTK_OBJECT (ttw->names_clist), "select-row",
-		      tax_table_row_selected, ttw);
-  gtk_signal_connect (GTK_OBJECT (ttw->entries_clist), "select-row",
-		      tax_table_entry_row_selected, ttw);
+  g_signal_connect (G_OBJECT (ttw->names_clist), "select-row",
+		    G_CALLBACK (tax_table_row_selected), ttw);
+  g_signal_connect (G_OBJECT (ttw->entries_clist), "select-row",
+		    G_CALLBACK (tax_table_entry_row_selected), ttw);
 
   /* Connect the dialog buttons */
   gnome_dialog_button_connect (GNOME_DIALOG (ttw->dialog), 0,
-			       tax_table_window_close, ttw);
+			       G_CALLBACK (tax_table_window_close), ttw);
 
-  gtk_signal_connect (GTK_OBJECT (ttw->dialog), "destroy",
-		      tax_table_window_destroy_cb, ttw);
+  g_signal_connect (G_OBJECT (ttw->dialog), "destroy",
+		    G_CALLBACK (tax_table_window_destroy_cb), ttw);
 
   /* register with component manager */
   ttw->component_id =
