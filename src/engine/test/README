@@ -1,6 +1,0 @@
-
-This directory contains test cases to excercise basic GnuCash engine functions.
-
-To run the tests, just do 'make check'
-
-
