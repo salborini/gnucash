@@ -26,8 +26,7 @@
 #define DIALOG_UTILS_H
 
 #include <glade/glade.h>
-#include <gnome.h>
-
+#include <gnome.h> 
 #include "Account.h"
 
 
@@ -60,18 +59,9 @@ GtkWidget * gnc_build_option_menu (GNCOptionInfo *option_info,
  \*******************************************************************/
 GtkWidget * gnc_get_pixmap (const char *name);
 
-/********************************************************************\
- * Returns a GdkImlibImage object given a pixmap filename           *
- *                                                                  *
- * Args: Filename of pixmap file                                    *
- * Returns: GdkImlibImage or NULL if there was a problem            *
- \*******************************************************************/
-GdkImlibImage * gnc_get_gdk_imlib_image (const char *name);
 
-
-GtkToolbarStyle gnc_get_toolbar_style (void);
 GnomeMDIMode    gnc_get_mdi_mode(void);
-
+GtkToolbarStyle gnc_get_toolbar_style (void);
 void gnc_get_deficit_color (GdkColor *color);
 void gnc_set_label_color (GtkWidget *label, gnc_numeric value);
 
@@ -111,7 +101,7 @@ void gnc_fill_menu_with_data (GnomeUIInfo *info, gpointer data);
 
 void gnc_option_menu_init (GtkWidget * option_menu);
 void gnc_option_menu_init_w_signal(GtkWidget * w,
-				   GtkSignalFunc f,
+				   GCallback f,
 				   gpointer cb_data);
 int  gnc_option_menu_get_active (GtkWidget * option_menu);
 
@@ -150,10 +140,10 @@ void gnc_clist_columns_autosize (GtkCList *list);
 GladeXML * gnc_glade_xml_new (const char *filename, const char *root);
 GtkWidget * gnc_glade_lookup_widget (GtkWidget *widget, const char *name);
 void gnc_glade_autoconnect_full_func(const gchar *handler_name,
-				     GtkObject *signal_object,
+				     GObject *signal_object,
 				     const gchar *signal_name,
 				     const gchar *signal_data,
-				     GtkObject *connect_object,
+				     GObject *connect_object,
 				     gboolean after,
 				     gpointer user_data);
 

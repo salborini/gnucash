@@ -350,7 +350,7 @@ static void gnc_sxsld_revert_reminders( sxSinceLastData *sxsld,
                                         GList *toRevertList );
 static gboolean processed_valid_reminders_listP( sxSinceLastData *sxsld );
 static void create_bad_reminders_msg( gpointer data, gpointer ud );
-static gboolean inform_or_add( reminderTuple *rt, gboolean okFlag,
+static gboolean inform_or_add( sxSinceLastData *sxsld, reminderTuple *rt, gboolean okFlag,
                                GList *badList, GList **goodList );
 
 static void sx_obsolete_select_all_clicked( GtkButton *button,
@@ -383,7 +383,8 @@ gnc_ui_sxsincelast_guile_wrapper( char *bookfile )
   ret = gnc_ui_sxsincelast_dialog_create();
   if ( ret < 0 ) {
     gnc_info_dialog
-      (ngettext 
+      (NULL,
+       ngettext 
        ("There are no Scheduled Transactions to be entered at this time.\n"
 	"(%d transaction automatically created)",
 	"There are no Scheduled Transactions to be entered at this time.\n"
@@ -703,7 +704,7 @@ reminders_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
         /* FIXME: this isn't quite right; see the comment in
          * sxsld_remind_row_toggle */
         gnome_druid_set_show_finish( sxsld->sincelast_druid,
@@ -832,7 +833,7 @@ created_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         if ( !gnc_sxsld_get_appropriate_page( sxsld,
                                               druid_page,
@@ -854,7 +855,7 @@ obsolete_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         /* This is always the last/finish page. */
         gnome_druid_set_show_finish( sxsld->sincelast_druid, TRUE );
@@ -945,7 +946,7 @@ auto_create_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
 
         if ( !gnc_sxsld_get_appropriate_page( sxsld,
                                               druid_page,
@@ -977,7 +978,7 @@ to_create_prep( GnomeDruidPage *druid_page,
                                                   druid_page,
                                                   BACK )
                   != NULL ),
-                TRUE, TRUE );
+                TRUE, TRUE, TRUE );
         /* Setup next/finish button based on the number of ready-to-go
          * to-create transactions */
         gnome_druid_set_show_finish(
@@ -1381,8 +1382,8 @@ cancel_check( GnomeDruidPage *druid_page,
                 return FALSE;
         }
 
-        if ( !gnc_verify_dialog_parented( sxsld->sincelast_window, TRUE,
-                                          lastrun_cancel_check_msg ) ) {
+        if ( !gnc_verify_dialog( sxsld->sincelast_window, TRUE,
+				 lastrun_cancel_check_msg ) ) {
                 return TRUE;
         }
 
@@ -1889,15 +1890,15 @@ add_reminders_to_gui( GList *reminderList, sxSinceLastData *sxsld )
                         gtk_ctree_node_set_row_data( ctree,
                                                      instNode,
                                                      (gpointer)rit );
-                        gtk_signal_handler_block_by_func( GTK_OBJECT(ctree),
-                                                          sxsld_remind_row_toggle,
-                                                          sxsld ); 
+                        g_signal_handlers_block_by_func( G_OBJECT(ctree),
+                                                         sxsld_remind_row_toggle,
+                                                         sxsld ); 
                         if ( rit->isSelected ) {
                                 gtk_ctree_select( ctree, instNode );
                         }
-                        gtk_signal_handler_unblock_by_func( GTK_OBJECT(ctree),
-                                                            sxsld_remind_row_toggle,
-                                                            sxsld );
+                        g_signal_handlers_unblock_by_func( G_OBJECT(ctree),
+                                                           sxsld_remind_row_toggle,
+                                                           sxsld );
                         g_free( rowText[0] );
                         g_free( rowText[2] );
                 }
@@ -1921,9 +1922,9 @@ add_dead_list_to_gui(GList *removeList, sxSinceLastData *sxsld)
 
         gtk_clist_freeze( cl );
         gtk_clist_clear( cl );
-        gtk_signal_handler_block_by_func( GTK_OBJECT(cl),
-                                          sxsld_obsolete_row_toggle,
-                                          sxsld );
+        g_signal_handlers_block_by_func( G_OBJECT(cl),
+                                         sxsld_obsolete_row_toggle,
+                                         sxsld );
 
         for ( row = 0; removeList;
               row++, removeList = removeList->next ) {
@@ -1943,9 +1944,9 @@ add_dead_list_to_gui(GList *removeList, sxSinceLastData *sxsld)
                         gtk_clist_select_row( cl, row, 0 );
                 }
         }
-        gtk_signal_handler_unblock_by_func( GTK_OBJECT(cl),
-                                            sxsld_obsolete_row_toggle,
-                                            sxsld );
+        g_signal_handlers_unblock_by_func( G_OBJECT(cl),
+                                           sxsld_obsolete_row_toggle,
+                                           sxsld );
         gtk_clist_thaw( cl );
 
         g_string_free(tmp_str, TRUE);
@@ -3108,7 +3109,7 @@ processed_valid_reminders_listP( sxSinceLastData *sxsld )
                         }
                 }
                 overallOkFlag &=
-                        inform_or_add( rt, okFlag, badList, &goodList );
+                        inform_or_add( sxsld, rt, okFlag, badList, &goodList );
                 if ( badList ) {
                         g_list_free( badList );
                         badList = NULL;
@@ -3436,7 +3437,7 @@ create_bad_reminders_msg( gpointer data, gpointer ud )
 }
 
 static gboolean
-inform_or_add( reminderTuple *rt, gboolean okFlag,
+inform_or_add( sxSinceLastData *sxsld, reminderTuple *rt, gboolean okFlag,
                GList *badList, GList **goodList )
 {
         reminderInstanceTuple *rit;
@@ -3468,7 +3469,7 @@ inform_or_add( reminderTuple *rt, gboolean okFlag,
                                   "must be selected as well:\n\n",
                                   xaccSchedXactionGetName( rt->sx ) );
                 g_list_foreach( badList, create_bad_reminders_msg, userMsg );
-                gnc_error_dialog( userMsg->str );
+                gnc_error_dialog( sxsld->sincelast_window, userMsg->str );
                 g_string_free( userMsg, TRUE );
         }
 

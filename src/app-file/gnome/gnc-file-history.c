@@ -158,8 +158,8 @@ gnc_history_add_file (const char *newfile)
 
   /* Update apps immediately */
   {
-    GList *containers = gtk_container_get_toplevels ();
-  
+    GList *containers = gtk_window_list_toplevels ();
+    GList *containerstop = containers; 
     while (containers)
     {
       GtkWidget *w = containers->data;
@@ -169,6 +169,7 @@ gnc_history_add_file (const char *newfile)
 
       containers = containers->next;
     }
+    g_list_free (containerstop);
   }
 }
 
@@ -188,7 +189,7 @@ void
 gnc_history_update_menu (GtkWidget * app_w)
 {
   GnomeUIInfo *menu;
-  GnomeDockItem *di;
+  BonoboDockItem *di;
   GtkWidget *menushell;
   GnomeApp *app;
   gpointer data;
@@ -212,7 +213,7 @@ gnc_history_update_menu (GtkWidget * app_w)
   if (di == NULL)
     return;
 
-  menushell = gnome_dock_item_get_child (di);
+  menushell = bonobo_dock_item_get_child (di);
   if (menushell == NULL)
     return;
 
@@ -291,9 +292,6 @@ gnc_history_update_menu (GtkWidget * app_w)
   gtk_object_set_data (GTK_OBJECT (app), "gnc_set_history", app);
   gtk_object_set_data (GTK_OBJECT (app), "gnc_num_history",
                        GINT_TO_POINTER (num_menu_entries));
-
-  for (i = 0; i < n; i++)
-    g_free ((menu+i)->label);
 
   g_free (menu);
   g_free (path);
