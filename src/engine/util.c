@@ -24,6 +24,8 @@
  *           Huntington Beach, CA 92648-4632                        *
 \********************************************************************/
 
+#include <malloc.h>
+#include <math.h>
 #include <string.h>
 
 #include "config.h"
@@ -43,14 +45,14 @@ char * stpcpy (char *dest, const char *src);
  */
 int loglevel[MODULE_MAX] =
 {0,      /* DUMMY */
- 2,      /* ENGINE */
- 2,      /* IO */
- 4,      /* REGISTER */
- 2,      /* LEDGER */
- 4,      /* HTML */
- 2,      /* GUI */
- 4,      /* SCRUB */
- 4,      /* GTK_REG */
+ 1,      /* ENGINE */
+ 1,      /* IO */
+ 1,      /* REGISTER */
+ 1,      /* LEDGER */
+ 1,      /* HTML */
+ 1,      /* GUI */
+ 1,      /* SCRUB */
+ 1,      /* GTK_REG */
 };
 
 /********************************************************************\
@@ -149,6 +151,19 @@ ultostr (unsigned long val, int base)
 }
 
 /********************************************************************\
+ * stpcpy for those platforms that don't have it.
+\********************************************************************/
+
+#if !HAVE_STPCPY
+char *
+stpcpy (char *dest, const char *src)
+{
+   strcpy(dest, src);
+   return(dest + strlen(src));
+}
+#endif
+
+/********************************************************************\
  * currency & locale related stuff.
  * first attempt at internationalization i18n of currency amounts
  * In the long run, amounts should be printed with punctuation
@@ -169,6 +184,16 @@ PrtAmtComma (char * buf, double val, int prec)
    double tmp, amt=0.0;
    char *start = buf;
 
+   /* check if we're printing infinity */
+   if (!finite(val)) {
+      strcpy (buf, "inf");
+      return 3;
+   }
+
+   /* Round to 100'ths or 1000'nths now.  Must do this before we start printing. */
+   if (2 == prec) val += 0.005;
+   if (3 == prec) val += 0.0005;
+
    /* count number of commas */
    tmp = val;
    while (tmp > 1000.0) {
@@ -176,7 +201,7 @@ PrtAmtComma (char * buf, double val, int prec)
       ncommas ++;
    }
 
-   /* print digits in groups of three, seperated by commas */
+   /* print digits in groups of three, separated by commas */
    for (i=ncommas; i>=0; i--) {
       int j;
 
@@ -199,10 +224,10 @@ PrtAmtComma (char * buf, double val, int prec)
 
    /* print two or three decimal places */
    if (3 == prec) {
-      ival = 0.5 + 1000.0 * (val-amt);
+      ival = 1000.0 * (val-amt);
       buf += sprintf (buf, "%03d", ival); 
    } else {
-      ival = 0.5 + 100.0 * (val-amt);
+      ival = 100.0 * (val-amt);
       buf += sprintf (buf, "%02d", ival); 
    }
 
@@ -215,6 +240,9 @@ xaccSPrintAmount (char * bufp, double val, short shrs)
    char * orig_bufp = bufp;
 
    if (!bufp) return 0;
+
+   if (DEQ(val, 0.0))
+     val = 0.0;
 
    if (0.0 > val) {
       bufp[0] = '-';

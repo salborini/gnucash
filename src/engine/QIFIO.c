@@ -127,16 +127,13 @@ char * xaccReadQIFDiscard( int fd )
      if (NSTRNCMP(qifline, "^^")) {
         qifline = xaccReadQIFLine (fd);
         return qifline;
-     } else
-     if (NSTRNCMP(qifline, "^\n")) {
+     } else if (NSTRNCMP(qifline, "^\n")) {
         qifline = xaccReadQIFLine (fd);
         return qifline;
-     } else
-     if (NSTRNCMP(qifline, "^\r")) {
+     } else if (NSTRNCMP(qifline, "^\r")) {
         qifline = xaccReadQIFLine (fd);
         return qifline;
-     } else
-     if ('!' == qifline [0]) return qifline;
+     } else if ('!' == qifline [0]) return qifline;
      qifline = xaccReadQIFLine (fd);
    }
    return qifline;
@@ -175,66 +172,76 @@ char * xaccReadQIFCategory (int fd, Account * acc)
    char * qifline;
    char * tmp;
 
-
    if (!acc) return NULL;
 
    xaccAccountBeginEdit (acc, 0);
    xaccAccountSetType (acc, -1);
-   xaccAccountSetName (acc, "");
-   xaccAccountSetDescription (acc, "");
-   xaccAccountSetNotes (acc, "");
 
    qifline = xaccReadQIFLine (fd);
    if (!qifline) return NULL;
    if ('!' == qifline [0]) return qifline;
 
    /* scan for account name, description, type */
-   while (qifline) {
+   while (qifline) 
+     {
 
-     /* N == Name */
-     if ('N' == qifline [0]) {
-        XACC_PREP_STRING (tmp);
-        xaccAccountSetName (acc, tmp);
-     } else 
+       switch (qifline[0]) {
+	 /* N == Name */
+         case 'N':
+	   XACC_PREP_STRING (tmp);
+	   xaccAccountSetName (acc, tmp);
+	   break;
 
-     /* D == Description */
-     if ('D' == qifline [0]) {
-        XACC_PREP_STRING (tmp);
-        xaccAccountSetDescription (acc, tmp);
-     } else 
+	 /* D == Description */
+         case 'D':
+	   XACC_PREP_STRING (tmp);
+	   xaccAccountSetDescription (acc, tmp);
+	   break;
+  
+	 /* T == Taxable -- this income is taxable */
+         case 'T':
+	   break;
 
-     /* T == Taxable -- this income is taxable */
-     if ('T' == qifline [0]) {
-     } else 
+	 /* E == Expense Category */
+         case 'E':
+	   xaccAccountSetType (acc, EXPENSE);
+	   break;
 
-     /* E == Expense Category */
-     if ('E' == qifline [0]) {
-        xaccAccountSetType (acc, EXPENSE);
-     } else 
+	 /* I == Income Category */
+         case 'I':
+	   xaccAccountSetType (acc, INCOME);
+	   break;
 
-     /* I == Income Category */
-     if ('I' == qifline [0]) {
-        xaccAccountSetType (acc, INCOME);
-     } else 
+	 /* R == Tax Rate Indicator; -- some number ... */
+         case 'R':
+	   break;
 
-     /* R == Tax Rate Indicator; -- some number ... */
-     if ('R' == qifline [0]) {
-     } else 
+         /* B == Budget Amount -- not (yet ?) used in GnuCash */
+         case 'B':
+	   break;
 
-     /* check for end-of-transaction marker */
-     if (NSTRNCMP(qifline, "^^")) {
-        break;
-     } else
-     if (NSTRNCMP(qifline, "^\n")) {
-        break;
-     } else
-     if (NSTRNCMP(qifline, "^\r")) {
-        break;
-     } else
-     if ('!' == qifline [0]) break;
+         case '^':
+           break;    /* see below */
 
-     qifline = xaccReadQIFLine (fd);
-   }
+         default:
+           PWARN ("Unknown transaction component %s\n", qifline);
+           break;
+       }
+
+       /* check for end-of-transaction marker */
+       if (NSTRNCMP(qifline, "^^")) {
+	 break;
+       } else
+	 if (NSTRNCMP(qifline, "^\n")) {
+	   break;
+	 } else
+	   if (NSTRNCMP(qifline, "^\r")) {
+	     break;
+	   } else
+	     if ('!' == qifline [0]) break;
+
+       qifline = xaccReadQIFLine (fd);
+     }
 
    xaccAccountCommitEdit (acc);
    return qifline;
@@ -258,63 +265,63 @@ char * xaccReadQIFAccount (int fd, Account * acc)
 
    xaccAccountBeginEdit (acc, 0);
    xaccAccountSetType (acc, -1);
-   xaccAccountSetName (acc, "");
-   xaccAccountSetDescription (acc, "");
-   xaccAccountSetNotes (acc, "");
 
    qifline = xaccReadQIFLine (fd);
    if (!qifline) return NULL;
    if ('!' == qifline [0]) return qifline;
 
    /* scan for account name, description, type */
-   while (qifline) {
-     if ('N' == qifline [0]) {
-        XACC_PREP_STRING (tmp);
-        xaccAccountSetName (acc, tmp);
-     } else 
-     if ('D' == qifline [0]) {
-        XACC_PREP_STRING (tmp);
-        xaccAccountSetDescription (acc, tmp);
-     } else 
-     if ('T' == qifline [0]) {
+   while (qifline) 
+     {
+       switch (qifline[0]) 
+	 {
+	   case 'N':
+	     XACC_PREP_STRING (tmp);
+	     xaccAccountSetName (acc, tmp);
+	     break;
+	   case 'D':
+	     XACC_PREP_STRING (tmp);
+	     xaccAccountSetDescription (acc, tmp);
+	     break;
+	   case 'T':
+	     if (NSTRNCMP (&qifline[1], "Bank")) {
+	       xaccAccountSetType (acc, BANK);
+	     } else
+	       if (NSTRNCMP (&qifline[1], "Cash")) {
+		 xaccAccountSetType (acc, CASH);
+	       } else
+		 if (NSTRNCMP (&qifline[1], "CCard")) {
+		   xaccAccountSetType (acc, CREDIT);
+		 } else
+		   if (NSTRNCMP (&qifline[1], "Invst")) {
+		     xaccAccountSetType (acc, STOCK);
+		   } else
+		     if (NSTRNCMP (&qifline[1], "Oth A")) {
+		       xaccAccountSetType (acc, ASSET);
+		     } else 
+		       if (NSTRNCMP (&qifline[1], "Oth L")) {
+			 xaccAccountSetType (acc, LIABILITY);
+		       } else 
+			 {
+			   printf ("QIF Parse: Unsupported account type %s \n", &qifline[1]);
+			   xaccAccountSetType (acc, -1);    /* hack alert -- */
+			 }
+	   break;
+	 }
 
-        if (NSTRNCMP (&qifline[1], "Bank")) {
-           xaccAccountSetType (acc, BANK);
-        } else
-        if (NSTRNCMP (&qifline[1], "Cash")) {
-           xaccAccountSetType (acc, CASH);
-        } else
-        if (NSTRNCMP (&qifline[1], "CCard")) {
-           xaccAccountSetType (acc, CREDIT);
-        } else
-        if (NSTRNCMP (&qifline[1], "Invst")) {
-           xaccAccountSetType (acc, STOCK);
-        } else
-        if (NSTRNCMP (&qifline[1], "Oth A")) {
-           xaccAccountSetType (acc, ASSET);
-        } else 
-        if (NSTRNCMP (&qifline[1], "Oth L")) {
-           xaccAccountSetType (acc, LIABILITY);
-        } else 
-        {
-           printf ("QIF Parse: Unsupported account type %s \n", &qifline[1]);
-           xaccAccountSetType (acc, -1);    /* hack alert -- */
-        }
-     } else 
-
-     /* check for end-of-transaction marker */
-     if (NSTRNCMP (qifline, "^^")) {
-        break;
-     } else
-     if (NSTRNCMP (qifline, "^\n")) {
-        break;
-     } else
-     if (NSTRNCMP (qifline, "^\r")) {
-        break;
-     } else
-     if ('!' == qifline [0]) break;
-     qifline = xaccReadQIFLine (fd);
-   }
+       /* check for end-of-transaction marker */
+       if (NSTRNCMP (qifline, "^^")) {
+	 break;
+       } else
+	 if (NSTRNCMP (qifline, "^\n")) {
+	   break;
+	 } else
+	   if (NSTRNCMP (qifline, "^\r")) {
+	     break;
+	   } else
+	     if ('!' == qifline [0]) break;
+       qifline = xaccReadQIFLine (fd);
+     }
 
    xaccAccountCommitEdit (acc);
    return qifline;
@@ -368,7 +375,7 @@ char * xaccReadQIFAccList (int fd, AccountGroup *grp, int cat)
 
             /* trim off the parent account name ... */
             tok += sizeof(char);  /* get rid of the semi-colon */
-            xaccAccountSetName (acc, str);
+            xaccAccountSetName (acc, tok);
 
             xaccInsertSubAccount( parent, acc );
          } else {
@@ -504,8 +511,6 @@ GetSubQIFAccount (AccountGroup *rootgrp, char *qifline, int acc_type)
    if (!xfer_acc) {
       xfer_acc = xaccMallocAccount ();
       xaccAccountSetName (xfer_acc, qifline);
-      xaccAccountSetDescription (xfer_acc, "");
-      xaccAccountSetNotes (xfer_acc, "");
       xaccAccountSetCurrency (xfer_acc, gnc_qif_import_currency);
 
       if (0 > acc_type) acc_type = GuessAccountType (qifline);
@@ -590,8 +595,6 @@ xaccGetSecurityQIFAccount (Account *acc, char *qifline)
    if (!xfer_acc) {
       xfer_acc = xaccMallocAccount ();
       xaccAccountSetName (xfer_acc, qifline);
-      xaccAccountSetDescription (xfer_acc, "");
-      xaccAccountSetNotes (xfer_acc, "");
       xaccAccountSetCurrency (xfer_acc, gnc_qif_import_currency);
 
       xaccAccountSetType (xfer_acc, STOCK);
@@ -610,6 +613,10 @@ xaccGetSecurityQIFAccount (Account *acc, char *qifline)
  *                                                                  * 
  * Args:   fd -- file descriptor                                    * 
  * Args:   acc -- account structure to fill in                      * 
+ * Args:   guess_name -- true if we should try and guess the name   *
+ *                       based on an opening balance entry          * 
+ * Args:   first_trans -- true if this is the first transaction to  *
+ *                        be processed in this account              *
  * Return: first new line after end of transaction                  * 
 \********************************************************************/
 
@@ -620,13 +627,15 @@ xaccGetSecurityQIFAccount (Account *acc, char *qifline)
 
 
 char * 
-xaccReadQIFTransaction (int fd, Account *acc, int *name_not_yet_set)
+xaccReadQIFTransaction (int fd, Account *acc, int guess_name,
+			int first_trans)
 {
    Transaction *trans;
    Split *source_split;
    Split *split = NULL;
    char * qifline;
    char * tmp;
+   int opening_balance = 0;
    int isneg = 0;
    int got_share_quantity = 0;
    int share_xfer = 0;
@@ -639,6 +648,7 @@ xaccReadQIFTransaction (int fd, Account *acc, int *name_not_yet_set)
 
    qifline = xaccReadQIFLine (fd);
    if (!qifline) return NULL;
+
    if ('!' == qifline [0]) return qifline;
 
    trans = xaccMallocTransaction ();
@@ -647,222 +657,217 @@ xaccReadQIFTransaction (int fd, Account *acc, int *name_not_yet_set)
 
    /* scan for transaction date, description, type */
    while (qifline) {
-     /* C == Cleared / Reconciled */
-     if ('C' == qifline [0]) {  
+     switch (qifline[0]) 
+       {
+       case 'C':
+	 /* C == Cleared / Reconciled */
          /* Quicken uses C* and Cx, while MS Money uses CX.
           * C* means cleared (but not yet reconciled)
           * Cx or CX means reconciled
           */
-        if (('x' == qifline[1]) || ('X' == qifline[1])) { 
+	 if (('x' == qifline[1]) || ('X' == qifline[1])) {
            xaccSplitSetReconcile (source_split, YREC);
-        } else {
+	 } else {
            xaccSplitSetReconcile (source_split, CREC);
-        }
-     } else 
-
-     /* D == date */
-     if ('D' == qifline [0]) {  
-         time_t secs;
-         secs = xaccParseQIFDate (&qifline[1]);
-         xaccTransSetDateSecs (trans, secs);
-     } else 
-
-     /* E == memo for split */
-     if ('E' == qifline [0]) {   
+	 }
+	 break;
+       case 'D':   /* D == date */
+	 {
+	   time_t secs;
+	   secs = xaccParseQIFDate (&qifline[1]);
+	   xaccTransSetDateSecs (trans, secs);
+	   xaccTransSetDateEnteredSecs (trans, secs);
+	 }
+	 break;
+       case 'E':    /* E == memo for split */
         if (split) {
-           XACC_PREP_STRING (tmp);
-           xaccSplitSetMemo (split, tmp);
+	  XACC_PREP_STRING (tmp);
+	  xaccSplitSetMemo (split, tmp);
         }
-     } else 
+	break;
+       case 'I':      /* I == share price */
+	 {
+	   double amt = xaccParseUSAmount (&qifline[1]); 
+	   xaccSplitSetSharePrice (source_split, amt);
+	 }
+	 break;
+       case 'L': /* L == name of acount from which transfer occured */
+	 /* MSMoney uses a cute trick to overcome the lack of an account name
+	  * in the QIF format.  Basically, if the very very first transaction
+	  * has a payee field of "Opening Balance", then the L field is the name
+	  * of this account, and not the transfer account.  But this only works
+	  * for the very, very first transaction. This also seems to be the case
+	  * for Quicken 5.0 (and others?).
+	  */
+	 if (opening_balance) {
+	   if (guess_name) {
+	     /* remove square brackets from name, remove carriage return ... */
+	     qifline = &qifline[1];
+	     if ('[' == qifline[0]) {
+	       qifline = &qifline[1];
+	       tmp = strchr (qifline, ']');
+	       if (tmp) *tmp = 0x0;
+	     }
+	     tmp = strchr (qifline, '\r');
+	     if (tmp) *tmp = 0x0;
+	     tmp = strchr (qifline, '\n');
+	     if (tmp) *tmp = 0x0;
+	     xaccAccountSetName (acc, qifline);
+	   }
+	 } else {
+	   /* locate the transfer account */
+	   xfer_acc = xaccGetXferQIFAccount (acc, qifline);
+	 }
+	 break;
+       case 'M':
+	 /* M == memo field */
+	 XACC_PREP_STRING (tmp);
+	 xaccSplitSetMemo (source_split, tmp);
+	 break;
+       case 'N': 
+	 /* N == check numbers for Banks, but Action for portfolios */
+	 if (!strncmp (qifline, "NSell", 5)) isneg = 1;
+	 if (!strncmp (qifline, "NSell", 5)) share_xfer = 1;
+	 if (!strncmp (qifline, "NBuy", 4)) share_xfer = 1;
 
-     /* I == share price */
-     if ('I' == qifline [0]) {   
-         double amt = xaccParseUSAmount (&qifline[1]); 
-         xaccSplitSetSharePrice (source_split, amt);
-     } else 
+	 /* if a recognized action, convert to our cannonical names */
+	 XACC_ACTION ("Buy", "Buy")
+	   XACC_ACTION ("Sell", "Sell")
+	   XACC_ACTION ("Div", "Div")
+	   XACC_ACTION ("CGLong", "LTCG")
+	   XACC_ACTION ("CGShort", "STCG")
+	   XACC_ACTION ("IntInc", "Int")
+	   XACC_ACTION ("DEP", "Deposit")
+	   XACC_ACTION ("XIn", "Deposit")
+	   XACC_ACTION ("XOut", "Withdraw")
+	   {
+	     XACC_PREP_STRING (tmp);
+	     xaccTransSetNum (trans, tmp);
+	   }
+	 break;
+       case 'O':
+	 /* O == adjustments */
+	 /* hack alert -- sometimes adjustments are quite large.
+	  * I have no clue why, and what to do about it.  For what 
+	  * its worth, I can prove that Quicken version 3.0 makes 
+	  * math errors ... */
+	 {
+	   double pute;
+	   adjust = xaccParseUSAmount (&qifline[1]);
+	   pute = xaccSplitGetValue (source_split);
+	   if (isneg) pute = -pute;
 
-     /* L == name of acount from which transfer occured */
-     if ('L' == qifline [0]) {   
-        /* MSMoney uses a cute trick to overcome the lack of an account name
-         * in the QIF format.  Basically, if the very very first transaction
-         * has a payee field of "Opening Balance", then the L field is the name
-         * of this account, and not the transfer account.  But this only works
-         * for the very, very first transaction.
-         */
-        if (*name_not_yet_set) {
-            *name_not_yet_set = 0;
-            /* remove square brackets from name, remove carriage return ... */
-            qifline = &qifline[1];
-            if ('[' == qifline[0]) {
-               qifline = &qifline[1];
-               tmp = strchr (qifline, ']');
-               if (tmp) *tmp = 0x0;
-            }
-            tmp = strchr (qifline, '\r');
-            if(tmp) *tmp = 0x0;
-            tmp = strchr (qifline, '\n');
-            if(tmp) *tmp = 0x0;
-            xaccAccountSetName (acc, qifline);
-        } else {
-            /* locate the transfer account */
-            xfer_acc = xaccGetXferQIFAccount (acc, qifline);
-        }
-     } else 
+	   printf ("QIF Warning: Adjustment of %.2f to amount %.2f not handled \n", adjust, pute);
+	 }
+	 break;
+       case 'P':
+	 XACC_PREP_STRING (tmp);
+	 xaccTransSetDescription (trans, tmp);
+	   
+	 /* MSMoney uses a cute trick to overcome the lack of an account name
+	  * in the QIF format.  Basically, if the very very first transaction
+	  * has a payee field of "Opening Balance", then the L field is the name
+	  * of this account, and not the transfer account.  But this only works
+	  * for the very, very first transaction. This also seems to be the case
+	  * for Quicken 5.0 (and others?).
+	  */
+	 if (first_trans)
+	   if (NSTRNCMP (qifline, "POpening Balance"))
+	     opening_balance = GNC_T;
+	 break;
 
-     /* M == memo field */
-     if ('M' == qifline [0]) {  
-        XACC_PREP_STRING (tmp);
-        xaccSplitSetMemo (source_split, tmp);
-     } else 
-
-     /* N == check numbers for Banks, but Action for portfolios */
-     if ('N' == qifline [0]) {   
-
-        if (!strncmp (qifline, "NSell", 5)) isneg = 1;
-        if (!strncmp (qifline, "NSell", 5)) share_xfer = 1;
-        if (!strncmp (qifline, "NBuy", 4)) share_xfer = 1;
-
-        /* if a recognized action, convert to our cannonical names */
-        XACC_ACTION ("Buy", "Buy")
-        XACC_ACTION ("Sell", "Sell")
-        XACC_ACTION ("Div", "Div")
-        XACC_ACTION ("CGLong", "LTCG")
-        XACC_ACTION ("CGShort", "STCG")
-        XACC_ACTION ("IntInc", "Int")
-        XACC_ACTION ("DEP", "Deposit")
-        XACC_ACTION ("XIn", "Deposit")
-        XACC_ACTION ("XOut", "Withdraw")
-        {
-          XACC_PREP_STRING (tmp);
-          xaccTransSetNum (trans, tmp);
-        }
-     } else
-
-     /* O == adjustments */
-     /* hack alert -- sometimes adjustments are quite large.
-      * I have no clue why, and what to do about it.  For what 
-      * its worth, I can prove that Quicken version 3.0 makes 
-      * math errors ... */
-     if ('O' == qifline [0]) {   
-        double pute;
-        adjust = xaccParseUSAmount (&qifline[1]);
-        pute = xaccSplitGetValue (source_split);
-        if (isneg) pute = -pute;
-
-        printf ("QIF Warning: Adjustment of %.2f to amount %.2f not handled \n", adjust, pute);
-     } else 
-
-     /* P == Payee, for Bank accounts */
-     if ('P' == qifline [0]) {   
-        XACC_PREP_STRING (tmp);
-        xaccTransSetDescription (trans, tmp);
-
-        /* MSMoney uses a cute trick to overcome the lack of an account name
-         * in the QIF format.  Basically, if the very very first transaction
-         * has a payee field of "Opening Balance", then the L field is the name
-         * of this account, and not the transfer account.  But this only works
-         * for the very, very first transaction.
-         */
-        if (*name_not_yet_set) {
-           if (! NSTRNCMP (qifline, "POpening Balance")) *name_not_yet_set = 0;
-        }
-     } else
-
-     /* Q == number of shares */
-     if ('Q' == qifline [0]) {   
-         double amt = xaccParseUSAmount (&qifline[1]);  
-         if (isneg) amt = -amt;
-         xaccSplitSetShareAmount (source_split, amt);
-         got_share_quantity = 1;
-     } else 
-
-     /* S == split, name of debited account */
-     if ('S' == qifline [0]) {   
-         split = xaccMallocSplit();
-
-         xaccTransAppendSplit (trans, split);
-         xfer_acc = xaccGetXferQIFAccount (acc, qifline);
-         xaccAccountInsertSplit (xfer_acc, split);
-
+       case 'Q':
+	 /* Q == number of shares */
+	 {
+	   double amt = xaccParseUSAmount (&qifline[1]);  
+	   if (isneg) amt = -amt;
+	   xaccSplitSetShareAmount (source_split, amt);
+	   got_share_quantity = 1;
+	 }
+	 break;
+       case 'S':
+	 /* S == split, name of debited account */
+	 split = xaccMallocSplit();
+	 xaccTransAppendSplit (trans, split);
+	 xfer_acc = xaccGetXferQIFAccount (acc, qifline);
+	 xaccAccountInsertSplit (xfer_acc, split);
+	 
          /* set xfer account to NULL, so that we don't
           * end up adding spurious splits */
-         xfer_acc = NULL;
-     } else 
-
-     /* T == total */
-     if ('T' == qifline [0]) {   
-         /* ignore T for stock transactions, since T is a dollar amount */
-         if (0 == got_share_quantity) {
-            double amt = xaccParseUSAmount (&qifline[1]);  
-            if (isneg) amt = -amt;
-            xaccSplitSetValue (source_split, amt);
-         }
-     } else 
-
-     /* Y == Name of Security */
-     if ('Y' == qifline [0]) {   
-        XACC_PREP_STRING (tmp);
-        xaccTransSetDescription (trans, tmp);
-
-        is_security = 1;
-        if (share_xfer) {
-           /* locate or create the sub-account account */
-           sub_acc = xaccGetSecurityQIFAccount (acc, qifline);
-        }
-
-     } else
-
-     /* $ == dollar amount */
-     if ('$' == qifline [0]) {   
-        /* for splits, $ records the part of the total for each split */
-        if (split) {
-           double amt = xaccParseUSAmount (&qifline[1]);  
-           amt = -amt;
-           xaccSplitSetValue (split, amt);
-        } else {
-           /* Currently, it appears that the $ amount is a redundant 
-            * number that we can safely ignore.  To get fancy,
-            * we use it to double-check the above work, since it 
-            * appears to always appear as the last entry in the
-            * transaction.  Round things out to pennies, to 
-            * handle round-off errors. 
-            */
-           double parse, pute;
-           int got, wanted;
-           parse = xaccParseUSAmount (&qifline[1]);
-           pute = xaccSplitGetValue (source_split);
-           if (isneg) pute = -pute;
-   
-           wanted = (int) (100.0 * parse + 0.5);
-           got = (int) (100.0 * (pute+adjust) + 0.5);
-           if (wanted != got) {
-              printf ("QIF Parse Error: wanted %f got %f \n", parse, pute);
-           }
-        }
-     } else 
-
+	 xfer_acc = NULL;
+	 break;
+	 
+       case 'T':
+	 /* T == total */
+	 /* ignore T for stock transactions, since T is a dollar amount */
+	 if (0 == got_share_quantity) {
+	   double amt = xaccParseUSAmount (&qifline[1]);  
+	   if (isneg) amt = -amt;
+	   xaccSplitSetValue (source_split, amt);
+	 }
+	 break;
+       case 'Y':
+	 /* Y == Name of Security */
+	 XACC_PREP_STRING (tmp);
+	 xaccTransSetDescription (trans, tmp);
+	 
+	 is_security = 1;
+	 if (share_xfer) {
+	   /* locate or create the sub-account account */
+	   sub_acc = xaccGetSecurityQIFAccount (acc, qifline);
+	 }
+	 break;
+       case '$':
+	 /* $ == dollar amount */
+	 /* for splits, $ records the part of the total for each split */
+	 if (split) {
+	   double amt = xaccParseUSAmount (&qifline[1]);  
+	   amt = -amt;
+	   xaccSplitSetValue (split, amt);
+	 } else {
+	   /* Currently, it appears that the $ amount is a redundant 
+	    * number that we can safely ignore.  To get fancy,
+	    * we use it to double-check the above work, since it 
+	    * appears to always appear as the last entry in the
+	    * transaction.  Round things out to pennies, to 
+	    * handle round-off errors. 
+	    */
+	   double parse, pute;
+	   int got, wanted;
+	   parse = xaccParseUSAmount (&qifline[1]);
+	   pute = xaccSplitGetValue (source_split);
+	   if (isneg) pute = -pute;
+	   
+	   wanted = (int) (100.0 * parse + 0.5);
+	   got = (int) (100.0 * (pute+adjust) + 0.5);
+	     if (wanted != got) {
+	       printf ("QIF Parse Error: wanted %f got %f \n", parse, pute);
+	     }
+	 }
+       }
+     
      /* check for end-of-transaction marker */
      if (NSTRNCMP (qifline, "^^")) {
-        break;
+       break;
      } else
-     if (NSTRNCMP (qifline, "^\n")) {
-        break;
-     } else
-     if (NSTRNCMP (qifline, "^\r")) {
-        break;
-     } else
-     if ('!' == qifline [0]) break;
+       if (NSTRNCMP (qifline, "^\n")) {
+	 break;
+       } else
+	 if (NSTRNCMP (qifline, "^\r")) {
+	   break;
+	 } else
+	   if ('!' == qifline [0]) break;
      qifline = xaccReadQIFLine (fd);
-
+     
    }
-
+   
    /* at this point, we should see an end-of-transaction marker
     * if we see something else, assume the worst, free the last 
     * transaction, and return */
    if (!qifline || ('!' == qifline[0])) {
-      xaccTransDestroy (trans);
-      xaccTransCommitEdit (trans);
-      return qifline;
+     xaccTransDestroy (trans);
+     xaccTransCommitEdit (trans);
+     return qifline;
    }
 
    /* fundamentally differnt handling for securities and non-securities */
@@ -934,15 +939,15 @@ xaccReadQIFTransaction (int fd, Account *acc, int *name_not_yet_set)
  * the indicated account
 \********************************************************************/
 
-char * xaccReadQIFTransList (int fd, Account *acc, int *acc_name_not_yet_set)
+char * xaccReadQIFTransList (int fd, Account *acc, int guess_name)
 {
    char * qifline;
 
    if (!acc) return 0x0;
-   qifline = xaccReadQIFTransaction (fd, acc, acc_name_not_yet_set);
+   qifline = xaccReadQIFTransaction (fd, acc, guess_name, GNC_T);
    while (qifline) {
       if ('!' == qifline[0]) break;
-      qifline = xaccReadQIFTransaction (fd, acc, acc_name_not_yet_set);
+      qifline = xaccReadQIFTransaction (fd, acc, guess_name, GNC_F);
    } 
    return qifline;
 }
@@ -952,7 +957,7 @@ char * xaccReadQIFTransList (int fd, Account *acc, int *acc_name_not_yet_set)
 \********************************************************************/
 
 /********************************************************************\
- * xaccReadQIFAccountGroup                                                  * 
+ * xaccReadQIFAccountGroup                                          * 
  *   reads in the data from file datafile                           *
  *                                                                  * 
  * Args:   datafile - the file to load the data from                * 
@@ -1019,14 +1024,13 @@ xaccReadQIFAccountGroup( char *datafile )
      } 
         
      if (name) {
-        int bogus_acc_name = 1;
         Account * acc = xaccMallocAccount();
         xaccAccountSetType (acc, typo);
         xaccAccountSetName (acc, name);
         xaccAccountSetCurrency (acc, gnc_qif_import_currency);
 
         xaccGroupInsertAccount( grp, acc );
-        qifline = xaccReadQIFTransList (fd, acc, &bogus_acc_name);
+        qifline = xaccReadQIFTransList (fd, acc, GNC_T);
         typo = -1; name = NULL;
         continue;
      } else
@@ -1043,7 +1047,8 @@ xaccReadQIFAccountGroup( char *datafile )
         continue;
      } else
 
-     if (STRSTR (qifline, "Type:Memorized")) {
+     if ((STRSTR (qifline, "Type:Memorized")) ||
+         (STRSTR (qifline, "Type:Memorised")) ) {
         DEBUG ("got memorized\n");
         qifline = xaccReadQIFDiscard (fd);
         continue;
@@ -1076,8 +1081,7 @@ xaccReadQIFAccountGroup( char *datafile )
            /* read account name, followed by dollar data ... */
            char * acc_name;
            Account *preexisting;
-           Account *acc   = xaccMallocAccount();
-           int guess_acc_name = 0;
+           Account *acc = xaccMallocAccount();
 
            DEBUG ("got account\n");
            xaccAccountSetCurrency (acc, gnc_qif_import_currency);
@@ -1092,7 +1096,7 @@ xaccReadQIFAccountGroup( char *datafile )
            acc_name = xaccAccountGetName (acc);
            preexisting = xaccGetAccountFromName (grp, acc_name);
            if (preexisting) 
-            {
+	   {
               xaccFreeAccount (acc);
               acc = preexisting;
            } 
@@ -1115,7 +1119,7 @@ xaccReadQIFAccountGroup( char *datafile )
    
            /* read transactions */
            /* note, we have a real account name, so no need to go guessing it. */
-           if (qifline) qifline = xaccReadQIFTransList (fd, acc, &guess_acc_name);
+           if (qifline) qifline = xaccReadQIFTransList (fd, acc, GNC_F);
         }    
         continue;
      } else

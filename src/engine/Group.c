@@ -644,17 +644,21 @@ void
 xaccConcatGroups (AccountGroup *togrp, AccountGroup *fromgrp)
 {
    Account * acc;
+   int numAcc;
 
    if (!togrp) return;
    if (!fromgrp) return;
    
-   /* the act of inserting the account into togrp also causes
-    * it to automatically be deleted from fromgrp. So just loop 
-    * until they're all gone.
+   /* The act of inserting the account into togrp also causes
+    * it to automatically be deleted from fromgrp. But use a
+    * saved copy of fromgrp's numAcc member since, after the
+    * last insertion, fromgrp will be pointing to freed memory.
     */
-   while (fromgrp->numAcc) {
+   numAcc = fromgrp->numAcc;
+   while (numAcc) {
       acc = fromgrp->account[0];
       xaccGroupInsertAccount (togrp, acc);
+      numAcc--;
    }
 }
 
@@ -665,7 +669,7 @@ void
 xaccMergeAccounts (AccountGroup *grp)
 {
    Account *acc_a, *acc_b;
-   int i,j, k;
+   int i, j, k;
 
    if (!grp) return;
    
@@ -694,7 +698,6 @@ xaccMergeAccounts (AccountGroup *grp)
                } else {
                   xaccConcatGroups (ga, gb);
                   acc_b->children = NULL;
-                  xaccFreeAccountGroup (gb);
                }
             }
 
@@ -828,7 +831,7 @@ xaccAccountStagedTransactionTraversal (Account *acc,
   unsigned int n = 0;
   Split *s = NULL;
   
-  if(!acc) return;
+  if(!acc) return 0;
   
   s = acc->splits[0];
   if (callback) {
@@ -866,7 +869,7 @@ xaccGroupStagedTransactionTraversal(AccountGroup *grp,
   unsigned int numAcc;
   unsigned int i;
   
-  if (!grp) return;
+  if (!grp) return 0;
   
   numAcc = grp->numAcc;
   for(i = 0; i < numAcc; i++) {

@@ -155,8 +155,8 @@ static int writeTSDate( int fd, Timespec *);
  * of account type.  These numbers are used (are to be
  * used) no where else but here, precisely because they
  * are non-portable.  The values of these defines MUST
- * NOT BE CHANGED; andy changes WILL BREAK FILE COMPATIBILITY.
- * YOu HAve BEen WARNed!!!!
+ * NOT BE CHANGED; ANY CHANGES WILL BREAK FILE COMPATIBILITY.
+ * YOU HAVE BEEN WARNED!!!!
  */
 
 #define FF_BANK 	0
@@ -1361,8 +1361,24 @@ writeAccountGroupToFile( const char *datafile, AccountGroup *grp )
     }
   
   err = xaccWriteAccountGroup (fd, grp);
+  if(0 != err)
+    {
+    /* Just close it and return the earlier error. */
+    close(fd);
+    return err;
+    }
 
-  close(fd);
+  /* from the close(2) manpage:
+   *   Not checking the return value of close is a common but nevertheless
+   *   serious programming error.  File system implementations which use
+   *   techniques as ``write-behind'' to increase performance may lead to
+   *   write(2) succeeding, although the data has not been written yet.
+   *   The error status may be reported at a later write operation, but it
+   *   is guaranteed to be reported on closing the file.  Not checking the
+   *   return value when closing the file may lead to silent loss of data.
+   *   This can especially be observed with NFS and disk quotas.
+   */
+  err = close(fd);
 
   return err;
   }
@@ -1598,7 +1614,7 @@ writeAccount( int fd, Account *acc )
   
   DEBUG ("writeAccount(): will write %d trans\n", numUnwrittenTrans);
 
-  if(!xaccAccountStagedTransactionTraversal(acc, 2,
+  if (0 != xaccAccountStagedTransactionTraversal(acc, 2,
                                             _write_transaction_wrapper_, &fd)) {
     return -1;
   }
