@@ -8,7 +8,7 @@
  * ported to GTK, etc. 
  *
  * HISTORY:
- * Copyright (c) 1998 Linas Vepstas
+ * Copyright (c) 1998,1999 Linas Vepstas
  */
 
 /********************************************************************\
@@ -163,12 +163,14 @@ enterCB (Widget mw, XtPointer cd, XtPointer cb) {
      (XbaeMatrixEnterCellCallbackStruct *) cb;
    const int row = cbs->row;
    const int col = cbs->column;
-   char *new_text = NULL;
+   const char *new_text;
 
-   gnc_table_enter_update(table, row, col, &new_text);
+   ENTER ("enterCB()\n");
+   new_text = gnc_table_enter_update(table, row, col);
    
    if(new_text) {
-      XbaeMatrixSetCell (mw, row, col, new_text);
+      DEBUG ("enterCB new text = %s\n", new_text);
+      XbaeMatrixSetCell (mw, row, col, (char *)new_text);
       XbaeMatrixRefreshCell (mw, row, col);
       
       /* don't map a text widget */
@@ -178,6 +180,7 @@ enterCB (Widget mw, XtPointer cd, XtPointer cb) {
      cbs->doit = True;
      cbs->map = True;
    }
+   LEAVE ("enterCB()\n");
 }
    
 /* ==================================================== */
@@ -197,6 +200,7 @@ modifyCB (Widget mw, XtPointer cd, XtPointer cb)
    int len = 1;
    const char *retval;
    char *newval;
+   ENTER("modifyCB()\n");
    
    /* accept edits by default, unless the cell handler rejects them */
    cbs->verify->doit = True;
@@ -215,6 +219,7 @@ modifyCB (Widget mw, XtPointer cd, XtPointer cb)
    retval = gnc_table_modify_update(table, row, col, oldval, change, newval);
 
    if (retval && (retval != newval)) {
+     DEBUG ("modifyCB() new text: %s\n", retval);
      XbaeMatrixSetCell (mw, row, col, (char *) retval);
      XbaeMatrixRefreshCell (mw, row, col);
      XbaeMatrixSetCursorPosition (mw, (cbs->verify->endPos) + 1);
@@ -228,7 +233,7 @@ modifyCB (Widget mw, XtPointer cd, XtPointer cb)
      cbs->verify->doit = False;
      free(newval);
    }
-   PINFO("modifyCB(): exit\n");
+   LEAVE("modifyCB()\n");
 }
 
 /* ==================================================== */
@@ -241,16 +246,19 @@ leaveCB (Widget mw, XtPointer cd, XtPointer cb)
      (XbaeMatrixLeaveCellCallbackStruct *) cb;
    const int row = cbs->row;
    const int col = cbs->column;
-   char * new_text;
+   const char * new_text;
+   ENTER("leaveCB()\n");
 
-   gnc_table_leave_update(table, row, col, cbs->value, &new_text);
+   new_text = gnc_table_leave_update(table, row, col, cbs->value);
 
    if(new_text) {
-     cbs->value = new_text;
+     DEBUG("leaveCB() new text=%s\n", new_text);
+     cbs->value = strdup (new_text);
    }
 
    /* by default, accept whatever the final proposed edit is */
    cbs->doit = True;
+   LEAVE("leaveCB()\n");
 }
 
 
