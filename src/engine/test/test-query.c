@@ -24,7 +24,6 @@
 #include <glib.h>
 #include "qof.h"
 #include "cashobjects.h"
-#include "Group.h"
 #include "Transaction.h"
 #include "TransLog.h"
 #include "gnc-engine.h"
@@ -69,16 +68,16 @@ static void
 run_test (void)
 {
   QofSession *session;
-  AccountGroup *group;
+  Account *root;
   QofBook *book;
 
   session = get_random_session ();
   book = qof_session_get_book (session);
-  group = xaccGetAccountGroup (book);
+  root = gnc_book_get_root_account (book);
 
   add_random_transactions_to_book (book, 20);
 
-  xaccGroupForEachTransaction (group, test_trans_query, book);
+  xaccAccountTreeForEachTransaction (root, test_trans_query, book);
 
   qof_session_end (session);
 }

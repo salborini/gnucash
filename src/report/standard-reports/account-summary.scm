@@ -155,7 +155,7 @@
 	(gnc:filter-accountlist-type 
 	 '(bank cash credit asset liability stock mutual-fund currency
 		payable receivable equity income expense)
-	 (gnc:group-get-subaccounts (gnc:get-current-group))))
+	 (gnc:account-get-descendants (gnc:get-current-root-account))))
       #f #t))
     (gnc:options-add-account-levels!
      options gnc:pagename-accounts optname-depth-limit
@@ -312,7 +312,7 @@
          (doc (gnc:make-html-document))
 	 ;; just in case we need this information...
          (tree-depth (if (equal? depth-limit 'all)
-                         (gnc:get-current-group-depth) 
+                         (gnc:get-current-account-tree-depth) 
 			 depth-limit))
          ;; exchange rates calculation parameters
 	 (exchange-fn
@@ -489,8 +489,7 @@
                 report-commodity exchange-fn 
                 (append-map
                  (lambda (a)
-                   (gnc:group-get-subaccounts
-                    (gnc:account-get-children a)))
+		   (gnc:account-get-descendants a))
                  accounts))))
 	  )
 	)

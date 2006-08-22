@@ -74,7 +74,7 @@
                   '(bank cash credit asset liability payable receivable) 
                   ;; or: '(bank cash checking savings stock
                   ;; mutual-fund money-market)
-                  (gnc:group-get-account-list (gnc:get-current-group)))))))
+                  (gnc:account-get-children (gnc:get-current-root-account)))))))
       #f #t))
 
     ;; Display tab
@@ -350,7 +350,7 @@
                 (for-each 
                  (lambda (acct)
                    (let ((this-acct-subs 
-                          (gnc:account-get-all-subaccounts acct)))
+                          (gnc:account-get-descendants acct)))
                      (if (list? this-acct-subs)
                          (set! subaccts 
                                (append subaccts this-acct-subs)))))

@@ -24,7 +24,6 @@
     "#include <config.h>\n"
     "#include <glib.h>\n"
     "#include <qof.h>\n"
-    "#include <Group.h>\n"
     "#include <Query.h>\n"
     "#include <gnc-budget.h>\n"
     "#include <gnc-commodity.h>\n"
@@ -94,7 +93,6 @@
 (gw:wrap-as-wct ws '<gnc:id-type> "QofIdType" "QofIdTypeConst")
 (gw:wrap-as-wct ws '<gnc:Account*> "Account*" "const Account*")
 (gw:wrap-as-wct ws '<gnc:Account**> "Account**" "const Account**")
-(gw:wrap-as-wct ws '<gnc:AccountGroup*> "AccountGroup*" "const AccountGroup*")
 (gw:wrap-as-wct ws '<gnc:Book*> "QofBook*" "const QofBook*")
 (gw:wrap-as-wct ws '<gnc:Lot*> "GNCLot*" "const GNCLot*")
 (gw:wrap-as-wct ws '<gnc:Session*> "QofSession*" "const QofSession**")
@@ -732,21 +730,6 @@ number of nanoseconds.")
  "Insert the split s into account a. If the split already belongs
 to another account, it will be removed from that account first.")
 
-;; (gw:wrap-function
-;;  ws
-;;  'gnc:account-order
-;;  '<gw:int>
-;;  "xaccAccountOrder_gwrap"
-;;  '(
-;;    (<gnc:Account**> a1)
-;;    (<gnc:Account**> a2)
-;;    )
-;;  "Defines a sorting order on accounts.  Returns -1 if a1 is \"less
-;; than\" the second, +1 if the a1 is \"greater than\" the second, and 0
-;; if they are equal.  To determine the sort order, the account codes are
-;; compared, and if these are equal, then account types, and, if these
-;; are equal, then account names.")
-
 (gw:wrap-function
  ws
  'gnc:account-set-type
@@ -911,28 +894,11 @@ Expenses) are given numeric codes in corresponding ``number ranges.''")
 
 (gw:wrap-function
  ws
- 'gnc:account-get-children
- '<gnc:AccountGroup*>
- "xaccAccountGetChildren"
- '((<gnc:Account*> a))
- "Get a pointer to an AccountGroup that represents the set of
-children to this account.")
-
-(gw:wrap-function
- ws
  'gnc:account-get-parent
- '<gnc:AccountGroup*>
- "xaccAccountGetParent"
+ '<gnc:Account*>
+ "gnc_account_get_parent"
  '((<gnc:Account*> a))
  "Get the pointer to the account's parent.")
-
-(gw:wrap-function
- ws
- 'gnc:account-get-parent-account
- '<gnc:Account*>
- "xaccAccountGetParentAccount"
- '((<gnc:Account*> a))
- "Get the pointer to the account's parent account.")
 
 (gw:wrap-function
  ws
@@ -968,167 +934,79 @@ children to this account.")
 
 (gw:wrap-function
  ws
- 'gnc:malloc-account-group
- '<gnc:AccountGroup*>
- "xaccMallocAccountGroup"
- '((<gnc:Book*> book))
- "Create a new account group.")
-
-(gw:wrap-function
- ws
- 'gnc:account-group-begin-edit
- '<gw:void>
- "xaccAccountGroupBeginEdit"
- '((<gnc:AccountGroup*> g))
- "Open an account group for editing.")
-
-(gw:wrap-function
- ws
- 'gnc:account-group-commit-edit
- '<gw:void>
- "xaccAccountGroupCommitEdit"
- '((<gnc:AccountGroup*> g))
- "Commit all changes to an account group.")
-
-(gw:wrap-function
- ws
- 'gnc:account-group-destroy
- '<gw:void>
- "xaccAccountGroupDestroy"
- '((<gnc:AccountGroup*> g))
- "Free an account group. (Must call gnc:account-group-begin-edit first)")
-
-(gw:wrap-function
- ws
- 'gnc:group-get-book
+ 'gnc:account-get-book
  '<gnc:Book*>
- "xaccGroupGetBook"
- '((<gnc:AccountGroup*> g))
- "Return the QofBook of group g.")
+ "gnc_account_get_book"
+ '((<gnc:Account*> acct))
+ "Return the QofBook of account acct.")
 
 (gw:wrap-function
  ws
- 'gnc:group-merge-accounts
+ 'gnc:account-merge-children
  '<gw:void>
- "xaccGroupMergeAccounts"
- '((<gnc:AccountGroup*> g))
- "Merge accounts which have the same name and description. Used in
+ "gnc_account_merge_children"
+ '((<gnc:Account*> parent))
+ "Merge child accounts which have the same name and description. Used in
 importing Quicken files.")
 
 (gw:wrap-function
  ws
- 'gnc:group-concat-group
+ 'gnc:account-join-children
  '<gw:void>
- "xaccGroupConcatGroup"
- '((<gnc:AccountGroup*> old)
-   (<gnc:AccountGroup*> new))
- "Catenate accounts from one group into another. Used in Quicken
-import.")
-
-(gw:wrap-function
- ws
- 'gnc:group-get-num-subaccounts
- '<gw:int>
- "xaccGroupGetNumSubAccounts"
- '((<gnc:AccountGroup*> g))
- "Return the number of accounts, including subaccounts, in the account
-group")
-
-(gw:wrap-function
- ws
- 'gnc:group-get-num-accounts
- '<gw:int>
- "xaccGroupGetNumAccounts"
- '((<gnc:AccountGroup*> g))
- "Return the number of accounts in the indicated group only"
- "(children not counted).")
-
-(gw:wrap-function
- ws
- 'gnc:group-get-account
- '<gnc:Account*>
- "xaccGroupGetAccount"
- '((<gnc:AccountGroup*> g) (<gw:int> n))
- "Return account number n in account group g.")
+ "gnc_account_join_children"
+ '((<gnc:Account*> to_parent) (<gnc:Account*> from_parent))
+ "Catenate accounts from one parent into another. Used in Quicken import.")
 
 (gw:wrap-function
  ws
  'gnc:get-account-from-full-name
  '<gnc:Account*>
- "xaccGetAccountFromFullName"
- '((<gnc:AccountGroup*> g)
+ "gnc_account_lookup_full_name"
+ '((<gnc:Account*> any_account)
    ((<gw:mchars> caller-owned const) name))
- "Return account named name in group g.  full path with separators.")
+ "Return account named name in the set of accounts containing
+'any_account'.  full path with separators.")
 
 (gw:wrap-function
  ws
- 'gnc:group-get-parent
- '<gnc:Account*>
- "xaccGroupGetParentAccount"
- '((<gnc:AccountGroup*> g))
- "Return the parent acount for the group.")
-
-(gw:wrap-function
- ws
- 'gnc:group-insert-account
+ 'gnc:account-append-child
  '<gw:void>
- "xaccGroupInsertAccount"
- '((<gnc:AccountGroup*> g) (<gnc:Account*> a))
- "Add account a to group g.")
-
-(gw:wrap-function
- ws
- 'gnc:account-insert-subaccount
- '<gw:void>
- "xaccAccountInsertSubAccount"
+ "gnc_account_append_child"
  '((<gnc:Account*> p) (<gnc:Account*> c))
  "Add a child account c to parent p")
 
 (gw:wrap-function
  ws
- 'gnc:group-get-subaccounts
+ 'gnc:account-get-children
  '(gw:glist-of <gnc:Account*> caller-owned)
- "xaccGroupGetSubAccountsSorted"
- '((<gnc:AccountGroup*> g))
- "Return a list containing all of the accounts, including
-subaccounts, in the account group. The returned array should be freed
-when no longer needed.")
+ "gnc_account_get_children"
+ '((<gnc:Account*> a))
+ "Get a pointer to an list of children of this account.")
 
 (gw:wrap-function
  ws
- 'gnc:group-get-account-list
+ 'gnc:account-get-num-children
+ '<gw:int>
+ "gnc_account_n_children"
+ '((<gnc:Account*> a))
+ "Get the number of children of this account.")
+
+(gw:wrap-function
+ ws
+ 'gnc:account-get-descendants
  '(gw:glist-of <gnc:Account*> caller-owned)
- "xaccGroupGetAccountListSorted"
- '((<gnc:AccountGroup*> g))
- "Return a list containing the immediate children of g.")
+ "gnc_account_get_descendants_sorted"
+ '((<gnc:Account*> acct))
+ "Return a list containing all of descendants of the specified
+accounts. The returned array should be freed when no longer needed.")
 
 (gw:wrap-function
  ws
- 'gnc:group-begin-staged-transaction-traversals
- '<gw:void>
- "xaccGroupBeginStagedTransactionTraversals"
- '((<gnc:AccountGroup*> group))
- "Sets things up to begin a sequence of staged traversals.")
-
-(gw:wrap-function
- ws
- 'gnc:group-staged-transaction-traversal
- '<gw:bool>
- "gnc_scmGroupStagedTransactionTraversal"
- '((<gnc:AccountGroup*> group)
-   (<gw:unsigned-int> stage)
-   (<gw:scm> thunk))
- "FIXME: For now, see Group.h for info...")
-
-(gw:wrap-function
- ws
- 'gnc:account-staged-transaction-traversal
- '<gw:bool>
- "gnc_scmAccountStagedTransactionTraversal"
- '((<gnc:Account*> account)
-   (<gw:unsigned-int> stage)
-   (<gw:scm> thunk))
- "FIXME: For now, see Group.h for info...")
+ 'gnc:account-get-depth
+ '<gw:int>
+ "gnc_account_get_depth"
+ '((<gnc:Account*> acct))
+ "Return the depth of the account tree starting with the specified account.")
 
 (gw:wrap-function
  ws
@@ -1458,22 +1336,6 @@ argument between 0 and 100 (inclusive).")
  "qof_session_end"
  '((<gnc:Session*> session))
  "Indicate you're finished with the session.")
-
-(gw:wrap-function
- ws
- 'gnc:book-get-group
- '<gnc:AccountGroup*>
- "xaccGetAccountGroup"
- '((<gnc:Book*> book))
- "Get the book's account group.")
-
-(gw:wrap-function
- ws
- 'gnc:book-get-template-group
- '<gnc:AccountGroup*>
- "gnc_book_get_template_group"
- '((<gnc:Book*> book))
- "Get the book's template account group.")
 
 (gw:wrap-function
  ws

@@ -70,7 +70,7 @@
 
     (gnc:query-add-account-match
      query
-     (gnc:group-get-subaccounts (gnc:book-get-template-group (gnc:get-current-book)))
+     (gnc:account-get-descendants (gnc:book-get-template-root (gnc:get-current-book)))
      'guid-match-none
      'query-and)
 

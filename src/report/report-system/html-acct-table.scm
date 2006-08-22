@@ -631,7 +631,7 @@
 				 )
 				))
 	 ;; local variables
-	 (toplvl-accts (gnc:group-get-account-list (gnc:get-current-group)))
+	 (toplvl-accts (gnc:account-get-children (gnc:get-current-root-account)))
 	 (acct-depth-reached 0)
 	 (logi-depth-reached (if depth-limit (- depth-limit 1) 0))
 	 (disp-depth-reached 0)
@@ -697,13 +697,13 @@
 	       (my-get-balance-nosub account start-date end-date)))
 	  (for-each
 	   (lambda (x) (if x (gnc:commodity-collector-merge this-collector x)))
-	   (gnc:group-map-all-accounts
+	   (gnc:account-map-descendants
 	    (lambda (a)
 	      ;; Important: Calculate the balance if and only if the
 	      ;; account a is shown, i.e. (use-acct? a) == #t.
 	      (and (use-acct? a)
 		   (my-get-balance-nosub a start-date end-date)))
-	    (gnc:account-get-children account)))
+	    account))
 	  this-collector))
 
       
@@ -715,14 +715,14 @@
 	
 	(for-each
 	 (lambda (acct)
-	   (let* ((subaccts (gnc:account-get-immediate-subaccounts acct))
+	   (let* ((subaccts (gnc:account-get-children acct))
 		  ;; assign output parameters
 		  (account acct)
 		  (account-name (gnc:account-get-name acct))
 		  (account-code (gnc:account-get-code acct))
 		  (account-path (gnc:account-get-full-name acct))
 		  (account-anchor (gnc:html-account-anchor acct))
-		  (account-parent (gnc:account-get-parent-account acct))
+		  (account-parent (gnc:account-get-parent acct))
 		  (account-children subaccts)
 		  (account-depth acct-depth)
 		  (logical-depth logi-depth)

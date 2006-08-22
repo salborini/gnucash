@@ -55,11 +55,11 @@
 
   (gw:wrap-function
    ws
-   'gnc:get-current-group
-   '<gnc:AccountGroup*>
-   "gnc_get_current_group"
+   'gnc:get-current-root-account
+   '<gnc:Account*>
+   "gnc_get_current_root_account"
    '()
-   "Get the current top-level group.")
+   "Get the current top-level root account.")
 
   (gw:wrap-function
    ws

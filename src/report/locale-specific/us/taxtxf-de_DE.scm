@@ -316,8 +316,7 @@
 	       (payer-src (gnc:account-get-txf-payer-source account))
                (account-name (let* ((named-acct
 				    (if (eq? payer-src 'parent)
-					(gnc:group-get-parent
-					 (gnc:account-get-parent account))
+					(gnc:account-get-parent account)
 					account))
 				    (name (gnc:account-get-name named-acct)))
 			       (if name
@@ -436,8 +435,7 @@
                 #t
                 ;; check children
                 (if (null? (validate
-                            (gnc:group-get-subaccounts
-                             (gnc:account-get-children a))))
+                            (gnc:account-get-descendants a)))
                     #f
                     #t)))
           accounts))
@@ -456,12 +454,12 @@
   ;; the number of account generations: children, grandchildren etc.
   (define (num-generations account gen)
     (let ((children (gnc:account-get-children account)))
-      (if (eq? (gnc:group-get-num-accounts children) 0)
+      (if (null? children)
           (if (and (gnc:account-get-tax-related account)
                    (txf-special-split? (gnc:account-get-txf-code account)))
               (+ gen 1)		; Est Fed Tax has a extra generation
               gen)	       		; no kids, return input
-          (apply max (gnc:group-map-accounts
+          (apply max (gnc:account-map-children
                       (lambda (x) (num-generations x (+ 1 gen)))
                       children)))))
 
@@ -483,8 +481,8 @@
          (selected-accounts (if (not (null? user-sel-accnts))
                                 valid-user-sel-accnts
                                 (validate (reverse 
-                                           (gnc:group-get-account-list
-                                            (gnc:get-current-group))))))
+                                           (gnc:account-get-children
+                                            (gnc:get-current-root_account))))))
          (generations (if (pair? selected-accounts)
                           (apply max (map (lambda (x) (num-generations x 1))
                                           selected-accounts))
@@ -644,7 +642,7 @@
 	    (for-each (lambda (x)
 		   (if (gnc:account-is-inc-exp? x)
 		       (set! sum (+ sum (+ 1 (count-accounts (+ 1 level)
-							     (gnc:account-get-immediate-subaccounts x)))))
+							     (gnc:account-get-children x)))))
 		       0))
 		 accounts)
 	    sum)

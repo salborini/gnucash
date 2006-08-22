@@ -1,3 +1,13 @@
+2006-08-21  David Hampton  <hampton@employees.org>
+
+	* numerous: Initial removal of the engine Group.h, GroupP.h, and
+	Group.c files.  This completely removes the AccountGroup data
+	structure.
+
+======================================================================
+	The remove-group branch ChangeLog is above this point.
+======================================================================
+	
 2006-08-18  David Hampton  <hampton@employees.org>
 
 	* various: Add some 'const' declarations.

@@ -9,10 +9,10 @@
 
   (let* ((session (gnc:session-new))
          (book (gnc:session-get-book session))
-         (group (gnc:malloc-account-group book))
+         (root (gnc:malloc-account book))
          (acct (gnc:malloc-account book)))
     (gnc:account-begin-edit acct)
     (gnc:account-set-name acct "foo")
     (gnc:account-commit-edit acct)
-    (gnc:group-insert-account group acct))
+    (gnc:account-append-child root acct))
   #t)

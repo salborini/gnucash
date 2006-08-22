@@ -29,7 +29,6 @@
 #include <string.h>
 
 #include "Account.h"
-#include "Group.h"
 #include "engine-helpers.h"
 #include "glib-helpers.h"
 #include "gnc-date.h"
@@ -2087,11 +2086,11 @@ gnc_scm_traversal_adapter(Transaction *t, void *data)
 }
 
 gboolean
-gnc_scmGroupStagedTransactionTraversal(AccountGroup *grp,
+gnc_scmAccountTreeStagedTransactionTraversal(Account *a,
                                        unsigned int new_marker,
                                        SCM thunk)
 {
-  return xaccGroupStagedTransactionTraversal(grp, new_marker,
+  return gnc_account_tree_staged_transaction_traversal(a, new_marker,
                                              gnc_scm_traversal_adapter,
                                              &thunk);
 }

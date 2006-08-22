@@ -38,10 +38,10 @@
     (or result
         (begin (gnc:session-destroy session) #f))))
 
-(define (gnc:group-map-all-accounts thunk group)
-  (let ((accounts (or (gnc:group-get-subaccounts group) '())))
-    (map thunk accounts)))
+(define (gnc:account-map-descendants thunk account)
+  (let ((descendants (or (gnc:account-get-descendants account) '())))
+    (map thunk descendants)))
 
-(define (gnc:group-map-accounts thunk group)
-  (let ((accounts (or (gnc:group-get-account-list group) '())))
-    (map thunk accounts)))
+(define (gnc:account-map-children thunk account)
+  (let ((children (or (gnc:account-get-children account) '())))
+    (map thunk children)))

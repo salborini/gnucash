@@ -623,21 +623,20 @@
     document))
 
 (define (find-first-account type)
-  (define (find-first group num index)
+  (define (find-first account num index)
     (if (>= index num)
 	#f
-	(let* ((this-account (gnc:group-get-account group index))
+	(let* ((this-child (gnc:account-get-nth-child account index))
 	       (account-type (gw:enum-<gnc:AccountType>-val->sym
 			      (gnc:account-get-type this-account) #f)))
 	  (if (eq? account-type type)
-	      this-account
-	      (find-first group num (+ index 1))))))
+	      this-child
+	      (find-first account num (+ index 1))))))
 
-  (let* ((current-group (gnc:get-current-group))
-	 (num-accounts (gnc:group-get-num-accounts
-			current-group)))
+  (let* ((current-root (gnc:get-current-root))
+	 (num-accounts (gnc:account-get-num-children current-root)))
     (if (> num-accounts 0)
-	(find-first current-group num-accounts 0)
+	(find-first current-root num-accounts 0)
 	#f)))
 
 (define (find-first-account-for-owner owner)

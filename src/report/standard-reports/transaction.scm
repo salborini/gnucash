@@ -572,7 +572,7 @@
       (gnc:filter-accountlist-type 
        '(bank cash credit asset liability stock mutual-fund currency
 	      payable receivable equity income expense)
-       (gnc:group-get-subaccounts (gnc:get-current-group))))
+       (gnc:account-get-descendants (gnc:get-current-root-account))))
     #f #t))
 
   (gnc:register-trep-option
@@ -582,10 +582,9 @@
     (lambda ()
       ;; FIXME : gnc:get-current-accounts disappeared.
       (let ((current-accounts '())
-	    (num-accounts (gnc:group-get-num-accounts
-			   (gnc:get-current-group)))
-	    (first-account (gnc:group-get-account
-			    (gnc:get-current-group) 0)))
+	    (root (gnc:get-current-root))
+	    (num-accounts (gnc:account-get-num-children root))
+	    (first-account (gnc:account-get-nth-child root 0)))
 	(cond ((not (null? current-accounts))
 	       (list (car current-accounts)))
 	      ((> num-accounts 0) (list first-account))

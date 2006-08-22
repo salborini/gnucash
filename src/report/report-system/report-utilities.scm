@@ -138,57 +138,20 @@
 
 
 ;; Returns the depth of the current account hierarchy, that is, the
-;; maximum level of subaccounts in the current-group.
-(define (gnc:get-current-group-depth)
-  ;; Given a list of accounts, this function determines the maximum
-  ;; sub-account level that there is.
-  (define (accounts-get-children-depth accounts)
-    (apply max
-	   (map (lambda (acct)
-		  (let ((children 
-			 (gnc:account-get-immediate-subaccounts acct)))
-		    (if (null? children)
-			1
-			(+ 1 (accounts-get-children-depth children)))))
-		accounts)))
-  (accounts-get-children-depth 
-   (gnc:group-get-account-list (gnc:get-current-group))))
+;; maximum level of subaccounts in the tree
+(define (gnc:get-current-account-tree-depth)
+  (let ((root (gnc:get-current-root-account)))
+    (gnc:account-get-depth root)))
 
 (define (gnc:split-get-corr-account-full-name split)
   (gnc:split-get-corr-account-full-name-internal split))
 
 
-;; get children that are the direct descendant of this acct
-(define (gnc:account-get-immediate-subaccounts acct)
-  (define (acctptr-eq? a1 a2)
-    (let ((a1-str 
-           (with-output-to-string (lambda () (write a1))))
-          (a2-str 
-           (with-output-to-string (lambda () (write a2)))))
-      (string=? a1-str a2-str)))
-  
-  (let* ((group (gnc:account-get-children acct))
-         (children (gnc:group-get-subaccounts group))
-         (retval '()))
-    (for-each 
-     (lambda (child)
-       (if (acctptr-eq? acct (gnc:account-get-parent-account child))
-           (begin 
-             (set! retval (cons child retval)))))
-     children)
-    (reverse retval)))
-
-;; get all children of this account 
-(define (gnc:account-get-all-subaccounts acct)
-  (let ((group (gnc:account-get-children acct)))
-    (gnc:group-get-subaccounts group)))
-
 ;; Get all children of this list of accounts.
 (define (gnc:acccounts-get-all-subaccounts accountlist)
   (append-map 
    (lambda (a)
-     (gnc:group-get-subaccounts
-      (gnc:account-get-children a)))
+     (gnc:account-get-descendants a))
    accountlist))
 
 ;;; Here's a statistics collector...  Collects max, min, total, and makes
@@ -498,14 +461,19 @@
 ;; values rather than double values.
 (define (gnc:account-get-comm-balance-at-date account 
 					      date include-children?)
-  (let ((balance-collector
-         (if include-children?
-             (gnc:group-get-comm-balance-at-date
-              (gnc:account-get-children account) date)
-             (gnc:make-commodity-collector)))
-	  (query (gnc:malloc-query))
-	  (splits #f))
-      
+  (let ((balance-collector (gnc:make-commodity-collector))
+	(query (gnc:malloc-query))
+	(splits #f))
+
+      (if include-children?
+	  (for-each 
+	   (lambda (x) 
+	     (gnc:commodity-collector-merge balance-collector x))
+	   (gnc:account-map-descendants
+	    (lambda (child)
+	      (gnc:account-get-comm-balance-at-date child date #f))
+	    account)))
+
       (gnc:query-set-book query (gnc:get-current-book))
       (gnc:query-add-single-account-match query account 'query-and)
       (gnc:query-add-date-match-timepair query #f date #t date 'query-and) 
@@ -585,19 +553,6 @@
    get-balance-fn
    (lambda(x) #f)))
 
-;; returns a commodity-collector
-(define (gnc:group-get-comm-balance-at-date group date)
-  (let ((this-collector (gnc:make-commodity-collector)))
-    (for-each 
-     (lambda (x) 
-       (gnc:commodity-collector-merge this-collector x))
-     (gnc:group-map-all-accounts
-      (lambda (account)
-	(gnc:account-get-comm-balance-at-date 
-	 account date #f)) 
-      group))
-    this-collector))
-
 ;; get the change in balance from the 'from' date to the 'to' date.
 ;; this isn't quite as efficient as it could be, but it's a whole lot
 ;; simpler :)
@@ -621,17 +576,6 @@
       account
       (gnc:timepair-end-day-time (gnc:timepair-previous-day from))
       include-children?))
-    this-collector))
-
-;; the version which returns a commodity-collector
-(define (gnc:group-get-comm-balance-interval group from to)
-  (let ((this-collector (gnc:make-commodity-collector)))
-    (for-each (lambda (x) 
-		(gnc:commodity-collector-merge this-collector x))
-	      (gnc:group-map-all-accounts
-	       (lambda (account)
-		 (gnc:account-get-comm-balance-interval 
-		  account from to #t)) group))
     this-collector))
 
 ;; This calculates the increase in the balance(s) of all accounts in
@@ -713,10 +657,10 @@
 	 (gnc:accounts-count-splits (cdr accounts)))
       0))
 
-;; Sums up any splits of a certain type affecting a group of accounts.
+;; Sums up any splits of a certain type affecting a set of accounts.
 ;; the type is an alist '((str "match me") (cased #f) (regexp #f))
 (define (gnc:account-get-trans-type-balance-interval
-	 group type start-date-tp end-date-tp)
+	 account-list type start-date-tp end-date-tp)
   (let* ((query (gnc:malloc-query))
 	 (splits #f)
 	 (get-val (lambda (alist key)
@@ -729,7 +673,7 @@
 	 )
     (gnc:query-set-book query (gnc:get-current-book))
     (gnc:query-set-match-non-voids-only! query (gnc:get-current-book))
-    (gnc:query-add-account-match query group 'guid-match-any 'query-and)
+    (gnc:query-add-account-match query account-list 'guid-match-any 'query-and)
     (gnc:query-add-date-match-timepair
      query
      (and start-date-tp #t) start-date-tp
@@ -756,7 +700,7 @@
 ;; similar, but only counts transactions with non-negative shares and
 ;; *ignores* any closing entries
 (define (gnc:account-get-pos-trans-total-interval
-	 group type start-date-tp end-date-tp)
+	 account-list type start-date-tp end-date-tp)
   (let* ((str-query (gnc:malloc-query))
 	 (sign-query (gnc:malloc-query))
 	 (total-query #f)
@@ -774,8 +718,8 @@
     (gnc:query-set-book sign-query (gnc:get-current-book))
     (gnc:query-set-match-non-voids-only! str-query (gnc:get-current-book))
     (gnc:query-set-match-non-voids-only! sign-query (gnc:get-current-book))
-    (gnc:query-add-account-match str-query group 'guid-match-any 'query-and)
-    (gnc:query-add-account-match sign-query group 'guid-match-any 'query-and)
+    (gnc:query-add-account-match str-query account-list 'guid-match-any 'query-and)
+    (gnc:query-add-account-match sign-query account-list 'guid-match-any 'query-and)
     (gnc:query-add-date-match-timepair
      str-query
      (and start-date-tp #t) start-date-tp

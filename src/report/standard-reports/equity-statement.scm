@@ -131,7 +131,7 @@
 	(gnc:filter-accountlist-type 
 	 '(bank cash credit asset liability stock mutual-fund currency
 		payable receivable equity income expense)
-	 (gnc:group-get-subaccounts (gnc:get-current-group))))
+         (gnc:account-get-descendants (gnc:get-current-root-account))))
       #f #t))
     
     ;; all about currencies

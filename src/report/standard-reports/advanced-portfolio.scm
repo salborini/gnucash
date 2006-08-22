@@ -151,8 +151,8 @@
       "b"
       (N_ "Stock Accounts to report on")
       (lambda () (filter gnc:account-is-stock?
-                         (gnc:group-get-subaccounts
-                          (gnc:get-current-group))))
+			 (gnc:account-get-descendants
+			  (gnc:get-current-root-account))))
       (lambda (accounts) (list  #t 
                                 (filter gnc:account-is-stock? accounts)))
       #t))

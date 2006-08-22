@@ -59,9 +59,9 @@ int  gnc_guid_p(SCM guid_scm);
 SCM gnc_query2scm (Query * q);
 Query * gnc_scm2query (SCM query_scm);
 
-/* See Group.h for info about traversals. */
+/* See Account.h for info about traversals. */
 
-gboolean gnc_scmGroupStagedTransactionTraversal(AccountGroup *grp,
+gboolean gnc_scmAccountTreeStagedTransactionTraversal(Account *a,
                                                 unsigned int stage,
                                                 SCM thunk);
 
