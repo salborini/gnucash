@@ -1,5 +1,8 @@
 2006-08-22  David Hampton  <hampton@employees.org>
 
+	* src/gnome-utils/gnc-tree-model-account.c: Fix a mistake in the
+	updated tree model.
+
 	* src/backend/file/gnc-account-xml-v2.c:
 	* src/backend/file/io-gncxml-v2.c:
 	* src/engine/Account.[ch]:
