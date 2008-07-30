@@ -312,9 +312,9 @@
          documentation-string)
 
   (define (budget->guid budget)
-    (if (string? budget)
-        budget
-        (gncBudgetGetGUID budget)))
+    (cond ((eq? budget #f) #f)
+          ((string? budget) budget)
+          (t (gncBudgetGetGUID budget))))
 
   (define (guid->budget budget)
     (if (string? budget)
@@ -1534,7 +1534,7 @@
     pagename optname 
     sort-tag info
     (lambda () 
-      (cons 'relative 'today))
+      (cons 'relative 'end-accounting-period))
     #f 'both 
     '(
       today 
@@ -1554,7 +1554,7 @@
    (gnc:make-date-option
     pagename name-from
     (string-append sort-tag "a") info-from
-    (lambda () (cons 'relative 'start-cal-year))
+    (lambda () (cons 'relative 'start-accounting-period))
     #f 'both 
     '(
       today

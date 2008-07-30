@@ -229,7 +229,7 @@ pedit_dialog_response_cb (GtkDialog *dialog, gint response, gpointer data)
   if (response == GTK_RESPONSE_OK) {
     error_str = gui_to_price (pedit_dialog);
     if (error_str) {
-      gnc_warning_dialog (pedit_dialog->dialog, error_str);
+      gnc_warning_dialog (pedit_dialog->dialog, "%s", error_str);
       return;
     }
 
@@ -367,7 +367,6 @@ gnc_price_pedit_dialog_create (GtkWidget *parent,
   gnc_amount_edit_set_evaluate_on_enter (GNC_AMOUNT_EDIT (w), TRUE);
   print_info = gnc_default_price_print_info ();
   gnc_amount_edit_set_print_info (GNC_AMOUNT_EDIT (w), print_info);
-  gnc_amount_edit_set_fraction (GNC_AMOUNT_EDIT (w), 1000000);
   gtk_entry_set_activates_default(GTK_ENTRY(w), TRUE);
   gtk_widget_show (w);
   label = glade_xml_get_widget (xml, "price_label");

@@ -723,7 +723,7 @@ gnc_split_register_paste_current (SplitRegister *reg)
 
     if (split != NULL)
       result = gnc_verify_dialog (gnc_split_register_get_parent (reg),
-				  FALSE, message);
+				  FALSE, "%s", message);
     else
       result = TRUE;
 
@@ -759,7 +759,7 @@ gnc_split_register_paste_current (SplitRegister *reg)
 
     if (split != blank_split)
       result = gnc_verify_dialog(gnc_split_register_get_parent(reg),
-				 FALSE, message);
+				 FALSE, "%s", message);
     else
       result = TRUE;
 
@@ -1498,7 +1498,7 @@ gnc_split_register_get_account_by_name (SplitRegister *reg, BasicCell * bcell,
   const char *placeholder = _("The account %s does not allow transactions.");
   const char *missing = _("The account %s does not exist. "
 			  "Would you like to create it?");
-  char *fullname;
+  char *account_name;
   ComboCell *cell = (ComboCell *) bcell;
   Account *account;
 
@@ -1506,7 +1506,9 @@ gnc_split_register_get_account_by_name (SplitRegister *reg, BasicCell * bcell,
     return NULL;
 
   /* Find the account */
-  account = gnc_account_lookup_by_full_name (gnc_get_current_root_account (), name);
+  account = gnc_account_lookup_for_register (gnc_get_current_root_account (), name);
+  if (!account)
+	  account = gnc_account_lookup_by_code (gnc_get_current_root_account (), name);
 
   if (!account) {
     /* Ask if they want to create a new one. */
@@ -1519,14 +1521,14 @@ gnc_split_register_get_account_by_name (SplitRegister *reg, BasicCell * bcell,
     account = gnc_ui_new_accounts_from_name_window (name);
     if (!account)
       return NULL;
-    *refresh = TRUE;
-
-    /* Now have a new account. Update the cell with the name as created. */
-    fullname = xaccAccountGetFullName (account);
-    gnc_combo_cell_set_value (cell, fullname);
-    gnc_basic_cell_set_changed (&cell->cell, TRUE);
-    g_free (fullname);
   }
+
+  /* Now have the account. Update the cell with the name as created. */
+  *refresh = TRUE;
+  account_name = gnc_get_account_name_for_register (account);
+  gnc_combo_cell_set_value (cell, account_name);
+  gnc_basic_cell_set_changed (&cell->cell, TRUE);
+  g_free (account_name);
 
   /* See if the account (either old or new) is a placeholder. */
   if (xaccAccountGetPlaceholder (account)) {
