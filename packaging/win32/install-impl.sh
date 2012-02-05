@@ -69,8 +69,10 @@ function inst_wget() {
         echo "already installed in $_WGET_UDIR/bin.  skipping."
     else
         mkdir -p $_WGET_UDIR/bin
-        tar -xjpf $DOWNLOAD_UDIR/wget*.tar.bz2 -C $_WGET_UDIR
-        cp $_WGET_UDIR/*/*/wget.exe $_WGET_UDIR/bin
+        tar --lzma -xpf $DOWNLOAD_UDIR/wget*.tar.lzma -C $_WGET_UDIR
+        tar --lzma -xpf $DOWNLOAD_UDIR/libopenssl*.tar.lzma -C $_WGET_UDIR
+        tar --lzma -xpf $DOWNLOAD_UDIR/libintl*.tar.lzma -C $_WGET_UDIR
+        tar --lzma -xpf $DOWNLOAD_UDIR/libiconv*.tar.lzma -C $_WGET_UDIR
         quiet wget --version || die "wget unavailable"
     fi
 }
@@ -1529,6 +1531,9 @@ set PATH=$SQLITE3_DIR\\bin;%PATH%
 set PATH=$MYSQL_LIB_DIR\\lib;%PATH%
 set PATH=$PGSQL_DIR\\bin;%PATH%
 set PATH=$PGSQL_DIR\\lib;%PATH%
+set PATH=$ENCHANT_DIR\\bin;%PATH%
+set PATH=$LIBSOUP_DIR\\bin;%PATH%
+set PATH=$LIBXSLT_DIR\\bin;%PATH%
 
 set LTDL_LIBRARY_PATH=${INSTALL_DIR}\\lib
 
