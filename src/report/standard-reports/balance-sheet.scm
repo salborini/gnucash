@@ -143,6 +143,12 @@
 (define optname-show-rates (N_ "Show Exchange Rates"))
 (define opthelp-show-rates (N_ "Show the exchange rates used."))
 
+(define optname-retained-breakdown (N_ "Retain earnings/losses periodically"))
+(define opthelp-retained-breakdown (N_ "Show retained earnings/losses broken down by accounting period"))
+(define optname-retained-from-date (N_ "First date"))
+(define opthelp-retained-from-date (N_ "First date on which to retain earnings/losses"))
+(define optname-retained-interval (N_ "Period"))
+(define opthelp-retained-interval (N_ "Period over which to retain earnings/losses"))
 
 ;; options generator
 (define (balance-sheet-options-generator)
@@ -205,7 +211,7 @@
     
     (gnc:options-add-price-source! 
      options pagename-commodities
-     optname-price-source "b" 'average-cost)
+     optname-price-source "b" 'pricedb-nearest)
     
     (add-option 
      (gnc:make-simple-boolean-option
@@ -268,7 +274,24 @@
      (gnc:make-simple-boolean-option
       gnc:pagename-display optname-total-equity
       "l" opthelp-total-equity #t))
-    
+
+    (add-option
+     (gnc:make-simple-boolean-option
+      gnc:pagename-general optname-retained-breakdown
+      "r" opthelp-retained-breakdown #f))
+    (gnc:options-make-end-date!
+     options gnc:pagename-general optname-retained-from-date
+     "s" opthelp-retained-from-date)
+    (gnc:register-option
+      options
+      (gnc:make-multichoice-option
+       gnc:pagename-general optname-retained-interval "t"  
+       opthelp-retained-interval 'YearDelta
+       (list (vector 'MonthDelta (N_ "Month") (N_ "Month"))
+             (vector 'QuarterDelta (N_ "Quarter") (N_ "Quarter"))
+	     (vector 'HalfYearDelta (N_ "Half Year") (N_ "Half Year"))
+	     (vector 'YearDelta (N_ "Year") (N_ "Year")))))
+       
     ;; Set the accounts page as default option tab
     (gnc:options-set-default-section options gnc:pagename-accounts)
     
@@ -347,6 +370,21 @@
 				    optname-use-rules))
 	 (indent 0)
 	 (tabbing #f)
+ 	 (retained-breakdown? (get-option gnc:pagename-general
+				          optname-retained-breakdown))
+         (retained-from-date (gnc:timepair-start-day-time
+                              (gnc:date-option-absolute-time
+                               (get-option gnc:pagename-general
+                                           optname-retained-from-date))))
+         (retained-from-date-secs (gnc:timepair->secs retained-from-date))
+         (retained-interval (get-option gnc:pagename-general
+	                                optname-retained-interval))
+	 ;; build the periods for retained earnings
+	 (dates-list (if retained-breakdown?
+			 (gnc:make-date-list
+			  (gnc:timepair-start-day-time retained-from-date)
+			  (gnc:timepair-end-day-time date-tp)
+			  (gnc:deltasym-to-delta retained-interval))))
 	 
          ;; decompose the account list
          (split-up-accounts (gnc:decompose-accountlist accounts))
@@ -378,7 +416,7 @@
     
     ;; Wrapper to call gnc:html-table-add-labeled-amount-line!
     ;; with the proper arguments.
-    (define (add-subtotal-line table pos-label neg-label signed-balance)
+    (define (add-line table pos-label neg-label signed-balance row-markup label-markup value-markup offset)
       (define allow-same-column-totals #t)
       (let* ((neg? (and signed-balance
 			neg-label
@@ -397,15 +435,22 @@
 	 table
 	 (+ indent (* tree-depth 2)
 	    (if (equal? tabbing 'canonically-tabbed) 1 0))
-	 "primary-subheading"
+	 row-markup
 	 (and (not allow-same-column-totals) balance use-rules?)
-	 label indent 1 "total-label-cell"
+	 label (+ offset indent) 1 label-markup
 	 (gnc:sum-collector-commodity balance report-commodity exchange-fn)
-	 (+ indent (* tree-depth 2) (- 0 1)
+	 (+ indent (* tree-depth 2) (- 0 1 offset)
 	    (if (equal? tabbing 'canonically-tabbed) 1 0))
-	 1 "total-number-cell")
+	 1 value-markup)
 	)
       )
+    (define (add-total-line table pos-label neg-label signed-balance)
+      (add-line table pos-label neg-label signed-balance "primary-subheading" "total-label-cell" "total-number-cell" 0))
+    (define (add-subtotal-line table pos-label neg-label signed-balance)
+      (add-line table pos-label neg-label signed-balance "secondary-subheading" "total-label-cell" "total-number-cell" 0))
+    (define (add-plain-line table pos-label neg-label signed-balance offset)
+      (add-line table pos-label neg-label signed-balance "normal-row" "text-cell" "number-cell" offset))
+	     
     ;; (gnc:sum-collector-stocks balance report-commodity exchange-fn)
     ;; Hey! Look at that! This rolls the stocks into the balance!
     ;; Can anyone think of a reason why this would be desireable?
@@ -473,6 +518,8 @@
                (equity-balance #f)
 	       (neg-retained-earnings #f) ;; credit, income - expenses, < 0
 	       (retained-earnings #f)
+	       (last-retained-earnings #f)
+	       (retained-earnings-list #f) ;; list of (printed-date balance)
 	       (neg-trading-balance #f)
 	       (trading-balance #f)
                (unrealized-gain-collector #f)
@@ -526,6 +573,21 @@
 	  (retained-earnings 'minusmerge
 			  neg-retained-earnings
 			  #f)
+	  (set! last-retained-earnings (gnc:make-commodity-collector))
+	  (set! retained-earnings-list 
+	        (if retained-breakdown?
+	            (map (lambda (date-list-item)
+			  (let* ((date-secs (gnc:timepair->secs date-list-item))
+				 (printed-date (gnc-print-date date-list-item))
+			         (neg-ret-earnings (account-list-balance income-expense-accounts date-secs))
+			         (ret-earnings (gnc:make-commodity-collector)))
+			     (ret-earnings 'minusmerge neg-ret-earnings #f)
+			     (ret-earnings 'minusmerge last-retained-earnings #f)
+			     (set! last-retained-earnings (gnc:make-commodity-collector))
+			     (last-retained-earnings 'minusmerge neg-ret-earnings #f)
+			     (cons printed-date ret-earnings )))
+			 dates-list)))
+
 	  (set! neg-trading-balance (account-list-balance trading-accounts date-secs))
 	  (set! trading-balance (gnc:make-commodity-collector))
 	  (trading-balance 'minusmerge
@@ -641,7 +703,7 @@
 		 table-env asset-accounts))
 	  (gnc:html-table-add-account-balances
 	   left-table asset-table params)
-          (if total-assets? (add-subtotal-line 
+          (if total-assets? (add-subtotal-line
 			     left-table (_ "Total Assets") #f asset-balance))
 	  
 	  (if report-form?
@@ -667,12 +729,25 @@
 	  ;; we omit retianed earnings & unrealized gains
 	  ;; from the balance report, if zero, since they
 	  ;; are not present on normal balance sheets
-	  (and (not (gnc-commodity-collector-allzero?
-		     retained-earnings))
-	       (add-subtotal-line right-table
-				  (_ "Retained Earnings")
-				  (_ "Retained Losses")
-				  retained-earnings))
+	  (case retained-breakdown?
+	      ((#t) 
+	       (and (not (gnc-commodity-collector-allzero? retained-earnings))
+	            (add-plain-line right-table (_ "Retained Earnings") #f #f 0))
+	       (for-each (lambda (r) 
+	                  (and (not (gnc-commodity-collector-allzero? (cdr r)))
+			       (add-plain-line right-table 
+	                                       (_ (string-append "Retained Earnings " (car r)))
+			                       (_ (string-append "Retained Losses " (car r)))
+				               (cdr r)
+					       1)))
+			 retained-earnings-list))
+	      ((#f)
+	       (and (not (gnc-commodity-collector-allzero?
+	                  retained-earnings))
+                    (add-subtotal-line right-table
+			 	       (_ "Retained Earnings")
+				       (_ "Retained Losses")
+				       retained-earnings))))
 	  (and (not (gnc-commodity-collector-allzero?
 	             trading-balance))
 	       (add-subtotal-line right-table
@@ -756,7 +831,7 @@
 	     (balance-sheet-renderer report-obj #f #f))
  'export-types #f
  'export-thunk (lambda (report-obj choice filename)
-		 (balance-sheet-renderer report-obj #f filename)))
+		 (balance-sheet-renderer report-obj choice filename)))
 
 ;; END
 
