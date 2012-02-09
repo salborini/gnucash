@@ -183,7 +183,7 @@ gnc_reconcile_view_new (Account *account, GNCReconcileViewType type,
     if (type == RECLIST_CREDIT)
         xaccQueryAddValueMatch(query, gnc_numeric_zero (),
                                QOF_NUMERIC_MATCH_CREDIT,
-                               QOF_COMPARE_GTE, QOF_QUERY_AND);
+                               QOF_COMPARE_GT, QOF_QUERY_AND);
     else
         xaccQueryAddValueMatch(query, gnc_numeric_zero (),
                                QOF_NUMERIC_MATCH_DEBIT,
