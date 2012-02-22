@@ -1421,12 +1421,12 @@ function inst_gnucash() {
 
     if [ "$BUILD_FROM_TARBALL" != "yes" ]; then
         qpushd $REPOS_DIR
-            ./autogen.sh
+            [ "$BUILD_ONLY" = "no" ] && ./autogen.sh
         qpopd
     fi
 
     qpushd $_BUILD_UDIR
-        $_REL_REPOS_UDIR/configure ${HOST_XCOMPILE} \
+        [ "$BUILD_ONLY" = "no" ] && $_REL_REPOS_UDIR/configure ${HOST_XCOMPILE} \
             --prefix=$_INSTALL_WFSDIR \
             --enable-debug \
             --enable-schemas-install=no \
