@@ -63,6 +63,8 @@ set_default CROSS_COMPILE "no"
 
 # If "yes", build without optimizations (-O0) and ease debugging
 set_default DISABLE_OPTIMIZATIONS no
+# If "yes", do not run autogen.sh and configure again for gnucash
+set_default BUILD_ONLY no
 
 set_default MSYS_DIR $GLOBAL_DIR\\msys
 
