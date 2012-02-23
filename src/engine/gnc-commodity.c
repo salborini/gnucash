@@ -172,6 +172,7 @@ static gnc_quote_source single_quote_sources[] =
     { FALSE, 0, 0, "DWS, DE", "DWS", "dwsfunds" },
     { FALSE, 0, 0, "Fidelity Direct", "FIDELITY_DIRECT", "fidelity_direct" },
     { FALSE, 0, 0, "Finance Canada", "FINANCECANADA", "financecanada" },
+    { FALSE, 0, 0, "Financial Times, GB", "FINANCIALTIMES", "ft_funds" },
     { FALSE, 0, 0, "Finanzpartner, DE", "FINANZPARTNER", "finanzpartner" },
     { FALSE, 0, 0, "First Trust Portfolios, US", "FTPORTFOLIOS_DIRECT", "ftportfolios_direct" },
     { FALSE, 0, 0, "Fund Library, CA", "FUNDLIBRARY", "fundlibrary" },
