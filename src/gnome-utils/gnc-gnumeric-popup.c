@@ -1,5 +1,5 @@
 /* The following is code copied from Gnumeric 1.7.8 licensed under the
- * GNU General Public License version 2 and/or version 3. It is from the file
+ * GNU General Public License version 2. It is from the file
  * gnumeric/src/gui-util.c, and it has been modified slightly to work
  * within GnuCash. */
 
@@ -47,7 +47,7 @@
  * Morten Welinder, Gnumeric hacker and leak plugging demi-god.
  */
 
-#include "gnc-csv-gnumeric-popup.h"
+#include "gnc-gnumeric-popup.h"
 
 #include <glib/gi18n.h>
 
@@ -175,7 +175,12 @@ gnumeric_popup_menu (GtkMenu *menu, GdkEventButton *event)
     g_return_if_fail (menu != NULL);
     g_return_if_fail (GTK_IS_MENU (menu));
 
+#if GLIB_CHECK_VERSION(2,10,0) && GTK_CHECK_VERSION(2,8,14)
     g_object_ref_sink (menu);
+#else
+    g_object_ref (menu);
+    gtk_object_sink (GTK_OBJECT (menu));
+#endif
 
     if (event)
         gtk_menu_set_screen (menu,

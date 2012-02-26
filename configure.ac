@@ -1261,6 +1261,7 @@ AC_CONFIG_FILES(
   src/import-export/log-replay/Makefile
   src/import-export/aqbanking/Makefile
   src/import-export/aqbanking/schemas/Makefile
+  src/import-export/price-csv/Makefile
   src/libqof/Makefile
   src/libqof/qof/Makefile
   src/libqof/qof/test/Makefile
