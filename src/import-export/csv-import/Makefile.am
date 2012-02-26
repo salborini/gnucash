@@ -8,16 +8,14 @@ libgncmod_csv_import_la_SOURCES = \
   assistant-csv-trans-import.c \
   gnc-plugin-csv-import.c \
   csv-account-import.c \
-  gnc-csv-model.c \
-  gnc-csv-gnumeric-popup.c
+  gnc-csv-model.c
 
 noinst_HEADERS = \
   assistant-csv-account-import.h \
   assistant-csv-trans-import.h \
   gnc-plugin-csv-import.h \
   csv-account-import.h \
-  gnc-csv-model.h \
-  gnc-csv-gnumeric-popup.h
+  gnc-csv-model.h
 
 libgncmod_csv_import_la_LDFLAGS = -avoid-version
 

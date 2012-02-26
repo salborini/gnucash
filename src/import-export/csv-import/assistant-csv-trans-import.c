@@ -45,7 +45,7 @@
 #include "import-main-matcher.h"
 
 #include "gnc-csv-model.h"
-#include "gnc-csv-gnumeric-popup.h"
+#include "gnc-gnumeric-popup.h"
 #include <goffice/gtk/go-charmap-sel.h>
 
 #define MIN_COL_WIDTH 70

@@ -13,7 +13,9 @@
         <menuitem name="FileRevert" action="FileRevertAction"/>
       </placeholder>
       <menu name="FileExport" action="FileExportAction">
-        <menuitem name="FileExportAccounts" action="FileExportAccountsAction"/>
+	<placeholder name="FileExportPlaceHolder">
+	  <menuitem name="FileExportAccounts" action="FileExportAccountsAction"/>
+	</placeholder>
       </menu>
     </menu>
   

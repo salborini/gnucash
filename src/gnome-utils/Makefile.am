@@ -64,6 +64,7 @@ libgncmod_gnome_utils_la_SOURCES = \
   gnc-recurrence.c \
   gnc-general-select.c \
   gnc-gnome-utils.c \
+  gnc-gnumeric-popup.c \
   gnc-gobject-utils.c \
   gnc-gtk-utils.c \
   gnc-gui-query.c \
@@ -146,6 +147,7 @@ gncinclude_HEADERS = \
   gnc-recurrence.h \
   gnc-general-select.h \
   gnc-gnome-utils.h \
+  gnc-gnumeric-popup.h \
   gnc-gui-query.h \
   gnc-icons.h \
   gnc-keyring.h \

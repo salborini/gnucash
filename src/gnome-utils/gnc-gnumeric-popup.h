@@ -1,5 +1,5 @@
 /* The following is code copied from Gnumeric 1.7.8 licensed under the
- * GNU General Public License version 2 and/or version 3. It is from the file
+ * GNU General Public License version 2. It is from the file
  * gnumeric/src/gui-util.h, and it has been modified slightly to work
  * within GnuCash. */
 
@@ -47,8 +47,8 @@
  * Morten Welinder, Gnumeric hacker and leak plugging demi-god.
  */
 
-#ifndef GNC_CSV_GNUMERIC_POPUP
-#define GNC_CSV_GNUMERIC_POPUP
+#ifndef GNC_GNUMERIC_POPUP
+#define GNC_GNUMERIC_POPUP
 
 #include <gtk/gtk.h>
 
