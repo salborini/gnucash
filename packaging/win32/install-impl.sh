@@ -1427,6 +1427,7 @@ function inst_gnucash() {
 
     qpushd $_BUILD_UDIR
         [ "$BUILD_ONLY" = "no" ] && $_REL_REPOS_UDIR/configure ${HOST_XCOMPILE} \
+            ${CONFIGURE_EXTRAS} \
             --prefix=$_INSTALL_WFSDIR \
             --enable-debug \
             --enable-schemas-install=no \
