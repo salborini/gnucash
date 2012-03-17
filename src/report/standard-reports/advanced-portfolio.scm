@@ -131,7 +131,7 @@
     (add-option
      (gnc:make-number-range-option
       gnc:pagename-display optname-shares-digits
-      "d" (N_ "The number of decimal places to use for share numbers.") 2
+      "d" (N_ "The number of decimal places to use for share numbers.") 0
       0 6 0 1))
 
     (gnc:register-option
