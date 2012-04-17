@@ -3,6 +3,7 @@ include $(top_srcdir)/test-templates/Makefile.decl
 MODULEPATH = src/engine
 
 AM_CPPFLAGS = \
+  -I$(top_srcdir)/lib/libc \
   -I${top_srcdir} \
   -I${top_srcdir}/src \
   -I${top_srcdir}/src/gnc-module \
