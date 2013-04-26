@@ -14,7 +14,7 @@ doc_DATA = \
   guile-hackers.txt \
   projects.html 
 
-man_MANS = \
+dist_man_MANS = \
   gnucash.1 \
   gnc-fq-dump.1 \
   gnc-fq-helper.1 
@@ -60,4 +60,7 @@ else
 	perl -pi.bak -e 's/" *$$/\n/' $@
 endif
 
-DISTCLEANFILES = gnucash.1 tip_of_the_day.list
+DISTCLEANFILES = \
+	gnucash.1 \
+	tip_of_the_day.list \
+	tip_of_the_day.list.bak

@@ -86,6 +86,25 @@ typedef enum {
     SPLIT3, //3
 }RowDepth;
 
+typedef enum {
+    COL_DATE,         //0
+    COL_DUEDATE,      //1
+    COL_NUMACT,       //2
+    COL_DESCNOTES,    //3
+    COL_TRANSFERVOID, //4
+    COL_RECN,         //5
+    COL_TYPE,         //6
+    COL_VALUE,        //7
+    COL_AMOUNT,       //8
+    COL_AMTVAL,       //9
+    COL_RATE,         //10
+    COL_PRICE,        //11
+    COL_DEBIT,        //12
+    COL_CREDIT,       //13
+    COL_BALANCE,      //14
+    COL_STATUS,       //15
+    COL_COMM,         //16
+} ViewCol;
 
 /* Standard g_object type */
 GType gnc_tree_view_split_reg_get_type (void);
@@ -96,9 +115,9 @@ void gnc_tree_view_split_reg_block_selection (GncTreeViewSplitReg *view, gboolea
 
 void gnc_tree_view_split_reg_default_selection (GncTreeViewSplitReg *view);
 
-void gnc_tree_view_split_reg_set_read_only (GncTreeViewSplitReg *view, gboolean read_only);
+gboolean gnc_tree_view_split_reg_set_format (GncTreeViewSplitReg *view);
 
-void gnc_tree_view_split_reg_set_value_for (GncTreeViewSplitReg *view, Transaction *trans, Split *split, gnc_numeric input, gboolean force);
+void gnc_tree_view_split_reg_set_read_only (GncTreeViewSplitReg *view, gboolean read_only);
 
 void gnc_tree_view_split_reg_set_dirty_trans (GncTreeViewSplitReg *view, Transaction *trans);
 
@@ -108,9 +127,9 @@ Split * gnc_tree_view_split_reg_get_current_split (GncTreeViewSplitReg *view);
 
 Transaction * gnc_tree_view_split_reg_get_dirty_trans (GncTreeViewSplitReg *view);
 
-void gnc_tree_view_split_reg_set_current_path (GncTreeViewSplitReg *view, GtkTreePath *path);
-
 GtkTreePath * gnc_tree_view_split_reg_get_current_path (GncTreeViewSplitReg *view);
+
+void gnc_tree_view_split_reg_set_current_path (GncTreeViewSplitReg *view, GtkTreePath *mpath);
 
 RowDepth gnc_tree_view_reg_get_selected_row_depth (GncTreeViewSplitReg *view);
 
@@ -128,9 +147,14 @@ void gnc_tree_view_split_reg_collapse_trans (GncTreeViewSplitReg *view, Transact
 
 const char * gnc_tree_view_split_reg_get_credit_debit_string (GncTreeViewSplitReg *view, gboolean credit);
 
-/*************************************************************************************/
+gnc_commodity * gnc_tree_view_split_reg_get_reg_commodity (GncTreeViewSplitReg *view);
 
+/*************************************************************************************/
+/* Get sort model path from the model path */
 GtkTreePath * gnc_tree_view_split_reg_get_sort_path_from_model_path (GncTreeViewSplitReg *view, GtkTreePath *mpath);
+
+/* Get model path from the sort model path */
+GtkTreePath * gnc_tree_view_split_reg_get_model_path_from_sort_path (GncTreeViewSplitReg *view, GtkTreePath *spath);
 
 GncTreeModelSplitReg * gnc_tree_view_split_reg_get_model_from_view (GncTreeViewSplitReg *view);
 

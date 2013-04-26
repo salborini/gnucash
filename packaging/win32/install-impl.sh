@@ -622,13 +622,12 @@ EOF
             #perl -pi.bak -e's!^Libs: !Libs: -L\${prefix}/bin !' *.pc
         qpopd
 
-        quiet gconftool-2 --version &&
-        quiet ${PKG_CONFIG} --atleast-version=${GCONF_VERSION} gconf-2.0 &&
-        quiet ${PKG_CONFIG} --atleast-version=${GTK_VERSION} gtk+-2.0 &&
-        quiet ${PKG_CONFIG} --atleast-version=${CAIRO_VERSION} cairo &&
-        quiet ${PKG_CONFIG} --atleast-version=${PIXMAN_VERSION} pixman-1 &&
-        quiet ${PKG_CONFIG} --exact-version=${LIBXML2_VERSION} libxml-2.0 &&
-        quiet intltoolize --version || die "gnome not installed correctly"
+        quiet gconftool-2 --version || die "gnome not installed correctly"
+        quiet ${PKG_CONFIG} --atleast-version=${GCONF_VERSION} gconf-2.0 || die "gnome not installed correctly: no gconf-2.0 with atleast-version=${GCONF_VERSION}"
+        quiet ${PKG_CONFIG} --atleast-version=${GTK_VERSION} gtk+-2.0 || die "gnome not installed correctly: no gtk+-2.0 with atleast-version=${GTK_VERSION}"
+        quiet ${PKG_CONFIG} --atleast-version=${CAIRO_VERSION} cairo || die "gnome not installed correctly: no cairo with atleast-version=${CAIRO_VERSION}"
+        quiet ${PKG_CONFIG} --exact-version=${LIBXML2_VERSION} libxml-2.0 || die "gnome not installed correctly: no libxml-2.0 with exact-version=${LIBXML2_VERSION}"
+        quiet intltoolize --version || die "gnome not installed correctly: no intltoolize"
     fi
     [ ! -d $_GNOME_UDIR/share/aclocal ] || add_to_env "-I $_GNOME_UDIR/share/aclocal" ACLOCAL_FLAGS
 }
@@ -998,7 +997,7 @@ function inst_libgsf() {
     _LIBGSF_UDIR=`unix_path $LIBGSF_DIR`
     add_to_env $_LIBGSF_UDIR/bin PATH
     add_to_env $_LIBGSF_UDIR/lib/pkgconfig PKG_CONFIG_PATH
-    if quiet ${PKG_CONFIG} --exists libgsf-1 libgsf-gnome-1 &&
+    if quiet ${PKG_CONFIG} --exists libgsf-1 &&
         quiet ${PKG_CONFIG} --atleast-version=${LIBGSF_VERSION} libgsf-1
     then
         echo "libgsf already installed in $_LIBGSF_UDIR.  skipping."
@@ -1017,7 +1016,8 @@ function inst_libgsf() {
             rm -rf ${_LIBGSF_UDIR}
             make install
         qpopd
-        ${PKG_CONFIG} --exists libgsf-1 libgsf-gnome-1 || die "libgsf not installed correctly"
+        ${PKG_CONFIG} --exists libgsf-1 || die "libgsf not installed correctly: No libgsf-1"
+        #${PKG_CONFIG} --exists libgsf-gnome-1 || die "libgsf not installed correctly: No libgsf-gnome-1"
     fi
 }
 
@@ -1600,6 +1600,9 @@ function make_chm() {
     _XSLTPROC_OPTS=$3
     echo "Processing $_CHM_TYPE ($_CHM_LANG) ..."
     qpushd $_CHM_TYPE/$_CHM_LANG
+        ## Some debug output
+        #echo xsltproc $XSLTPROCFLAGS $_XSLTPROC_OPTS --path ../../../docbookx-dtd ../../../docbook-xsl/htmlhelp/htmlhelp.xsl gnucash-$_CHM_TYPE.xml
+        #ls ../../../docbookx-dtd ../../../docbook-xsl/htmlhelp/htmlhelp.xsl gnucash-$_CHM_TYPE.xml
         xsltproc $XSLTPROCFLAGS $_XSLTPROC_OPTS --path ../../../docbookx-dtd ../../../docbook-xsl/htmlhelp/htmlhelp.xsl gnucash-$_CHM_TYPE.xml
         count=0
         echo >> htmlhelp.hhp
@@ -1618,7 +1621,9 @@ function make_chm() {
         echo "[MAP]" >> htmlhelp.hhp
         cat mymaps >> htmlhelp.hhp
         rm mymaps
+        echo "Will now call hhc.exe for $_CHM_TYPE ($_CHM_LANG)..."
         hhc htmlhelp.hhp  >/dev/null  || true
+        echo "... hhc.exe completed successfully."
         cp -fv htmlhelp.chm $_DOCS_INST_UDIR/$_CHM_LANG/gnucash-$_CHM_TYPE.chm
         cp -fv htmlhelp.hhmap $_DOCS_INST_UDIR/$_CHM_LANG/gnucash-$_CHM_TYPE.hhmap
     qpopd
@@ -1655,7 +1660,8 @@ function inst_docs() {
         make_chm guide C
         make_chm guide de_DE
         make_chm guide it_IT
-        make_chm guide ja_JP "--stringparam chunker.output.encoding Shift_JIS --stringparam htmlhelp.encoding Shift_JIS"
+# Temporarily disabled because it makes hh
+#        make_chm guide ja_JP "--stringparam chunker.output.encoding Shift_JIS --stringparam htmlhelp.encoding Shift_JIS"
         make_chm help C
         make_chm help de_DE
 #        make_chm help it_IT

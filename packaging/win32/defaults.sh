@@ -180,7 +180,7 @@ set_default READLINE_BIN_URL "$SF_MIRROR/gnuwin32/readline-5.0-1-bin.zip"
 set_default READLINE_LIB_URL "$SF_MIRROR/gnuwin32/readline-5.0-1-lib.zip"
 set_default READLINE_DIR $GLOBAL_DIR\\readline
 
-set_default ACTIVE_PERL_URL "http://downloads.activestate.com/ActivePerl/releases/5.14.2.1402/ActivePerl-5.14.2.1402-MSWin32-x86-295342.zip"
+set_default ACTIVE_PERL_URL "http://downloads.activestate.com/ActivePerl/releases/5.14.4.1405/ActivePerl-5.14.4.1405-MSWin32-x86-296746.zip"
 set_default ACTIVE_PERL_DIR $GLOBAL_DIR\\active-perl
 
 set_default AUTOCONF_URL "http://ftp.gnu.org/gnu/autoconf/autoconf-2.63.tar.bz2"
@@ -213,13 +213,13 @@ set_default EXETYPE_SCRIPT `pwd`/exetype.pl
 set_default EXETYPE_DIR $TOOLS_DIR
 
 XMLSOFT_URL="http://xmlsoft.org/sources/win32"
-XSLT_BASE_URL="http://ftp.acc.umu.se/pub/GNOME/sources/libxslt/1.1"
+#XSLT_BASE_URL="http://ftp.acc.umu.se/pub/GNOME/sources/libxslt/1.1"
 XML2_BASE_URL="ftp://xmlsoft.org/libxml2"
-LIBXSLT_VERSION="1.1.22"
+LIBXSLT_VERSION="1.1.28"
 #LIBXSLT_VERSION=1.1.26
-set_default LIBXSLT_SRC_URL "${XSLT_BASE_URL}/libxslt-${LIBXSLT_VERSION}.tar.bz2"
-set_default LIBXSLT_MAKEFILE_PATCH "`pwd`/libxslt-1.1.22.Makefile.in.patch"
-LIBXML2_VERSION="2.7.7"
+set_default LIBXSLT_SRC_URL "${XML2_BASE_URL}/libxslt-${LIBXSLT_VERSION}.tar.gz"
+#set_default LIBXSLT_MAKEFILE_PATCH "`pwd`/libxslt-1.1.22.Makefile.in.patch"
+LIBXML2_VERSION="2.9.0"
 set_default LIBXML2_SRC_URL "${XML2_BASE_URL}/libxml2-${LIBXML2_VERSION}.tar.gz"
 set_default LIBXSLT_ICONV_URL "${XMLSOFT_URL}/iconv-1.9.2.win32.zip"
 set_default LIBXSLT_ZLIB_URL "${XMLSOFT_URL}/zlib-1.2.3.win32.zip"
@@ -286,11 +286,11 @@ set_default PCRE_BIN_URL "$SF_MIRROR/gnuwin32/pcre-7.0-bin.zip"
 set_default PCRE_LIB_URL "$SF_MIRROR/gnuwin32/pcre-7.0-lib.zip"
 set_default PCRE_DIR $GLOBAL_DIR\\pcre
 
-LIBGSF_VERSION="1.14.17"
+LIBGSF_VERSION="1.14.21"
 set_default LIBGSF_URL "$GNOME_MIRROR/sources/libgsf/1.14/libgsf-${LIBGSF_VERSION}.tar.bz2"
 set_default LIBGSF_DIR $GLOBAL_DIR\\libgsf
 
-GOFFICE_VERSION="0.8.13"
+GOFFICE_VERSION="0.8.17"
 set_default GOFFICE_URL "$GNOME_MIRROR/sources/goffice/0.8/goffice-${GOFFICE_VERSION}.tar.bz2"
 set_default GOFFICE_DIR $GLOBAL_DIR\\goffice
 #set_default GOFFICE_PATCH `pwd`/goffice-x.x.x.patch
@@ -344,7 +344,7 @@ set_default OPENSP_URL "$SF_MIRROR/openjade/OpenSP-1.5.2.tar.gz"
 set_default OPENSP_DIR $GLOBAL_DIR\\opensp
 set_default OPENSP_PATCH `pwd`/opensp-1.5.2.patch
 
-LIBOFX_VERSION="0.9.4"
+LIBOFX_VERSION="0.9.8"
 set_default LIBOFX_URL "$SF_MIRROR/libofx/libofx-${LIBOFX_VERSION}.tar.gz"
 set_default LIBOFX_DIR $GLOBAL_DIR\\libofx
 #set_default LIBOFX_PATCH `pwd`/libofx-x.x.x.patch

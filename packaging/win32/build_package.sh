@@ -47,6 +47,14 @@ if [ `hostname` = "gnucash-win32" ]; then
   rmdir "$_OUTPUT_DIR/$LOG_DIR"
 fi
 
+# If we're running on the build server, copy a temporary logfile
+# content to the webserver to signal that the build is in progress
+if [ `hostname` = "gnucash-win32" ]; then
+    _PWD=`pwd`
+    echo "Build for tag \"${tag}\" is in progress (current working directory: ${_PWD}) ..." > ${LOGFILE}
+    scp -p ${LOGFILE} upload@code.gnucash.org:public_html/win32/$LOG_DIR
+fi
+
 set +e
 trap on_error ERR
 
@@ -74,7 +82,17 @@ if [ "$BUILD_FROM_TARBALL" = "no" ]; then
 else
   SETUP_FILENAME="gnucash-${PKG_VERSION}-setup.exe"
 fi
-mv ${_GNUCASH_UDIR}/${SETUP_FILENAME} ${_OUTPUT_DIR}
+if [ ! -d ${_OUTPUT_DIR} ] ; then
+    echo "Error: _OUTPUT_DIR=${_OUTPUT_DIR} does not exist" >> ${LOGFILE}
+fi
+if [ -f ${_GNUCASH_UDIR}/${SETUP_FILENAME} ] ; then
+    echo "Successfully created ${SETUP_FILENAME} in ${_GNUCASH_UDIR}" >> ${LOGFILE}
+else
+    echo "Error: File _GNUCASH_UDIR/SETUP_FILENAME = ${_GNUCASH_UDIR}/${SETUP_FILENAME} does not exist" >> ${LOGFILE}
+    echo "Files in _GNUCASH_UDIR:" >> ${LOGFILE}
+    ls ${_GNUCASH_UDIR}/* >> ${LOGFILE}
+fi
+mv ${_GNUCASH_UDIR}/${SETUP_FILENAME} ${_OUTPUT_DIR} >> ${LOGFILE} 2>&1
 
 #
 # Verify that PKG_VERSION == $tag, and add to the build log if it's not.
@@ -95,10 +113,10 @@ fi
 # If we're running on the build server then upload the files
 if [ `hostname` = "gnucash-win32" ]; then
   # Small hack to create the $TARGET_DIR on the webserver if it doesn't exist yet
-  mkdir -p "$_OUTPUT_DIR/$TARGET_DIR"
-  scp -r "$_OUTPUT_DIR/$TARGET_DIR" upload@code.gnucash.org:public_html/win32
-  rmdir "$_OUTPUT_DIR/$TARGET_DIR"
+  mkdir -p "$_OUTPUT_DIR/$TARGET_DIR" >> ${LOGFILE} 2>&1
+  scp -r "$_OUTPUT_DIR/$TARGET_DIR" upload@code.gnucash.org:public_html/win32 >> ${LOGFILE} 2>&1
+  rmdir "$_OUTPUT_DIR/$TARGET_DIR" >> ${LOGFILE} 2>&1
   # Copy the files to the chosen target directory
+  scp -p ${_OUTPUT_DIR}/${SETUP_FILENAME} upload@code.gnucash.org:public_html/win32/$TARGET_DIR >> ${LOGFILE} 2>&1
   scp -p ${LOGFILE} upload@code.gnucash.org:public_html/win32/$LOG_DIR
-  scp -p ${_OUTPUT_DIR}/${SETUP_FILENAME} upload@code.gnucash.org:public_html/win32/$TARGET_DIR
 fi

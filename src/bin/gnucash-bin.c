@@ -50,7 +50,7 @@
 #include "gnc-gconf-utils.h"
 #include "dialog-new-user.h"
 #include "gnc-session.h"
-#include "engine-helpers.h"
+#include "engine-helpers-guile.h"
 #include "swig-runtime.h"
 
 /* This static indicates the debugging module that this .o belongs to.  */
@@ -70,6 +70,7 @@ static QofLogModule log_module = GNC_MOD_GUI;
 static int is_development_version = TRUE;
 #else
 static int is_development_version = FALSE;
+#define GNUCASH_SCM 0
 #endif
 
 /* Command-line option variables */
