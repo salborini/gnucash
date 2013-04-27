@@ -38,6 +38,7 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/lib/libc \
   -I${top_srcdir}/lib \
   -I${top_srcdir}/lib/libc \
+  ${GCONF_CFLAGS} \
   $(GOFFICE_CFLAGS)
 
 uidir = $(GNC_UI_DIR)
