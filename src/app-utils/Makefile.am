@@ -29,6 +29,7 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/core-utils \
   -I${top_srcdir}/src/engine \
   -I${top_srcdir}/src/libqof/qof \
+  -I${top_srcdir}/src/backend/xml \
   ${GUILE_INCS} \
   ${PYTHON_CPPFLAGS} \
   ${GLIB_CFLAGS} \
@@ -51,8 +52,10 @@ libgncmod_app_utils_la_SOURCES = \
   gnc-entry-quickfill.c \
   gnc-euro.c \
   gnc-exp-parser.c \
+  gnc-gconf-utils.c \
   gnc-gettext-util.c \
   gnc-helpers.c \
+  gnc-prefs.c \
   gnc-sx-instance-model.c \
   gncmod-app-utils.c \
   gnc-ui-balances.c \
@@ -75,9 +78,11 @@ gncinclude_HEADERS = \
   gnc-entry-quickfill.h \
   gnc-euro.h \
   gnc-exp-parser.h \
+  gnc-gconf-utils.h \
   gnc-gettext-util.h \
   gnc-help-utils.h \
   gnc-helpers.h \
+  gnc-prefs.h \
   gnc-sx-instance-model.h \
   gnc-ui-balances.h \
   gnc-ui-util.h \

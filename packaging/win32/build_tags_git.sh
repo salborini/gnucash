@@ -39,6 +39,7 @@ $GIT_CMD pull
 ################################################################
 # determine if there are any new tags since the last time we ran
 #
+$GIT_CMD fetch -t
 
 # If we don't have a tagfile then start from 'now'
 tagfile=tags_git
@@ -68,6 +69,17 @@ mv -f ${tagfile}.new ${tagfile}
 for tag_rev in $tags ; do
   tag=${tag_rev#*/}
   tag=${tag%/*}
+  
+  # Git builds are only supported from 2.5 up
+  tag_major=${tag%%.*}
+  tag_tmp=${tag#*.}
+  tag_minor=${tag_tmp%%.*}
+  major_minor=$(( $tag_major*100 + $tag_minor ))
+  if (( $major_minor < 205 ))
+  then
+     continue
+  fi
+  
   tagbasedir=/c/soft/gnucash-${tag}
   tagdir=${tagbasedir}/gnucash
   rm -fr $tagbasedir

@@ -194,6 +194,8 @@ gcrp_editing_done (GtkCellEditable     *editable,
 				  GNC_CELL_RENDERER_POPUP_PATH);
 	new_text = gnc_popup_entry_get_text (GNC_POPUP_ENTRY (editable));
 
+        gtk_cell_renderer_stop_editing (GTK_CELL_RENDERER (cell), FALSE);
+
 	g_signal_emit_by_name (cell,
 			       "edited",
 			       path,
@@ -385,7 +387,7 @@ gcrp_start_editing (GtkCellRenderer      *cell,
 	editable = g_object_new (GNC_TYPE_POPUP_ENTRY, NULL);
 
 	text = GTK_CELL_RENDERER_TEXT (cell)->text;
-        popup->cell_text = g_strdup(text);
+        popup->cell_text = text;
 
 	gnc_popup_entry_set_text (GNC_POPUP_ENTRY (editable), text ? text : "");
 	

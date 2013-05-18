@@ -134,9 +134,9 @@
           (let* (
               ;; Retrive the budgeted and actual amount and convert to <gnc:monetary>
               (comm (xaccAccountGetCommodity acct))
-              (bgt-numeric (gnc-budget-get-account-period-value budget acct period))
+              (bgt-numeric (gnc-budget-get-account-period-value budget acct (- period 1)))
               (bgt-monetary (gnc:make-gnc-monetary comm bgt-numeric))
-              (act-numeric (gnc-budget-get-account-period-actual-value budget acct period))
+              (act-numeric (gnc-budget-get-account-period-actual-value budget acct (- period 1)))
               (act-monetary (gnc:make-gnc-monetary comm act-numeric))
             )
             
@@ -311,7 +311,7 @@
         (gnc:html-document-set-title!
           doc (sprintf #f (_ "%s: %s - %s")
             report-name (gnc-budget-get-name budget)
-            (gnc-print-date (gnc-budget-get-period-start-date budget period))))
+            (gnc-print-date (gnc-budget-get-period-start-date budget (- period 1)))))
 
         ;; Display accounts and totals
         (set! accounts-totals (gnc:html-table-add-budget-types! html-table split-up-accounts budget period exchange-fn report-currency))

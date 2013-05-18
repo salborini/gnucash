@@ -61,6 +61,9 @@
 #include "dialog-utils.h"
 #include "SX-book.h"
 #include "dialog-sx-editor.h"
+/*################## Added for Reg2 #################*/
+#include "dialog-sx-editor2.h"
+/*################## Added for Reg2 #################*/
 #include "dialog-sx-from-trans.h"
 #include "assistant-stock-split.h"
 #include "gnc-gconf-utils.h"
@@ -79,7 +82,6 @@
 #include "gnc-window.h"
 #include "gnc-main-window.h"
 #include "gnc-session.h"
-#include "gnucash-sheet.h"
 #include "dialog-lot-viewer.h"
 #include "Scrub.h"
 #include "qof.h"
@@ -1120,36 +1122,34 @@ gnc_plugin_page_register2_create_widget (GncPluginPage *plugin_page)
         gnc_ppr_update_date_filter (page, FALSE);
     }
 
-//    gnc_ledger_display2_refresh (priv->ledger);
+    /* This sets the default selection on load, not required for templates */
+    if (!gnc_tree_model_split_reg_get_template (model))
+       gnc_tree_view_split_reg_default_selection (view);
 
-    /* This sets the default selection on load */
-    gnc_tree_view_split_reg_default_selection (view);
-
-
-    plugin_page->summarybar = gsr2_create_summary_bar(priv->gsr);
+    plugin_page->summarybar = gnc_split_reg2_create_summary_bar (priv->gsr);
     if (plugin_page->summarybar)
     {
-        gtk_widget_show_all(plugin_page->summarybar);
-        gtk_box_pack_start(GTK_BOX (priv->widget), plugin_page->summarybar,
+        gtk_widget_show_all (plugin_page->summarybar);
+        gtk_box_pack_start (GTK_BOX (priv->widget), plugin_page->summarybar,
                            FALSE, FALSE, 0);
-        gnc_plugin_page_register2_summarybar_position_changed(NULL, page);
-        gnc_gconf_general_register_cb(KEY_SUMMARYBAR_POSITION,
+        gnc_plugin_page_register2_summarybar_position_changed (NULL, page);
+        gnc_gconf_general_register_cb (KEY_SUMMARYBAR_POSITION,
                                       gnc_plugin_page_register2_summarybar_position_changed, page);
     }
 
     priv->event_handler_id = qof_event_register_handler
                              ((QofEventHandler)gnc_plugin_page_register2_event_handler, page);
     priv->component_manager_id =
-        gnc_register_gui_component(GNC_PLUGIN_PAGE_REGISTER2_NAME,
+        gnc_register_gui_component (GNC_PLUGIN_PAGE_REGISTER2_NAME,
                                    gnc_plugin_page_register2_refresh_cb,
                                    gnc_plugin_page_register2_close_cb,
                                    page);
     gnc_gui_component_set_session (priv->component_manager_id,
                                    gnc_get_current_session());
-    acct = gnc_plugin_page_register2_get_account(page);
+    acct = gnc_plugin_page_register2_get_account (page);
     if (acct)
         gnc_gui_component_watch_entity (
-            priv->component_manager_id, xaccAccountGetGUID(acct),
+            priv->component_manager_id, xaccAccountGetGUID (acct),
             QOF_EVENT_DESTROY | QOF_EVENT_MODIFY);
 
     /* This allows the plugin page to be updated from the view */
@@ -2465,7 +2465,7 @@ gnc_plugin_page_register2_cmd_print_check (GtkAction *action,
             return;
         }
 
-        /* Make sure we ask to commit any changes before we procede */
+        /* Make sure we ask to commit any changes before we proceed */
         if (gnc_tree_control_split_reg_trans_open_and_warn (view, trans))
         {
             LEAVE("trans being edited");
@@ -3006,7 +3006,7 @@ gnc_plugin_page_register2_cmd_reload (GtkAction *action, GncPluginPageRegister2 
 
     trans = gnc_tree_view_split_reg_get_current_trans (view);
 
-    /* Make sure we ask to commit any changes before we procede */
+    /* Make sure we ask to commit any changes before we proceed */
     if (gnc_tree_control_split_reg_trans_open_and_warn (view, trans))
     {
         LEAVE("trans being edited");
@@ -3059,7 +3059,7 @@ gnc_plugin_page_register2_cmd_style_double_line (GtkToggleAction *action,
 
     ENTER("(action %p, plugin_page %p)", action, plugin_page);
 
-    g_return_if_fail (GTK_IS_ACTION(action));
+    g_return_if_fail (GTK_IS_ACTION (action));
     g_return_if_fail (GNC_IS_PLUGIN_PAGE_REGISTER2 (plugin_page));
 
     priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE (plugin_page);
@@ -3074,6 +3074,10 @@ gnc_plugin_page_register2_cmd_style_double_line (GtkToggleAction *action,
 
         // This will re-display the view.
         gnc_tree_view_split_reg_set_format (view);
+
+        // This will update the row colors in anything but ledgers
+        if (model->style != REG2_STYLE_LEDGER)
+            gnc_tree_view_split_reg_change_vis_rows (view);
     }
     LEAVE(" ");
 }
@@ -3119,7 +3123,7 @@ gnc_plugin_page_register2_cmd_reconcile (GtkAction *action,
 
     trans = gnc_tree_view_split_reg_get_current_trans (view);
 
-    /* Make sure we ask to commit any changes before we procede */
+    /* Make sure we ask to commit any changes before we proceed */
     if (gnc_tree_control_split_reg_trans_open_and_warn (view, trans))
     {
         LEAVE("trans being edited");
@@ -3469,7 +3473,7 @@ gnc_plugin_page_register2_cmd_schedule (GtkAction *action,
         return;
     }
 
-    /* Make sure we ask to commit any changes before we procede */
+    /* Make sure we ask to commit any changes before we proceed */
     if (gnc_tree_control_split_reg_trans_open_and_warn (view, trans))
     {
         LEAVE("trans being edited");
@@ -3506,7 +3510,7 @@ gnc_plugin_page_register2_cmd_schedule (GtkAction *action,
 
                 if (theSX)
                 {
-                    gnc_ui_scheduled_xaction_editor_dialog_create (theSX, FALSE);
+                    gnc_ui_scheduled_xaction_editor_dialog_create2 (theSX, FALSE);
                     LEAVE(" ");
                     return;
                 }

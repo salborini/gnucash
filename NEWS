@@ -1,5 +1,24 @@
 Version history:
 ------- -------
+ 2.5.1 -  5 May 2013
+         This is the second release in the UNSTABLE 2.5 series.
+
+	 Robert Fewell has continued his work on the GtkTreeModel register.
+	 It is now the default for account registers.
+
+	 Geert Janssens has begun work on replacing the GConf configuration
+	 management tool with the newer GSettings API from recent versions
+	 of GLib.
+
+	 Tom Lofts contributed the beginning of a RESTful Python API
+	 to enable access to minimal account, invoice, and customer
+	 information in a JSON format.
+
+	 Christian Stimming fixed the very long wait time for the UI to
+	 become responsive when running the import matcher.
+
+	 Also some bug fixes, package upgrades, and minor improvements.
+
  2.5.0 - 30 Mar 2013
 
          The Gnucash Development Team is pleased to release Gnucash 2.5.0,
@@ -14,7 +33,7 @@ Version history:
 
 	 Gnucash now requires Gtk+-2.24 and GLib-2.26. We've removed
 	 most of the dependencies on libraries obsoleted by project
-	 Ridley and will in position to move to Gtk+-3.x once the
+	 Ridley and will be in position to move to Gtk+-3.x once the
 	 GtkTreeModel register window work is complete. This means
 	 that Gnucash 2.5 requires Debian 6, RHEL 6, or one of the
 	 more aggressive distributions like Ubuntu.
@@ -30,7 +49,7 @@ Version history:
 
 	 When opening a locked "book" one now has the option of
 	 opening it read-only. Note that Gnucash is still a
-	 single-user program and that the databaase backends are still
+	 single-user program and that the database backends are still
 	 used only as a data store.
 
 	 Gnucash is no longer subject to the "2038" bug, so that

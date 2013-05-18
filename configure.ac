@@ -20,7 +20,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.0], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.5.1], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 
@@ -175,15 +175,35 @@ if test x$am_cv_scanf_lld = "xno"; then
 fi
 
 # test whether we are building directly from svn/svk/git/bzr
-${srcdir}/util/gnc-scm-info -r ${srcdir} >/dev/null 2>&1
+AC_MSG_CHECKING(if building from an scm managed directory)
+GIT_CMD=
+savedir="$PWD"
+cd "${srcdir}"
+./util/gnc-scm-info -r . >/dev/null 2>&1
 if test $? = 0 -o "x${BUILDING_FROM_SCM}" = "xyes" ; then
   BUILDING_FROM_SCM=yes
+  SCM_TYPE=$(./util/gnc-scm-info -t .)
+  AC_MSG_RESULT($SCM_TYPE)
+
+  if test "x${SCM_TYPE}" = "xgit"; then
+    AC_MSG_CHECKING(git command to use due to detected git repo)
+    # The windows build uses environment variable $GIT_CMD to invoke git (adding git
+    # to the PATH in Windows results in a build failure).
+    # So for platform independence, use GIT_CMD for all
+    if test -z "${GIT_CMD}" ; then
+      GIT_CMD=git
+    fi
+    AC_MSG_RESULT(${GIT_CMD})
+  fi
 
   # We need at least version 1.3.31 of SWIG because
   # that's when SWIG doesn't barf on the "inline" keyword in C headers anymore
   AC_PROG_SWIG(1.3.31)
 else
+  AC_MSG_RESULT(no)
   BUILDING_FROM_SCM=no
+  SCM_TYPE=
+
   # Make sure we've got swig-runtime.h and gnc-scm-info.h
   AC_CHECK_FILE(${srcdir}/src/swig-runtime.h, [],
     [AC_MSG_ERROR([
@@ -206,7 +226,10 @@ the tarball you downloaded is broken.
 
     ])])
 fi
+cd "${savedir}"
 AM_CONDITIONAL(BUILDING_FROM_SCM, test "x$BUILDING_FROM_SCM" = "xyes")
+AC_SUBST(SCM_TYPE)
+AC_SUBST(GIT_CMD)
 
 # Build dir adjustments
 AM_CONDITIONAL(GNUCASH_SEPARATE_BUILDDIR, test "x${srcdir}" != "x.")
@@ -229,15 +252,26 @@ fi
 ### --------------------------------------------------------------------------
 ### Glib checks.
 
-# We require glib >= 2.28, released together with gtk-2.24; There are
-# some thread deprecations that affect us in 2.32, so we check for
-# that first.
-PKG_CHECK_MODULES(GLIB,
-                  glib-2.0 >= 2.32 gthread-2.0 gobject-2.0 gmodule-2.0,
-		  [AC_DEFINE([HAVE_GLIB_2_32], [1],
-		             [Configure gthread deprecations])],
-		  [PKG_CHECK_MODULES(GLIB,
-		   glib-2.0 >= 2.28 gthread-2.0 gobject-2.0 gmodule-2.0)])
+# We require glib >= 2.28, released together with gtk-2.24;
+# We first check for other versions due to deprecations.
+# 2.36 deprecated g_type_init
+# 2.32 deprecated some gthread functions
+PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.36 gthread-2.0 gobject-2.0 gmodule-2.0,
+[
+  AC_DEFINE([HAVE_GLIB_2_36], [1], [Configure g_type_init deprecation])
+  AC_DEFINE([HAVE_GLIB_2_32], [1], [Configure gthread deprecations])
+],
+[
+  PKG_CHECK_MODULES(GLIB,
+                        glib-2.0 >= 2.32 gthread-2.0 gobject-2.0 gmodule-2.0,
+  [
+    AC_DEFINE([HAVE_GLIB_2_32], [1], [Configure gthread deprecations])
+  ],
+  [
+    PKG_CHECK_MODULES(GLIB,
+                        glib-2.0 >= 2.28 gthread-2.0 gobject-2.0 gmodule-2.0)
+  ])
+])
 
 AC_CHECK_HEADERS(dirent.h dlfcn.h dl.h utmp.h locale.h mcheck.h unistd.h wctype.h)
 
@@ -309,7 +343,7 @@ update to latest  darwin])
       PKG_CHECK_MODULES([GTK_MAC], gtk-mac-integration,
                         [_gtk_mac=yes], [_gtk_mac=no])
       if test "x$_gtk_mac" = xyes; then
-        GTK_MAC_LIBS="${GTK_MAC_LIBS} -lobjc"
+        GTK_MAC_LIBS="${GTK_MAC_LIBS} -lobjc -framework Cocoa"
         GTK_MAC_CFLAGS="${GTK_MAC_CFLAGS} -xobjective-c"
       fi
       AC_MSG_RESULT(${_gtk_mac})
@@ -1054,7 +1088,7 @@ then
 	   AC_MSG_ERROR([Could not find python >= 2.4. If you use --enable-python, you MUST have python installed!])
     ])
   AC_PYTHON_DEVEL(>= '2.4')
-  if [ "x${PYTHON}" = "x" ]
+  if test "x${PYTHON}" = "x"
   then
 	   AC_MSG_ERROR([Could not find Python development files. Make sure that the correct python-devel package is installed.])
   fi
