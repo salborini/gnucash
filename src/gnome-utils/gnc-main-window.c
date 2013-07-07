@@ -3552,6 +3552,7 @@ gnc_quartz_set_menu(GncMainWindow* window)
     gtkosx_application_set_window_menu(theApp, GTK_MENU_ITEM(item));
     g_signal_connect(theApp, "NSApplicationBlockTermination",
                      G_CALLBACK(gnc_quartz_should_quit), window);
+    gtkosx_application_set_use_quartz_accelerators (theApp, FALSE);
 
 }
 #endif //MAC_INTEGRATION
@@ -4166,7 +4167,7 @@ gnc_main_window_cmd_help_about (GtkAction *action, GncMainWindow *window)
 {
     const gchar *fixed_message = _("The GnuCash personal finance manager. "
                                    "The GNU way to manage your money!");
-    const gchar *copyright = "© 1997-2010 Contributors";
+    const gchar *copyright = _("© 1997-2013 Contributors");
     gchar **authors, **documenters, *license, *message;
     GdkPixbuf *logo;
 
@@ -4227,9 +4228,6 @@ gnc_main_window_show_all_windows(void)
     for (window_iter = active_windows; window_iter != NULL; window_iter = window_iter->next)
     {
         gtk_widget_show(GTK_WIDGET(window_iter->data));
-#ifdef MAC_INTEGRATION
-        gnc_quartz_set_menu(window_iter->data);
-#endif
     }
 #ifdef MAC_INTEGRATION
     g_signal_connect(theApp, "NSApplicationWillTerminate",

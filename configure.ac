@@ -20,7 +20,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.1], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.5.3], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 
@@ -176,7 +176,6 @@ fi
 
 # test whether we are building directly from svn/svk/git/bzr
 AC_MSG_CHECKING(if building from an scm managed directory)
-GIT_CMD=
 savedir="$PWD"
 cd "${srcdir}"
 ./util/gnc-scm-info -r . >/dev/null 2>&1
@@ -1233,7 +1232,6 @@ AC_CONFIG_FILES(
   lib/stf/Makefile
   packaging/Makefile
   packaging/win32/Makefile
-  packaging/win32/gnucash.iss
   src/Makefile
   src/app-utils/Makefile
   src/app-utils/test/Makefile
@@ -1266,7 +1264,6 @@ AC_CONFIG_FILES(
   src/gnc-module/test/mod-baz/Makefile
   src/gnc-module/test/misc-mods/Makefile
   src/gnome/Makefile
-  src/gnome/gnucash.desktop.in
   src/gnome/gtkbuilder/Makefile
   src/gnome/schemas/Makefile
   src/gnome/ui/Makefile
@@ -1352,6 +1349,10 @@ AC_CONFIG_FILES(
   src/plugins/customer_import/gtkbuilder/Makefile
   src/plugins/customer_import/ui/Makefile
   dnl # non-makefiles
+  packaging/win32/gnucash.iss
+  src/bin/gnucash.rc
+  src/gnome/gnucash.desktop.in
+
   dnl # Please read doc/build-system before adding *anything* here
   ,
   dnl # commands go here, but we don't have any right now

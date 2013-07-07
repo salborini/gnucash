@@ -21,7 +21,7 @@ AM_CPPFLAGS = -I${top_builddir} ${GLIB_CFLAGS} ${GCONF_CFLAGS} ${GNOME_CFLAGS} $
   ${GUILE_INCS} \
   ${GTK_MAC_CFLAGS}
 
-SUFFIXES = .rc .res
+SUFFIXES = .rc
 
 # Some settings are platform dependent. Let's define them per platform.
 if PLATFORM_WIN32
@@ -29,8 +29,8 @@ if PLATFORM_WIN32
 GNUCASH_RESOURCE_FILE = gnucash.rc
 dist_noinst_DATA = gnucash.rc
 
-.rc.res:
-	$(AM_V_GEN)$(RC) -i '$<' --input-format=rc -o '$@' -O coff
+.rc.o:
+	$(AM_V_GEN)$(RC) -I${top_srcdir}/src/pixmaps -i '$<' --input-format=rc -o '$@' -O coff
 
 configdir = ${GNC_CONFIGDIR}
 config_DATA = environment

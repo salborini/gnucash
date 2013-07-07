@@ -144,7 +144,6 @@ static void gnc_plugin_page_register2_cmd_paste_transaction (GtkAction *action, 
 static void gnc_plugin_page_register2_cmd_void_transaction (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_unvoid_transaction (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_reverse_transaction (GtkAction *action, GncPluginPageRegister2 *plugin_page);
-static void gnc_plugin_page_register2_cmd_shift_transaction_forward (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_reload (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_view_filter_by (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_style_changed (GtkAction *action, GtkRadioAction *current, GncPluginPageRegister2 *plugin_page);
@@ -169,6 +168,8 @@ static void gnc_plugin_page_register2_cmd_scrub_all (GtkAction *action, GncPlugi
 static void gnc_plugin_page_register2_cmd_scrub_current (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_account_report (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 static void gnc_plugin_page_register2_cmd_transaction_report (GtkAction *action, GncPluginPageRegister2 *plugin_page);
+static void gnc_plugin_page_register2_cmd_entryUp (GtkAction *action, GncPluginPageRegister2 *plugin_page);
+static void gnc_plugin_page_register2_cmd_entryDown (GtkAction *action, GncPluginPageRegister2 *plugin_page);
 
 static void gnc_plugin_page_help_changed_cb (GNCSplitReg2 *gsr, GncPluginPageRegister2 *register_page );
 static void gnc_plugin_page_register2_refresh_cb (GHashTable *changes, gpointer user_data);
@@ -205,6 +206,9 @@ static void gnc_plugin_page_register2_event_handler (QofInstance *entity,
 #define PASTE_SPLIT_TIP               N_("Paste the split from the clipboard")
 #define DUPLICATE_SPLIT_TIP           N_("Make a copy of the current split")
 #define DELETE_SPLIT_TIP              N_("Delete the current split")
+
+#define TRANSACTION_UP_ACTION "TransactionUpAction"
+#define TRANSACTION_DOWN_ACTION "TransactionDownAction"
 
 static GtkActionEntry gnc_plugin_page_register2_actions [] =
 {
@@ -271,7 +275,7 @@ static GtkActionEntry gnc_plugin_page_register2_actions [] =
         G_CALLBACK (gnc_plugin_page_register2_cmd_delete_transaction)
     },
     {
-        "RemoveTransactionSplitsAction", GTK_STOCK_CLEAR, N_("Remo_ve Transaction Splits"), NULL,
+        "RemoveTransactionSplitsAction", GTK_STOCK_CLEAR, N_("Remo_ve Other Splits"), NULL,
         N_("Remove all splits in the current transaction"),
         G_CALLBACK (gnc_plugin_page_register2_cmd_reinitialize_transaction)
     },
@@ -298,8 +302,14 @@ static GtkActionEntry gnc_plugin_page_register2_actions [] =
         G_CALLBACK (gnc_plugin_page_register2_cmd_reverse_transaction)
     },
     {
-        "ShiftTransactionForwardAction", NULL, N_("_Shift Transaction Forward"), NULL, NULL,
-        G_CALLBACK (gnc_plugin_page_register2_cmd_shift_transaction_forward)
+        TRANSACTION_UP_ACTION, GTK_STOCK_GO_UP, N_("Move Transaction _Up"), NULL,
+        N_("Move the current transaction one row upwards. Only available if the date and number of both rows are identical and the register window is sorted by date."),
+        G_CALLBACK (gnc_plugin_page_register2_cmd_entryUp)
+    },
+    {
+        TRANSACTION_DOWN_ACTION, GTK_STOCK_GO_DOWN, N_("Move Transaction Do_wn"), NULL,
+        N_("Move the current transaction one row downwards. Only available if the date and number of both rows are identical and the register window is sorted by date."),
+        G_CALLBACK (gnc_plugin_page_register2_cmd_entryDown)
     },
 
     /* View menu */
@@ -466,6 +476,8 @@ static action_toolbar_labels toolbar_labels[] =
     { "BlankTransactionAction",     N_("Blank") },
     { "ActionsReconcileAction",     N_("Reconcile") },
     { "ActionsAutoClearAction",     N_("Auto-clear") },
+    { TRANSACTION_UP_ACTION, N_("Up") },
+    { TRANSACTION_DOWN_ACTION, N_("Down") },
     { NULL, NULL },
 };
 
@@ -798,6 +810,8 @@ static const char* readonly_inactive_actions[] =
     "EditPasteAction",
     "CutTransactionAction",
     "PasteTransactionAction",
+    TRANSACTION_UP_ACTION,
+    TRANSACTION_DOWN_ACTION,
     "DuplicateTransactionAction",
     "DeleteTransactionAction",
     "RemoveTransactionSplitsAction",
@@ -806,7 +820,6 @@ static const char* readonly_inactive_actions[] =
     "UnvoidTransactionAction",
     "VoidTransactionAction",
     "ReverseTransactionAction",
-    "ShiftTransactionForwardAction",
     "ActionsTransferAction",
     "ActionsReconcileAction",
     "ActionsStockSplitAction",
@@ -884,8 +897,11 @@ gnc_plugin_page_register2_ui_update (gpointer various, GncPluginPageRegister2 *p
 
     /* Set 'Split Transaction' */
     priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE (page);
+    g_return_if_fail(priv);
     model = gnc_ledger_display2_get_split_model_register (priv->ledger);
     view = gnc_ledger_display2_get_split_view_register (priv->ledger);
+    g_return_if_fail(model);
+    g_return_if_fail(view);
 
     expanded = gnc_tree_view_split_reg_trans_expanded (view, NULL);
     action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE (page),
@@ -908,6 +924,16 @@ gnc_plugin_page_register2_ui_update (gpointer various, GncPluginPageRegister2 *p
     action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE (page),
                                          "UnvoidTransactionAction");
     gtk_action_set_sensitive (GTK_ACTION (action), voided);
+
+    /* Modify the activeness of the up/down arrows */
+    {
+        GtkAction *action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE (page), TRANSACTION_UP_ACTION);
+        gtk_action_set_sensitive(action,
+                                 gnc_tree_control_split_reg_is_current_movable_updown(view, TRUE));
+        action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE (page), TRANSACTION_DOWN_ACTION);
+        gtk_action_set_sensitive(action,
+                                 gnc_tree_control_split_reg_is_current_movable_updown(view, FALSE));
+    }
 
     /* If we are in a readonly book, make any modifying action inactive */
     if (qof_book_is_readonly(gnc_get_current_book ()))
@@ -2794,36 +2820,37 @@ gnc_plugin_page_register2_cmd_reverse_transaction (GtkAction *action,
 }
 
 static void
-gnc_plugin_page_register2_cmd_shift_transaction_forward (GtkAction *action,
-        GncPluginPageRegister2 *page) //this works
+gnc_plugin_page_register2_cmd_entryUp (GtkAction *action,
+                                       GncPluginPageRegister2 *plugin_page)
 {
     GncPluginPageRegister2Private *priv;
     GncTreeViewSplitReg *view;
-    Transaction *trans, *new_trans;
-    Timespec entered;
+    g_return_if_fail(GNC_IS_PLUGIN_PAGE_REGISTER2(plugin_page));
 
-    ENTER("(action %p, page %p)", action, page);
-
-    g_return_if_fail(GNC_IS_PLUGIN_PAGE_REGISTER2(page));
-
-    priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE(page);
+    ENTER("(action %p, plugin_page %p)", action, plugin_page);
+    priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE(plugin_page);
     view = gnc_ledger_display2_get_split_view_register (priv->ledger);
-    trans = gnc_tree_view_split_reg_get_current_trans (view);
-    if (trans == NULL)
-    {
-        LEAVE("trans is NULL");
-        return;
-    }
-
-    qof_event_suspend();
-
-    xaccTransGetDatePostedTS (trans, &entered);
-    xaccTransSetDatePostedSecs (trans, entered.tv_sec + 1);
-
-    qof_event_resume();
-
+    g_return_if_fail(view);
+    gnc_tree_control_split_reg_move_current_entry_updown(view, TRUE);
     LEAVE(" ");
 }
+
+static void
+gnc_plugin_page_register2_cmd_entryDown (GtkAction *action,
+                                         GncPluginPageRegister2 *plugin_page)
+{
+    GncPluginPageRegister2Private *priv;
+    GncTreeViewSplitReg *view;
+    g_return_if_fail(GNC_IS_PLUGIN_PAGE_REGISTER2(plugin_page));
+
+    ENTER("(action %p, plugin_page %p)", action, plugin_page);
+    priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE(plugin_page);
+    view = gnc_ledger_display2_get_split_view_register (priv->ledger);
+    g_return_if_fail(view);
+    gnc_tree_control_split_reg_move_current_entry_updown(view, FALSE);
+    LEAVE(" ");
+}
+
 
 /*#################################################################################*/
 /*#################################################################################*/
@@ -3199,7 +3226,7 @@ gnc_plugin_page_register2_cmd_enter_transaction (GtkAction *action,
 
     priv = GNC_PLUGIN_PAGE_REGISTER2_GET_PRIVATE (plugin_page);
     view = gnc_ledger_display2_get_split_view_register (priv->ledger);
-    gnc_tree_control_split_reg_enter (view, FALSE);
+    gnc_tree_control_split_reg_enter (view);
     LEAVE(" ");
 }
 

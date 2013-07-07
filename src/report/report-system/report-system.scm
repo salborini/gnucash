@@ -116,11 +116,8 @@
 
 (export gnc:define-report)
 (export <report>)
-(export gnc:report-template-new-options/name)
 (export gnc:report-template-new-options/report-guid)
-(export gnc:report-template-menu-name/name)
 (export gnc:report-template-menu-name/report-guid)
-(export gnc:report-template-renderer/name)
 (export gnc:report-template-renderer/report-guid)
 (export gnc:report-template-new-options)
 (export gnc:report-template-version)
@@ -137,6 +134,7 @@
 (export gnc:report-template-menu-tip)
 (export gnc:report-template-export-types)
 (export gnc:report-template-export-thunk)
+(export gnc:report-template-has-unique-name?)
 (export gnc:report-type)
 (export gnc:report-set-type!)
 (export gnc:report-id)
@@ -152,8 +150,8 @@
 (export gnc:report-ctext)
 (export gnc:report-set-ctext!)
 (export gnc:make-report)
-(export gnc:restore-report)
 (export gnc:restore-report-by-guid)
+(export gnc:restore-report-by-guid-with-custom-template)
 (export gnc:make-report-options)
 (export gnc:report-export-types)
 (export gnc:report-export-thunk)
@@ -161,18 +159,29 @@
 (export gnc:report-name)
 (export gnc:report-stylesheet)
 (export gnc:report-set-stylesheet!)
-(export gnc:all-report-template-names)
-(export gnc:custom-report-template-names)
+(export gnc:all-report-template-guids)
+(export gnc:custom-report-template-guids)
 (export gnc:delete-report)
+(export gnc:rename-report)
 (export gnc:find-report-template)
 (export gnc:report-generate-restore-forms)
 (export gnc:report-generate-saved-forms)
-(export gnc:report-save-to-savefile)
+(export gnc:report-to-template-new)
+(export gnc:report-to-template-update)
 (export gnc:report-render-html)
 (export gnc:report-run)
 (export gnc:report-templates-for-each)
 (export gnc:report-embedded-list)
-(export gnc:report-template-name-to-id)
+(export gnc:report-template-is-custom/template-guid?)
+(export gnc:is-custom-report-type)
+;; Legacy : the following 3 functions are only needed to
+;; load a saved-reports file version 2.0
+(export gnc:report-template-new-options/name)
+(export gnc:report-template-menu-name/name)
+(export gnc:report-template-renderer/name)
+;; Legacy: this function is needed only to restore
+;; a open report when loading a book last saved in GnuCash 2.2
+(export gnc:restore-report)
 
 ;; html-barchart.scm
 

@@ -41,6 +41,7 @@
 #include "gnc-component-manager.h"
 #include "gnc-date-edit.h"
 #include "gnc-session.h"
+#include "app-utils/gnc-ui-util.h"
 
 #define DIALOG_BOOK_CLOSE_CM_CLASS "dialog-book-close"
 
@@ -102,7 +103,14 @@ find_or_create_txn(struct CloseAccountsCB* cacb, gnc_commodity* cmdty)
         txn->txn = xaccMallocTransaction(cacb->cbw->book);
         xaccTransBeginEdit(txn->txn);
         xaccTransSetDateEnteredSecs(txn->txn, gnc_time (NULL));
+
+        /* Watch out: The book-closing txn currently assume that their
+        posted-date is the end date plus 12 hours, so that the closing txn can
+        be distinguished from normal txns of the last day. This is the only
+        case within GnuCash where the PostedDate is a different time-of-day
+        that what the GDate normally says as a normalized date. */
         xaccTransSetDatePostedSecs(txn->txn, cacb->cbw->close_date);
+
         xaccTransSetDescription(txn->txn, cacb->cbw->desc);
         xaccTransSetCurrency(txn->txn, cmdty);
         xaccTransSetIsClosingTxn(txn->txn, TRUE);
@@ -138,7 +146,7 @@ static void close_accounts_cb(Account *a, gpointer data)
     if (gnc_numeric_zero_p(bal))
         return;
 
-    acct_commodity = xaccAccountGetCommodity(a);
+    acct_commodity = gnc_account_or_default_currency(a, NULL);
     g_assert(acct_commodity);
 
     txn = find_or_create_txn(cacb, acct_commodity);

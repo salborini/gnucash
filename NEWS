@@ -1,5 +1,73 @@
 Version history:
 ------- -------
+ 2.5.3 - 7 July 2013
+         This is the fourth release in the UNSTABLE 2.5 series.
+
+	 New Features:
+	 Save and Save As for custom report templates (Geert Jansens)
+	 Customized report settings can now be saved without renaming
+	 the report, and updates saved directly replacing the previously
+	 saved report or "saved as" to a new name.
+
+	 It's now possible to post multiple invoices from the find
+	 dialog. GnuCash was crashing if you searched for all unposted
+	 invoices, selected two or more of them, and posted them.
+	 This was because the list of invoices to be posted changed
+	 while it was being processed.  As part of fixing this the
+	 prompt for post date, due date, etc. will only be given once,
+	 not once per invoice.
+
+	 Register2 work: Better commodity/currency handling, sanity checks
+	 when converting TreePaths, Posted Dates now work like the old Register,
+
+	 PostedDate is now recorded only as a date, with no time.
+
+	 Peter Broadberry contributed faster versions of several reports.
+
+	 Bug Fixes:
+	 703272: list of windows in OSX Windows menu
+	 699686: Startup dialog windows should be top level (Simon Arlot)
+	 701670: (OSX)Command-V in reconcile window pastes data in register
+	 702899: Fix crash in scrubbing code
+	 703305: Fix crash on entering a non-valid date
+	 The crash that occurs when duplicating multiple invoices from Find
+	  results.
+	 691587: Catch scheme exceptions when converting error messages
+	 669964: Fix txn creation that forgot to set a txn currency.
+	 672595: After creation of a new book, make sure to set it to dirty
+	 700582: Enable online actions in Register2
+	 Now works with automake 1.13
+
+	 Translations Updated: Catalan, Italian, Lithuanian
+
+ 2.5.2 - 27 May 2013
+         This is the third release in the UNSTABLE 2.5 series.
+
+	 Robert Fewell continues his work on the GtkTreeModel register,
+	 including better transaction editing without using the mouse and
+	 some display issues.
+
+	 Sam Morris contributed a patch supporting retrieving Bitcoin and
+	 Litecoin exchange rates from Mt. Gox with Finance::Quote
+
+	 Fix Bug 700197, backend errors when creating Customers with the
+	 Python bindings. Patch by Tom Lofts
+
+	 Carsten Rinke provided several patches:
+	 Bug #682800 Generated balances on Report different than calculated
+	 balances on Ledger when using "open subaccounts"
+	 Bug #622778 Miscalculation in cashflow reports
+	 Bug #584869 net change line in general journal report
+
+	 Bug #589865 - Budget flow period doesn't work. Patches by Carsten
+	 Rinke and Mikhail Tsaplin
+
+	 The translation files have been copied from the 2.4 branch.
+	 Translators may start working on the new strings, though string
+	 freeze is scheduled for 2.5.5 in early September.
+
+	 Translations Updated: Danish, German, Italian
+
  2.5.1 -  5 May 2013
          This is the second release in the UNSTABLE 2.5 series.
 

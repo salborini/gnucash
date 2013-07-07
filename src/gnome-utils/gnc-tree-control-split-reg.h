@@ -56,7 +56,7 @@ void gnc_tree_control_split_reg_cancel_edit (GncTreeViewSplitReg *view, gboolean
 
 void gnc_tree_control_split_reg_goto_rel_trans_row (GncTreeViewSplitReg *view, gint relative);
 
-void gnc_tree_control_split_reg_enter (GncTreeViewSplitReg *view, gboolean next_transaction);
+void gnc_tree_control_split_reg_enter (GncTreeViewSplitReg *view);
 
 void gnc_tree_control_split_reg_reinit (GncTreeViewSplitReg *view, gpointer data);
 
@@ -71,6 +71,29 @@ Split * gnc_tree_control_split_reg_get_current_trans_split (GncTreeViewSplitReg 
 Split * gnc_tree_control_split_reg_get_blank_split (GncTreeViewSplitReg *view);
 
 gboolean gnc_tree_control_split_reg_duplicate_current (GncTreeViewSplitReg *view);
+
+/** This implements the command of moving the current entry (where the
+ * cursor is currently located) one row upwards or downwards (depending on the move_up parameter),
+ * effectively swapping this row and the other row. If the other row
+ * is empty (or it is the blank entry), nothing will happen.
+ *
+ * \param move_up If TRUE, the current entry is moved upwards,
+ * otherwise downwards.
+ * \return Whether the current entry has been moved into the queried direction
+ */
+gboolean gnc_tree_control_split_reg_move_current_entry_updown (GncTreeViewSplitReg *reg,
+                                                            gboolean move_up);
+
+/** Query whether the current entry (where the cursor is currently located)
+ * can be moved one row upwards or downwards (depending on the move_up parameter).
+ *
+ * \param move_up If TRUE, it is asked whether the current entry can be moved upwards,
+ * otherwise downwards.
+ * \return Whether the current entry can be moved into the queried direction
+ */
+gboolean gnc_tree_control_split_reg_is_current_movable_updown (GncTreeViewSplitReg *view,
+                                                               gboolean move_up);
+
 
 gboolean gnc_tree_control_split_reg_save (GncTreeViewSplitReg *view, gboolean reg_closing);
 

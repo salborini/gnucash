@@ -89,7 +89,7 @@ void gnc_split_reg2_double_line_cb (GtkWidget *w, gpointer data);
 
 void gnc_split_reg2_destroy_cb (GtkWidget *widget, gpointer data);
 
-static void gnc_split_reg2_class_init (GNCSplitReg2Class *class);
+static void gnc_split_reg2_class_init (GNCSplitReg2Class *klass);
 static void gnc_split_reg2_init (GNCSplitReg2 *gsr);
 static void gnc_split_reg2_init2 (GNCSplitReg2 *gsr);
 
@@ -132,11 +132,11 @@ enum
 static guint gnc_split_reg2_signals[LAST_SIGNAL] = { 0 };
 
 static void
-gnc_split_reg2_class_init (GNCSplitReg2Class *class)
+gnc_split_reg2_class_init (GNCSplitReg2Class *klass)
 {
     GtkObjectClass *object_class;
 
-    object_class = (GtkObjectClass*) class;
+    object_class = (GtkObjectClass*) klass;
 
     gnc_split_reg2_signals[HELP_CHANGED] =
         g_signal_new("help-changed",
@@ -148,7 +148,7 @@ gnc_split_reg2_class_init (GNCSplitReg2Class *class)
                      G_TYPE_NONE, 0);
 
     /* Setup the default handlers. */
-    class->help_changed = NULL;
+    klass->help_changed = NULL;
 
 }
 
@@ -258,7 +258,8 @@ gsr2_create_table (GNCSplitReg2 *gsr)
     gnc_tree_model_split_reg_set_display (model, ((ledger_type == LD2_SUBACCOUNT)?TRUE:FALSE), ((ledger_type == LD2_GL)?TRUE:FALSE));
 
     // We need to give the General Ledger a Key other than all zeros which the search register gets.
-    if (model->type == GENERAL_LEDGER2)
+//    if (account == NULL && model->type == GENERAL_LEDGER2)
+    if (ledger_type == LD2_GL && model->type == GENERAL_LEDGER2)
         gconf_key = g_strconcat (GCONF_SECTION,"/", "00000000000000000000000000000001", NULL);
 
     scrolled_window = gtk_scrolled_window_new (NULL, NULL);
@@ -724,8 +725,8 @@ gsr2_create_balancing_transaction (QofBook *book, Account *account,
     xaccTransBeginEdit (trans);
 
     // fill Transaction
-    xaccTransSetCurrency (trans, xaccAccountGetCommodity (account));
-    xaccTransSetDatePostedSecs (trans, statement_date);
+    xaccTransSetCurrency (trans, gnc_account_or_default_currency (account, NULL));
+    xaccTransSetDatePostedSecsNormalized (trans, statement_date);
     xaccTransSetDescription (trans, _("Balancing entry from reconcilation"));
 
     // 1. Split
@@ -1109,5 +1110,5 @@ gnc_split_reg2_get_read_only (GNCSplitReg2 *gsr)
 void
 gnc_split_reg2_set_moved_cb (GNCSplitReg2 *gsr, GFunc cb, gpointer cb_data ) //this works
 {
-    gnc_tree_view_split_reg_moved_cb (gnc_ledger_display2_get_split_view_register (gsr->ledger), cb, cb_data);
+    gnc_tree_view_split_reg_set_uiupdate_cb (gnc_ledger_display2_get_split_view_register (gsr->ledger), cb, cb_data);
 }
