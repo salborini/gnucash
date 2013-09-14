@@ -389,7 +389,7 @@ static GtkActionEntry gnc_plugin_page_register2_actions [] =
         G_CALLBACK (gnc_plugin_page_register2_cmd_account_report)
     },
     {
-        "ReportsAcctTransReportAction", NULL, N_("Account Transaction Report"), NULL,
+        "ReportsAcctTransReportAction", NULL, N_("Account Report - Single Transaction"), NULL,
         N_("Open a register report for the selected Transaction"),
         G_CALLBACK (gnc_plugin_page_register2_cmd_transaction_report)
     },
@@ -1602,7 +1602,7 @@ gnc_plugin_page_register2_finish_pending (GncPluginPage *page) //this works
     gtk_message_dialog_format_secondary_text
     (GTK_MESSAGE_DIALOG (dialog),
      "%s",
-     _("This register has pending changes to a transaction.  "
+     _("This register has pending changes to a transaction. "
        "Would you like to save the changes to this transaction, "
        "discard the transaction, or cancel the operation?"));
     gnc_gtk_dialog_add_button (dialog, _("_Discard Transaction"),

@@ -373,7 +373,7 @@ static GtkActionEntry gnc_plugin_page_register_actions [] =
         G_CALLBACK (gnc_plugin_page_register_cmd_account_report)
     },
     {
-        "ReportsAcctTransReportAction", NULL, N_("Account Transaction Report"), NULL,
+        "ReportsAcctTransReportAction", NULL, N_("Account Report - Single Transaction"), NULL,
         N_("Open a register report for the selected Transaction"),
         G_CALLBACK (gnc_plugin_page_register_cmd_transaction_report)
     },
@@ -1489,7 +1489,7 @@ gnc_plugin_page_register_finish_pending (GncPluginPage *page)
     gtk_message_dialog_format_secondary_text
     (GTK_MESSAGE_DIALOG(dialog),
      "%s",
-     _("This register has pending changes to a transaction.  "
+     _("This register has pending changes to a transaction. "
        "Would you like to save the changes to this transaction, "
        "discard the transaction, or cancel the operation?"));
     gnc_gtk_dialog_add_button(dialog, _("_Discard Transaction"),
@@ -2508,7 +2508,7 @@ gnc_reg_get_name (GNCLedgerDisplay *ledger, gboolean for_window)
         if (for_window)
             reg_name = _("General Ledger");
         else
-            reg_name = _("General Ledger Report");
+            reg_name = _("Transaction Report");
         break;
     case PORTFOLIO_LEDGER:
         if (for_window)
@@ -2526,7 +2526,7 @@ gnc_reg_get_name (GNCLedgerDisplay *ledger, gboolean for_window)
         if (for_window)
             reg_name = _("Register");
         else
-            reg_name = _("Register Report");
+            reg_name = _("Transaction Report");
         break;
     }
 

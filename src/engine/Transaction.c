@@ -210,12 +210,12 @@ check_open (const Transaction *trans)
 gboolean
 xaccTransStillHasSplit(const Transaction *trans, const Split *s)
 {
-    return (s->parent == trans && !qof_instance_get_destroying(s));
+    return (s && s->parent == trans && !qof_instance_get_destroying(s));
 }
 
 /* Executes 'cmd_block' for each split currently in the transaction,
  * using the in-edit state.  Use the variable 's' for each split. */
-#define FOR_EACH_SPLIT(trans, cmd_block) do {                           \
+#define FOR_EACH_SPLIT(trans, cmd_block) if (trans->splits) {		\
         GList *splits;                                                  \
         for (splits = (trans)->splits; splits; splits = splits->next) { \
             Split *s = splits->data;                                    \
@@ -223,7 +223,7 @@ xaccTransStillHasSplit(const Transaction *trans, const Split *s)
                 cmd_block;                                              \
             }                                                           \
         }                                                               \
-    } while (0)
+    }
 
 G_INLINE_FUNC void mark_trans (Transaction *trans);
 void mark_trans (Transaction *trans)
@@ -234,7 +234,6 @@ void mark_trans (Transaction *trans)
 G_INLINE_FUNC void gen_event_trans (Transaction *trans);
 void gen_event_trans (Transaction *trans)
 {
-#ifndef REGISTER_STILL_DEPENDS_ON_ACCOUNT_EVENTS
     GList *node;
 
     for (node = trans->splits; node; node = node->next)
@@ -251,7 +250,6 @@ void gen_event_trans (Transaction *trans)
             qof_event_gen (QOF_INSTANCE(lot), QOF_EVENT_MODIFY, NULL);
         }
     }
-#endif
 }
 
 /* GObject Initialization */
@@ -1039,7 +1037,9 @@ xaccTransIsBalanced (const Transaction *trans)
     gboolean result;
     gnc_numeric imbal = gnc_numeric_zero();
     gnc_numeric imbal_trading = gnc_numeric_zero();
-    
+
+    if (trans == NULL) return FALSE;
+
     if (xaccTransUseTradingAccounts(trans))
     {
         /* Transaction is imbalanced if the value is imbalanced in either 
@@ -1113,6 +1113,9 @@ xaccTransGetRateForCommodity(const Transaction *trans,
 {
     GList *splits;
     gnc_commodity *trans_curr;
+
+    if (trans == NULL || split_com == NULL || split == NULL)
+	return FALSE;
 
     trans_curr = xaccTransGetCurrency (trans);
     if (gnc_commodity_equal (trans_curr, split_com))
@@ -1366,7 +1369,7 @@ do_destroy (Transaction *trans)
     for (node = trans->splits; node; node = node->next)
     {
         Split *s = node->data;
-        if (s->parent == trans)
+        if (s && s->parent == trans)
         {
             xaccSplitDestroy(s);
         }
@@ -1374,7 +1377,7 @@ do_destroy (Transaction *trans)
     for (node = trans->splits; node; node = node->next)
     {
         Split *s = node->data;
-        if (s->parent == trans)
+        if (s && s->parent == trans)
         {
             xaccSplitCommitEdit(s);
         }
@@ -1571,11 +1574,26 @@ xaccTransRollbackEdit (Transaction *trans)
     Transaction *orig;
     GList *slist;
     int num_preexist, i;
+
+/* FIXME: This isn't quite the right way to handle nested edits --
+ * there should be a stack of transaction states that are popped off
+ * and restored at each level -- but it does prevent restoring to the
+ * editlevel 0 state until one is returning to editlevel 0, and
+ * thereby prevents a crash caused by trans->orig getting NULLed too
+ * soon.
+ */
+    if (!qof_instance_get_editlevel (QOF_INSTANCE (trans))) return;
+    if (qof_instance_get_editlevel (QOF_INSTANCE (trans)) > 1) {
+	 qof_instance_decrease_editlevel (QOF_INSTANCE (trans));
+	 return;
+    }
+
     ENTER ("trans addr=%p\n", trans);
 
     check_open(trans);
 
     /* copy the original values back in. */
+
     orig = trans->orig;
     SWAP(trans->num, orig->num);
     SWAP(trans->description, orig->description);
@@ -1587,6 +1605,9 @@ xaccTransRollbackEdit (Transaction *trans)
     /* The splits at the front of trans->splits are exactly the same
        splits as in the original, but some of them may have changed, so
        we restore only those. */
+/* FIXME: Runs off the transaction's splits, so deleted splits are not
+ * restored!
+ */
     num_preexist = g_list_length(orig->splits);
     slist = g_list_copy(trans->splits);
     for (i = 0, node = slist, onode = orig->splits; node;
@@ -2706,6 +2727,23 @@ gboolean xaccTransRegister (void)
     qof_class_register (GNC_ID_TRANS, (QofSortFunc)xaccTransOrder, params);
 
     return qof_object_register (&trans_object_def);
+}
+
+TransTestFunctions*
+_utest_trans_fill_functions (void)
+{
+    TransTestFunctions *func = g_new (TransTestFunctions, 1);
+
+    func->mark_trans = mark_trans;
+    func->gen_event_trans = gen_event_trans;
+    func->xaccFreeTransaction = xaccFreeTransaction;
+    func->destroy_gains = destroy_gains;
+    func->do_destroy = do_destroy;
+    func->was_trans_emptied = was_trans_emptied;
+    func->trans_on_error = trans_on_error;
+    func->trans_cleanup_commit = trans_cleanup_commit;
+    func->xaccTransScrubGainsDate = xaccTransScrubGainsDate;
+    return func;
 }
 
 /************************ END OF ************************************\
