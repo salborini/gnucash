@@ -40,27 +40,16 @@ static void test_foreach (QofBook *, const char *);
 
 static QofObject bus_obj =
 {
-interface_version:
     QOF_OBJECT_VERSION,
-e_type:
     TEST_MODULE_NAME,
-type_label:
     TEST_MODULE_DESC,
-create:
     NULL,
-book_begin:
     NULL,
-book_end:
     NULL,
-is_dirty:
     NULL,
-mark_clean:
     NULL,
-foreach:
     obj_foreach,
-printable:
     printable,
-version_cmp:
     NULL,
 };
 
@@ -82,7 +71,7 @@ test_object (void)
                  "lookup non-existant object object");
 
         do_test (!g_strcmp0 (qof_object_get_type_label (TEST_MODULE_NAME),
-                               _(TEST_MODULE_DESC)),
+                             _(TEST_MODULE_DESC)),
                  "test description return");
     }
 

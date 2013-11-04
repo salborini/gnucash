@@ -37,20 +37,21 @@
 #include <gtk/gtk.h>
 
 #include "dialog-utils.h"
-#include "gnc-exp-parser.h"
 #include "gnc-sx-instance-model.h"
 #include "dialog-sx-since-last-run.h"
 
+#include "gnc-prefs.h"
 #include "gnc-ui-util.h"
 #include "Query.h"
 #include "qof.h"
+#include "gnc-ledger-display.h"
+#include "gnc-plugin-page-register.h"
 /*################## Added for Reg2 #################*/
 #include "gnc-ledger-display2.h"
 #include "gnc-plugin-page-register2.h"
 /*################## Added for Reg2 #################*/
 #include "gnc-main-window.h"
 #include "gnc-component-manager.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-gui-query.h"
 #include "gnc-session.h"
 
@@ -60,7 +61,9 @@
 G_GNUC_UNUSED static QofLogModule log_module = GNC_MOD_GUI_SX;
 
 #define DIALOG_SX_SINCE_LAST_RUN_CM_CLASS "dialog-sx-since-last-run"
-#define GCONF_SECTION "dialogs/scheduled_trans/since_last_run"
+
+#define GNC_PREFS_GROUP        "dialogs.sxs.since-last-run"
+#define GNC_PREF_SHOW_AT_FOPEN "show-at-file-open"
 
 struct _GncSxSinceLastRunDialog
 {
@@ -798,7 +801,7 @@ gnc_sx_sxsincelast_book_opened(void)
     GncSxInstanceModel *inst_model;
     GncSxSummary summary;
 
-    if (!gnc_gconf_get_bool(GCONF_SECTION, "show_at_file_open", NULL))
+    if (!gnc_prefs_get_bool (GNC_PREFS_GROUP, GNC_PREF_SHOW_AT_FOPEN))
         return;
 
     inst_model = gnc_sx_get_current_instances();
@@ -987,7 +990,7 @@ gnc_ui_sx_since_last_run_dialog(GncSxInstanceModel *sx_instances, GList *auto_cr
     g_signal_connect(G_OBJECT(dialog->dialog), "response", G_CALLBACK(dialog_response_cb), dialog);
     g_signal_connect(G_OBJECT(dialog->dialog), "destroy", G_CALLBACK(dialog_destroy_cb), dialog);
 
-    gnc_restore_window_size(GCONF_SECTION, GTK_WINDOW(dialog->dialog));
+    gnc_restore_window_size(GNC_PREFS_GROUP, GTK_WINDOW(dialog->dialog));
 
     dialog->component_id = gnc_register_gui_component
                            (DIALOG_SX_SINCE_LAST_RUN_CM_CLASS, NULL, close_handler, dialog);
@@ -1006,7 +1009,11 @@ gnc_ui_sx_since_last_run_dialog(GncSxInstanceModel *sx_instances, GList *auto_cr
 static void
 _show_created_transactions(GncSxSinceLastRunDialog *app_dialog, GList *created_txn_guids)
 {
+#ifdef REGISTER2_ENABLED
     GNCLedgerDisplay2 *ledger;
+#else
+    GNCLedgerDisplay *ledger;
+#endif
     GncPluginPage *page;
     Query *book_query, *guid_query, *query;
     GList *guid_iter;
@@ -1019,12 +1026,19 @@ _show_created_transactions(GncSxSinceLastRunDialog *app_dialog, GList *created_t
         xaccQueryAddGUIDMatch(guid_query, (GncGUID*)guid_iter->data, GNC_ID_TRANS, QOF_QUERY_OR);
     }
     query = qof_query_merge(book_query, guid_query, QOF_QUERY_AND);
-/*################## Added for Reg2 #################*/
+#ifdef REGISTER2_ENABLED
+    /*################## Added for Reg2 #################*/
     // inspired by dialog-find-transactions:do_find_cb:
     ledger = gnc_ledger_display2_query(query, SEARCH_LEDGER2, REG2_STYLE_JOURNAL);
     gnc_ledger_display2_refresh(ledger);
     page = gnc_plugin_page_register2_new_ledger(ledger);
-/*################## Added for Reg2 #################*/
+    /*################## Added for Reg2 #################*/
+#else
+    // inspired by dialog-find-transactions:do_find_cb:
+    ledger = gnc_ledger_display_query(query, SEARCH_LEDGER, REG_STYLE_JOURNAL);
+    gnc_ledger_display_refresh(ledger);
+    page = gnc_plugin_page_register_new_ledger(ledger);
+#endif
     g_object_set(G_OBJECT(page), "page-name", _("Created Transactions"), NULL);
     gnc_main_window_open_page(NULL, page);
 
@@ -1038,7 +1052,7 @@ close_handler(gpointer user_data)
 {
     GncSxSinceLastRunDialog *app_dialog = user_data;
 
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(app_dialog->dialog));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(app_dialog->dialog));
     gtk_widget_destroy(app_dialog->dialog);
 }
 

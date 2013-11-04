@@ -52,7 +52,7 @@
 #define DIALOG_EDIT_ORDER_CM_CLASS "dialog-edit-order"
 #define DIALOG_VIEW_ORDER_CM_CLASS "dialog-view-order"
 
-#define GCONF_SECTION_SEARCH "dialogs/business/order_search"
+#define GNC_PREFS_GROUP_SEARCH "dialogs.business.order-search"
 
 void gnc_order_window_ok_cb (GtkWidget *widget, gpointer data);
 void gnc_order_window_cancel_cb (GtkWidget *widget, gpointer data);
@@ -473,7 +473,7 @@ gnc_order_update_window (OrderWindow *ow)
         if (timespec_equal (&ts, &ts_zero))
         {
             gnc_date_edit_set_time (GNC_DATE_EDIT (ow->opened_date),
-				    gnc_time (NULL));
+                                    gnc_time (NULL));
         }
         else
         {
@@ -488,7 +488,7 @@ gnc_order_update_window (OrderWindow *ow)
         if (timespec_equal (&ts, &ts_zero))
         {
             gnc_date_edit_set_time (GNC_DATE_EDIT (ow->closed_date),
-				    gnc_time (NULL));
+                                    gnc_time (NULL));
             hide_cd = TRUE;
         }
         else
@@ -946,7 +946,7 @@ gnc_order_search (GncOrder *start, GncOwner *owner, QofBook *book)
     return gnc_search_dialog_create (type, _("Find Order"),
                                      params, columns, q, q2,
                                      buttons, NULL, new_order_cb,
-                                     sw, free_order_cb, GCONF_SECTION_SEARCH,
+                                     sw, free_order_cb, GNC_PREFS_GROUP_SEARCH,
                                      NULL);
 }
 

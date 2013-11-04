@@ -37,6 +37,7 @@
 #include "dialog-payment.h"
 #include "dialog-tax-table.h"
 #include "dialog-vendor.h"
+#include "business-gnome-utils.h"
 #include "gnc-plugin-business.h"
 #include "gnc-plugin-page-invoice.h"
 #include "gnc-plugin-page-owner-tree.h"
@@ -48,8 +49,7 @@
 #include "gnc-session.h"
 #include "gnome-utils/gnc-icons.h" /* for GNC_STOCK_INVOICE_NEW */
 
-#include "gnc-core-prefs.h" /* for GCONF_PATH */
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnome-utils/gnc-main-window.h"
 
 #include "gnc-plugin-page-register.h"
@@ -61,10 +61,6 @@ G_GNUC_UNUSED static QofLogModule log_module = G_LOG_DOMAIN;
 static void gnc_plugin_business_class_init (GncPluginBusinessClass *klass);
 static void gnc_plugin_business_init (GncPluginBusiness *plugin);
 static void gnc_plugin_business_finalize (GObject *object);
-static void gnc_plugin_business_gconf_changed (GConfClient *client,
-        guint cnxn_id,
-        GConfEntry *entry,
-        gpointer user_data);
 static void gnc_plugin_business_add_to_window (GncPlugin *plugin,
         GncMainWindow *window,
         GQuark type);
@@ -136,6 +132,9 @@ static void update_inactive_actions(GncPluginPage *page);
 
 #define PLUGIN_ACTIONS_NAME "gnc-plugin-business-actions"
 #define PLUGIN_UI_FILENAME  "gnc-plugin-business-ui.xml"
+
+#define GNC_PREF_EXTRA_TOOLBUTTONS "enable-toolbuttons"
+#define GNC_PREF_INV_PRINT_RPT     "invoice-printreport"
 
 /** This variable maintains a pointer to the last window where a
  *  Business command was executed.  It is used to determine where new
@@ -398,9 +397,6 @@ gnc_plugin_business_class_init (GncPluginBusinessClass *klass)
     plugin_class->actions      = gnc_plugin_actions;
     plugin_class->n_actions    = gnc_plugin_n_actions;
     plugin_class->ui_filename  = PLUGIN_UI_FILENAME;
-
-    plugin_class->gconf_notifications = gnc_plugin_business_gconf_changed;
-    plugin_class->gconf_section = GCONF_SECTION_INVOICE;
 
     g_type_class_add_private(klass, sizeof(GncPluginBusinessPrivate));
 }
@@ -897,7 +893,6 @@ static void gnc_plugin_business_main_window_page_changed(GncMainWindow *window,
         GncPluginPage *page,
         gpointer user_data)
 {
-//    g_message("gnc_plugin_business_main_window_page_changed, page=%p", page);
     gnc_plugin_business_update_menus(page);
     update_inactive_actions(page);
 }
@@ -1025,15 +1020,12 @@ static const char* extra_toolbar_actions[] =
     NULL
 };
 
-/* The code below will set the visibility of some extra toolbar
- * buttons based on a gconf key setting. */
-static void set_toolbuttons_visibility(GncMainWindow *mainwindow,
-                                       gboolean visible)
+/* Bind the visibility of the extra toolbar buttons to the
+ * enable_toolbuttons preference. */
+static void bind_toolbuttons_visibility (GncMainWindow *mainwindow)
 {
     GtkActionGroup *action_group;
     const char **iter;
-
-    /*g_warning("about to set button visibility %d", visible);*/
 
     g_return_if_fail(mainwindow);
     g_return_if_fail(GNC_IS_MAIN_WINDOW(mainwindow));
@@ -1047,37 +1039,7 @@ static void set_toolbuttons_visibility(GncMainWindow *mainwindow,
     {
         /* Set the action's visibility */
         GtkAction *action = gtk_action_group_get_action (action_group, *iter);
-        gtk_action_set_visible(action, visible);
-    }
-}
-
-static void update_extra_toolbuttons(GncMainWindow *mainwindow)
-{
-    gboolean value = gnc_gconf_get_bool(GCONF_SECTION_INVOICE,
-                                        "enable_toolbuttons", NULL);
-    set_toolbuttons_visibility(mainwindow, value);
-}
-
-/** This function is called whenever an entry in the business invoice
- *  section of gconf is changed. If the modified gconf entry concerns
- *  our toolbar buttons, we update their visibility status. */
-static void
-gnc_plugin_business_gconf_changed (GConfClient *client,
-                                   guint cnxn_id,
-                                   GConfEntry *entry,
-                                   gpointer user_data)
-{
-    GncMainWindow *mainwindow = GNC_MAIN_WINDOW(user_data);
-    const char* full_gconf_path =
-        GCONF_PATH "/" GCONF_SECTION_INVOICE "/enable_toolbuttons";
-    const char* entry_key = gconf_entry_get_key(entry);
-
-    if (!entry_key)
-        return;
-
-    if (g_strcmp0(entry_key, full_gconf_path) == 0)
-    {
-        update_extra_toolbuttons(mainwindow);
+        gnc_prefs_bind (GNC_PREFS_GROUP_INVOICE, GNC_PREF_EXTRA_TOOLBUTTONS, G_OBJECT (action), "visible");
     }
 }
 
@@ -1091,8 +1053,7 @@ static void gnc_plugin_business_add_to_window (GncPlugin *plugin,
         GncMainWindow *mainwindow,
         GQuark type)
 {
-//     g_message("gnc_plugin_business_add_to_window");
-    update_extra_toolbuttons(mainwindow);
+    bind_toolbuttons_visibility (mainwindow);
 
     g_signal_connect(mainwindow, "page_changed",
                      G_CALLBACK(gnc_plugin_business_main_window_page_changed),
@@ -1115,8 +1076,7 @@ static const char* invoice_printreport_values[] =
 
 const char *gnc_plugin_business_get_invoice_printreport(void)
 {
-    int value = gnc_gconf_get_int(GCONF_SECTION_INVOICE,
-                                  "invoice_printreport", NULL);
+    int value = gnc_prefs_get_int (GNC_PREFS_GROUP_INVOICE, GNC_PREF_INV_PRINT_RPT);
     if (value >= 0 && value < 4)
         return invoice_printreport_values[value];
     else

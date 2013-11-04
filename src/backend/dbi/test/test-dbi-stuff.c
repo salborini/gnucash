@@ -25,7 +25,6 @@
 
 #include "config.h"
 #include "qof.h"
-#include "gnc-core-prefs.h"
 #include "qofsession-p.h"
 #include "cashobjects.h"
 #include "test-dbi-stuff.h"
@@ -48,7 +47,7 @@ static void do_test (G_GNUC_UNUSED gboolean foo, G_GNUC_UNUSED gchar* bar)
 
 void
 do_compare( QofBook* book_1, QofBook* book_2, const gchar* id,
-	    QofInstanceForeachCB cb, const gchar* msg )
+            QofInstanceForeachCB cb, const gchar* msg )
 {
     QofCollection* coll;
     CompareInfoStruct info;
@@ -76,7 +75,7 @@ compare_single_tx( QofInstance* inst, gpointer user_data )
     CompareInfoStruct* info = (CompareInfoStruct*)user_data;
     Transaction* tx_1 = GNC_TRANS(inst);
     Transaction* tx_2 = xaccTransLookup( qof_instance_get_guid(inst),
-					 info->book_2 );
+                                         info->book_2 );
 
     g_assert (xaccTransEqual (tx_1, tx_2, TRUE, TRUE, TRUE, FALSE));
 }
@@ -85,7 +84,7 @@ static void
 compare_txs( QofBook* book_1, QofBook* book_2 )
 {
     do_compare( book_1, book_2, GNC_ID_TRANS,
-		compare_single_tx, "Transaction lists match" );
+                compare_single_tx, "Transaction lists match" );
 }
 
 static SchedXaction*
@@ -125,7 +124,7 @@ compare_recurrences (GList *rl_1, GList *rl_2)
     g_assert (rl_2 != NULL);
     g_assert_cmpint (g_list_length (rl_1), ==, g_list_length (rl_2));
     for (ritem1 = rl_1, ritem2 = rl_2; ritem1 != NULL && ritem2 != NULL;
-         ritem1 = g_list_next (ritem1), ritem2 = g_list_next (ritem2))
+            ritem1 = g_list_next (ritem1), ritem2 = g_list_next (ritem2))
     {
         Recurrence *r1 = ritem1->data, *r2 = ritem2->data;
 
@@ -166,7 +165,7 @@ static void
 compare_sxs( QofBook* book_1, QofBook* book_2 )
 {
     do_compare( book_1, book_2, GNC_ID_SCHEDXACTION,
-		compare_single_sx, "Scheduled transaction lists match" );
+                compare_single_sx, "Scheduled transaction lists match" );
 }
 
 static void
@@ -175,7 +174,7 @@ compare_single_lot( QofInstance* inst, gpointer user_data )
     CompareInfoStruct* info = (CompareInfoStruct*)user_data;
     GNCLot *lot_1 = GNC_LOT(inst);
     GNCLot *lot_2 = gnc_lot_lookup (qof_instance_get_guid(inst),
-					 info->book_2 );
+                                    info->book_2 );
     GList *split1, *splits1, *splits2;
 
     g_assert (xaccAccountEqual( gnc_lot_get_account (lot_1),
@@ -231,10 +230,10 @@ static void
 compare_pricedbs( QofBook* book_1, QofBook* book_2 )
 {
     do_compare( book_1, book_2, GNC_ID_TRANS,
-		compare_single_tx, "Transaction lists match" );
+                compare_single_tx, "Transaction lists match" );
 }
 
-static void
+void
 compare_books( QofBook* book_1, QofBook* book_2 )
 {
     QofBackend *be = qof_book_get_backend( book_2 );
@@ -243,199 +242,4 @@ compare_books( QofBook* book_1, QofBook* book_2 )
     compare_txs( book_1, book_2 );
     compare_sxs( book_1, book_2 );
     compare_lots( book_1, book_2 );
-}
-
-/* Given a synthetic session, use the same logic as
- * QofSession::save_as to save it to a specified sql url, then load it
- * back and compare. */
-void
-test_dbi_store_and_reload( const gchar* driver, QofSession* session_1, const gchar* url )
-{
-    QofSession* session_2;
-    QofSession* session_3;
-    QofBackend *be;
-
-    gchar *msg = "[gnc_dbi_unlock()] There was no lock entry in the Lock table";
-    gchar *log_domain = "gnc.backend.dbi";
-    guint loglevel = G_LOG_LEVEL_WARNING | G_LOG_FLAG_FATAL, hdlr;
-    TestErrorStruct check = { loglevel, log_domain, msg, 0 };
-    GLogFunc dhdlr = g_log_set_default_handler ((GLogFunc)test_null_handler,
-						&check);
-    g_test_log_set_fatal_handler ((GTestLogFatalFunc)test_checked_handler,
-				  &check);
-
-
-    g_test_message ( "Testing %s\n", driver );
-
-    // Save the session data
-    session_2 = qof_session_new();
-    hdlr = g_log_set_handler (log_domain, loglevel,
-                              (GLogFunc)test_checked_handler, &check);
-    qof_session_begin( session_2, url, FALSE, TRUE, TRUE );
-    g_assert (session_2 != NULL);
-    g_assert_cmpint (qof_session_get_error (session_2), ==, ERR_BACKEND_NO_ERR);
-    qof_session_swap_data( session_1, session_2 );
-    qof_session_save( session_2, NULL );
-    g_assert (session_2 != NULL);
-    g_assert_cmpint (qof_session_get_error (session_2), ==, ERR_BACKEND_NO_ERR);
-
-    // Reload the session data
-    session_3 = qof_session_new();
-    g_assert (session_3 != NULL);
-    qof_session_begin( session_3, url, TRUE, FALSE, FALSE );
-    g_assert (session_3 != NULL);
-    g_assert_cmpint (qof_session_get_error (session_3), ==, ERR_BACKEND_NO_ERR);
-    qof_session_load( session_3, NULL );
-    g_assert (session_3 != NULL);
-    g_assert_cmpint (qof_session_get_error (session_3), ==, ERR_BACKEND_NO_ERR);
-    // Compare with the original data
-    compare_books (qof_session_get_book( session_2),
-		   qof_session_get_book( session_3));
-/* Session_1 belongs to the fixture and teardown() will clean it up */
-    qof_session_end( session_2 );
-    qof_session_destroy( session_2 );
-    qof_session_end( session_3 );
-    qof_session_destroy( session_3 );
-    g_log_remove_handler (log_domain, hdlr);
-    g_log_set_default_handler (dhdlr, NULL);
-}
-
-/* Given an already-created url (yeah, bad testing practice: Should
- * start fresh from a synthetic session) load and safe-save it, then
- * load it again into a new session and compare the two. Since
- * safe-save is a more-or-less atomic function call, there's no way to
- * be sure that it's actually doing what it's supposed to without
- * running this test in a debugger and stopping in the middle of the
- * safe-save and inspecting the database. */
-void
-test_dbi_safe_save( const gchar* driver,  const gchar* url )
-{
-    QofSession *session_1 = NULL, *session_2 = NULL;
-    QofBackend *be;
-
-    gchar *msg = "[gnc_dbi_unlock()] There was no lock entry in the Lock table";
-    gchar *log_domain = "gnc.backend.dbi";
-    guint loglevel = G_LOG_LEVEL_WARNING, hdlr;
-    TestErrorStruct check = { loglevel, log_domain, msg };
-
-    g_test_message ( "Testing safe save %s\n", driver );
-
-    // Load the session data
-    session_1 = qof_session_new();
-    qof_session_begin( session_1, url, TRUE, FALSE, FALSE );
-    if (session_1 && qof_session_get_error(session_1) != ERR_BACKEND_NO_ERR)
-    {
-        g_warning("Session Error: %d, %s", qof_session_get_error(session_1),
-                  qof_session_get_error_message(session_1));
-        do_test( FALSE, "DB Session Creation Failed");
-        goto cleanup;
-    }
-    qof_session_load( session_1, NULL );
-    /* Do a safe save */
-    qof_session_safe_save( session_1, NULL );
-    if (session_1 && qof_session_get_error(session_1) != ERR_BACKEND_NO_ERR)
-    {
-        g_warning("Session Error: %s", qof_session_get_error_message(session_1));
-        do_test( FALSE, "DB Session Safe Save Failed");
-        goto cleanup;
-    }
-    /* Destroy the session and reload it */
-
-    session_2 = qof_session_new();
-    qof_session_begin( session_2, url, TRUE, FALSE, FALSE );
-    if (session_2 && qof_session_get_error(session_2) != ERR_BACKEND_NO_ERR)
-    {
-        g_warning("Session Error: %d, %s", qof_session_get_error(session_2),
-                  qof_session_get_error_message(session_2));
-        do_test( FALSE, "DB Session re-creation Failed");
-        goto cleanup;
-    }
-    qof_session_load( session_2, NULL );
-    compare_books( qof_session_get_book( session_1 ),
-                   qof_session_get_book( session_2 ) );
-    be = qof_book_get_backend( qof_session_get_book( session_2 ) );
-    test_conn_index_functions( be );
-
-cleanup:
-    hdlr = g_log_set_handler (log_domain, loglevel,
-                              (GLogFunc)test_checked_handler, &check);
-    if (session_2 != NULL)
-    {
-        qof_session_end( session_2 );
-        qof_session_destroy( session_2 );
-    }
-    if (session_1 != NULL)
-    {
-        qof_session_end( session_1 );
-        qof_session_destroy( session_1 );
-    }
-    g_log_remove_handler (log_domain, hdlr);
-    return;
-}
-
-/* Test the gnc_dbi_load logic that forces a newer database to be
- * opened read-only and an older one to be safe-saved. Again, it would
- * be better to do this starting from a fresh file, but instead we're
- * being lazy and using an existing one. */
-void
-test_dbi_version_control( const gchar* driver,  const gchar* url )
-{
-
-    QofSession *sess;
-    QofBook *book;
-    QofBackend *qbe;
-    QofBackendError err;
-    gint ourversion = gnc_core_prefs_get_long_version();
-
-    g_test_message ( "Testing safe save %s\n", driver );
-
-    // Load the session data
-    sess = qof_session_new();
-    qof_session_begin( sess, url, TRUE, FALSE, FALSE );
-    if (sess && qof_session_get_error(sess) != ERR_BACKEND_NO_ERR)
-    {
-        g_warning("Session Error: %d, %s", qof_session_get_error(sess),
-                  qof_session_get_error_message(sess));
-        do_test( FALSE, "DB Session Creation Failed");
-        goto cleanup;
-    }
-    qof_session_load( sess, NULL );
-    qbe = qof_session_get_backend( sess );
-    book = qof_session_get_book( sess );
-    qof_book_begin_edit( book );
-    gnc_sql_set_table_version( (GncSqlBackend*)qbe,
-                               "Gnucash", GNUCASH_RESAVE_VERSION - 1 );
-    qof_book_commit_edit( book );
-    qof_session_end( sess );
-    qof_session_destroy( sess );
-    sess = qof_session_new();
-    qof_session_begin( sess, url, TRUE, FALSE, FALSE );
-    qof_session_load( sess, NULL );
-    err = qof_session_pop_error( sess );
-    do_test( err == ERR_SQL_DB_TOO_OLD, "DB Failed to flag too old" );
-    qbe = qof_session_get_backend( sess );
-    book = qof_session_get_book( sess );
-    qof_book_begin_edit( book );
-    gnc_sql_set_table_version( (GncSqlBackend*)qbe,
-                               "Gnucash", ourversion );
-    gnc_sql_set_table_version( (GncSqlBackend*)qbe,
-                               "Gnucash-Resave", ourversion + 1 );
-    qof_book_commit_edit( book );
-    qof_session_end( sess );
-    qof_session_destroy( sess );
-    sess = qof_session_new();
-    qof_session_begin( sess, url, TRUE, FALSE, FALSE );
-    qof_session_load( sess, NULL );
-    qof_session_ensure_all_data_loaded( sess );
-    err = qof_session_pop_error( sess );
-    do_test( err == ERR_SQL_DB_TOO_NEW, "DB Failed to flag too new" );
-cleanup:
-    qbe = qof_session_get_backend( sess );
-    book = qof_session_get_book( sess );
-    qof_book_begin_edit( book );
-    gnc_sql_set_table_version( (GncSqlBackend*)qbe,
-                               "Gnucash-Resave", GNUCASH_RESAVE_VERSION );
-    qof_book_commit_edit( book );
-    qof_session_end( sess );
-    qof_session_destroy( sess );
 }

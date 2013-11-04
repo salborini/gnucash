@@ -73,6 +73,12 @@ gnc_price_finalize(GObject* pricep)
     G_OBJECT_CLASS(gnc_price_parent_class)->finalize(pricep);
 }
 
+/* Note that g_value_set_object() refs the object, as does
+ * g_object_get(). But g_object_get() only unrefs once when it disgorges
+ * the object, leaving an unbalanced ref, which leaks. So instead of
+ * using g_value_set_object(), use g_value_take_object() which doesn't
+ * ref the object when used in get_property().
+ */
 static void
 gnc_price_get_property(GObject* object, guint prop_id, GValue* value, GParamSpec* pspec)
 {
@@ -93,10 +99,10 @@ gnc_price_get_property(GObject* object, guint prop_id, GValue* value, GParamSpec
         g_value_set_boxed(value, &price->value);
         break;
     case PROP_COMMODITY:
-        g_value_set_object(value, price->commodity);
+        g_value_take_object(value, price->commodity);
         break;
     case PROP_CURRENCY:
-        g_value_set_object(value, price->currency);
+        g_value_take_object(value, price->currency);
         break;
     case PROP_DATE:
         g_value_set_boxed(value, &price->tmspec);
@@ -568,11 +574,11 @@ gnc_price_equal (const GNCPrice *p1, const GNCPrice *p2)
         return FALSE;
 
     if (g_strcmp0 (gnc_price_get_source (p1),
-                     gnc_price_get_source (p2)) != 0)
+                   gnc_price_get_source (p2)) != 0)
         return FALSE;
 
     if (g_strcmp0 (gnc_price_get_typestr (p1),
-                     gnc_price_get_typestr (p2)) != 0)
+                   gnc_price_get_typestr (p2)) != 0)
         return FALSE;
 
     if (!gnc_numeric_eq (gnc_price_get_value (p1),
@@ -1531,31 +1537,6 @@ gnc_pricedb_lookup_day(GNCPriceDB *db,
     return lookup_nearest_in_time(db, c, currency, t, TRUE);
 }
 
-#if 0 /* Not Used */
-static void
-lookup_day(gpointer key, gpointer val, gpointer user_data)
-{
-    //gnc_commodity *currency = (gnc_commodity *)key;
-    GList *price_list = (GList *)val;
-    GList *item = NULL;
-    GNCPriceLookupHelper *lookup_helper = (GNCPriceLookupHelper *)user_data;
-    GList **return_list = lookup_helper->return_list;
-    Timespec t = lookup_helper->time;
-
-    item = price_list;
-    while (item)
-    {
-        GNCPrice *p = item->data;
-        Timespec price_time = timespecCanonicalDayTime(gnc_price_get_time(p));
-        if (timespec_equal(&price_time, &t))
-        {
-            gnc_price_list_insert(return_list, item->data, FALSE);
-        }
-        item = item->next;
-    }
-}
-#endif
-
 PriceList *
 gnc_pricedb_lookup_at_time(GNCPriceDB *db,
                            const gnc_commodity *c,
@@ -1614,30 +1595,7 @@ gnc_pricedb_lookup_at_time(GNCPriceDB *db,
     LEAVE (" ");
     return result;
 }
-#if 0 /* Not Used */
-static void
-lookup_time(gpointer key, gpointer val, gpointer user_data)
-{
-    //gnc_commodity *currency = (gnc_commodity *)key;
-    GList *price_list = (GList *)val;
-    GList *item = NULL;
-    GNCPriceLookupHelper *lookup_helper = (GNCPriceLookupHelper *)user_data;
-    GList **return_list = lookup_helper->return_list;
-    Timespec t = lookup_helper->time;
 
-    item = price_list;
-    while (item)
-    {
-        GNCPrice *p = item->data;
-        Timespec price_time = gnc_price_get_time(p);
-        if (timespec_equal(&price_time, &t))
-        {
-            gnc_price_list_insert(return_list, item->data, FALSE);
-        }
-        item = item->next;
-    }
-}
-#endif
 static GNCPrice *
 lookup_nearest_in_time(GNCPriceDB *db,
                        const gnc_commodity *c,
@@ -2316,12 +2274,12 @@ compare_kvpairs_by_commodity_key(gconstpointer a, gconstpointer b)
     cb = (gnc_commodity *) kvpb->key;
 
     cmp_result = g_strcmp0(gnc_commodity_get_namespace(ca),
-                             gnc_commodity_get_namespace(cb));
+                           gnc_commodity_get_namespace(cb));
 
     if (cmp_result != 0) return cmp_result;
 
     return g_strcmp0(gnc_commodity_get_mnemonic(ca),
-                       gnc_commodity_get_mnemonic(cb));
+                     gnc_commodity_get_mnemonic(cb));
 }
 
 static gboolean

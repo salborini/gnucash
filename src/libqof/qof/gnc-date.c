@@ -142,7 +142,7 @@ gnc_g_time_zone_adjust_for_dst (GTimeZone* tz, GDateTime *date)
 	bias = tzinfo.Bias + tzinfo.DaylightBias;
 	hours = -bias / 60; // 60 minutes per hour
 	minutes = (bias < 0 ? -bias : bias) % 60;
-	tzstr = g_strdup_printf ("%+03d%02d", hours, minutes);
+	tzstr = g_strdup_printf ("%+02d%02d", hours, minutes);
 	tz = g_time_zone_new(tzstr);
     }
 #endif
@@ -189,7 +189,7 @@ gnc_g_date_time_adjust_for_dst (GDateTime *gdt, GTimeZone *tz)
     return gdt;
 }
 
-static GDateTime*
+GDateTime*
 gnc_g_date_time_new_from_unix_local (time64 time)
 {
 #ifndef G_OS_WIN32
@@ -301,7 +301,7 @@ gnc_localtime (const time64 *secs)
 
 /* Linux, Darwin, and MSWindows implementations of this function set the
  * globals timezone and daylight; BSD doesn't have those globals, and
- * Gnucash never uses them, so they're ommitted from this
+ * Gnucash never uses them, so they're omitted from this
  * implementation. Bug 704185.
  */
 struct tm*
@@ -438,7 +438,7 @@ gchar*
 gnc_ctime (const time64 *secs)
 {
      GDateTime *gdt = gnc_g_date_time_new_from_unix_local (*secs);
-     gchar *string = g_date_time_format (gdt, "%a %b %e %H:%M:%S %Y\n");
+     gchar *string = g_date_time_format (gdt, "%a %b %e %H:%M:%S %Y");
      g_date_time_unref (gdt);
      return string;
 }

@@ -918,11 +918,9 @@ const char * gncInvoiceGetTypeString (const GncInvoice *invoice)
     case GNC_INVOICE_EMPL_INVOICE:
         return _("Expense");
     case GNC_INVOICE_CUST_CREDIT_NOTE:
-        return _("Customer Credit Note");
     case GNC_INVOICE_VEND_CREDIT_NOTE:
-        return _("Vendor Credit Note");
     case GNC_INVOICE_EMPL_CREDIT_NOTE:
-        return _("Employee Credit Note");
+        return _("Credit Note");
     default:
         PWARN("Unknown invoice type");
         return NULL;
@@ -1260,7 +1258,8 @@ static gboolean gncInvoicePostAddSplit (QofBook *book,
 
 Transaction * gncInvoicePostToAccount (GncInvoice *invoice, Account *acc,
                                        Timespec *post_date, Timespec *due_date,
-                                       const char * memo, gboolean accumulatesplits)
+                                       const char * memo, gboolean accumulatesplits,
+                                       gboolean autopay)
 {
     Transaction *txn;
     QofBook *book;
@@ -1274,7 +1273,6 @@ Transaction * gncInvoicePostToAccount (GncInvoice *invoice, Account *acc,
     char *lot_title;
     Account *ccard_acct = NULL;
     const GncOwner *owner;
-    gboolean autopay = TRUE; /* FIXME this will have to become a user selectable option at some point */
 
     if (!invoice || !acc) return NULL;
 

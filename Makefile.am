@@ -10,6 +10,8 @@ dist_doc_DATA = \
   AUTHORS \
   COPYING \
   ChangeLog \
+  ChangeLog.2012 \
+  ChangeLog.2011 \
   ChangeLog.2010 \
   ChangeLog.2009 \
   ChangeLog.2008 \
@@ -185,7 +187,6 @@ intl-scm/guile-strings.c:
 
 GIT_CMD = @GIT_CMD@
 SVN = svn
-XSLTPROC = xsltproc
 SCM_TYPE = @SCM_TYPE@
 
 if BUILDING_FROM_SCM

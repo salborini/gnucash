@@ -47,19 +47,21 @@
 #include "gnc-date-edit.h"
 #include "gnc-event.h"
 #include "gnc-filepath-utils.h"
-#include "gnc-gconf-utils.h"
 #include <gnc-gdate-utils.h>
 #include "gnc-gnome-utils.h"
 #include "gnc-main-window.h"
 #include "gnc-plugin-page-register2.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
 #include "gnc-ui-balances.h"
 #include "guile-util.h"
 #include "reconcile-view.h"
 #include "window-reconcile2.h"
 
-#define GCONF_SECTION "dialogs/window-reconcile"
 #define WINDOW_RECONCILE_CM_CLASS "window-reconcile"
+#define GNC_PREF_AUTO_INTEREST_TRANSFER "auto-interest-transfer"
+#define GNC_PREF_AUTO_CC_PAYMENT        "auto-cc-payment"
+#define GNC_PREF_ALWAYS_REC_TO_TODAY    "always-reconcile-to-today"
 
 
 /** STRUCTS *********************************************************/
@@ -75,9 +77,6 @@ struct _RecnWindow2
 
     GtkUIManager *ui_merge;
     GtkActionGroup *action_group;
-    GtkWidget *toolbar;          /* Toolbar widget                       */
-    gint toolbar_change_cb_id;   /* id for toolbar preference change cb  */
-    gint toolbar_change_cb_id2;  /* id for toolbar preference change cb  */
 
     GtkWidget *starting;         /* The starting balance                 */
     GtkWidget *ending;           /* The ending balance                   */
@@ -378,8 +377,7 @@ gnc_recn_interest_xfer_get_auto_interest_xfer_allowed (Account *account)
 {
     gboolean auto_xfer;
 
-    auto_xfer = gnc_gconf_get_bool (GCONF_RECONCILE_SECTION,
-                                   "auto_interest_transfer", NULL);
+    auto_xfer = gnc_prefs_get_bool (GNC_PREFS_GROUP_RECONCILE, GNC_PREF_AUTO_INTEREST_TRANSFER);
     return xaccAccountGetAutoInterestXfer (account, auto_xfer);
 }
 
@@ -1064,7 +1062,7 @@ gnc_reconcile_window_set_titles (RecnWindow2 *recnData)
     gboolean formal;
     gchar *title;
 
-    formal = gnc_gconf_get_bool (GCONF_GENERAL, KEY_ACCOUNTING_LABELS, NULL);
+    formal = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_ACCOUNTING_LABELS);
 
     if (formal)
         title = _("Debits");
@@ -1393,47 +1391,6 @@ gnc_recn_open_cb (GtkAction *action, gpointer data)
 
 
 static void
-gnc_recn_refresh_toolbar (RecnWindow2 *recnData)
-{
-    GtkToolbarStyle style;
-    GSList *list;
-
-    if ((recnData == NULL) || (recnData->toolbar == NULL))
-        return;
-
-    style = gnc_get_toolbar_style();
-    list = gtk_ui_manager_get_toplevels (recnData->ui_merge, GTK_UI_MANAGER_TOOLBAR);
-    g_slist_foreach (list, (GFunc) gtk_toolbar_set_style, GINT_TO_POINTER(style));
-    g_slist_free (list);
-}
-
-
-static void
-gnc_toolbar_change_cb (GConfClient *client,
-                       guint cnxn_id,
-                       GConfEntry *entry,
-                       gpointer data)
-{
-    RecnWindow2 *recnData = data;
-    GConfValue *value;
-    const gchar *key, *key_tail;
-
-    key = gconf_entry_get_key (entry);
-    value = gconf_entry_get_value (entry);
-    if (!key || !value)
-        return;
-
-    key_tail = strrchr(key, '/');
-    if (key_tail != NULL)
-        key_tail++;
-    if (strcmp(key_tail, KEY_TOOLBAR_STYLE) == 0)
-    {
-        gnc_recn_refresh_toolbar (recnData);
-    }
-}
-
-
-static void
 gnc_get_reconcile_info (Account *account,
                         gnc_numeric *new_ending,
                         time64 *statement_date)
@@ -1445,8 +1402,7 @@ gnc_get_reconcile_info (Account *account,
 
     g_date_clear(&date, 1);
 
-    always_today = gnc_gconf_get_bool (GCONF_RECONCILE_SECTION,
-                                      "always_reconcile_to_today", NULL);
+    always_today = gnc_prefs_get_bool (GNC_PREFS_GROUP_RECONCILE, GNC_PREF_ALWAYS_REC_TO_TODAY);
 
     if (!always_today &&
             xaccAccountGetReconcileLastDate (account, statement_date))
@@ -1613,7 +1569,7 @@ close_handler (gpointer user_data)
 {
     RecnWindow2 *recnData = user_data;
 
-    gnc_save_window_size (GCONF_SECTION, GTK_WINDOW (recnData->window));
+    gnc_save_window_size (GNC_PREFS_GROUP_RECONCILE, GTK_WINDOW (recnData->window));
     gtk_widget_destroy (recnData->window);
 }
 
@@ -1766,13 +1722,6 @@ recnWindow2WithBalance (GtkWidget *parent, Account *account,
             g_assert (merge_id != 0);
         }
         g_free (filename);
-
-        recnData->toolbar_change_cb_id =
-            gnc_gconf_add_anon_notification (GCONF_GENERAL,
-                                            gnc_toolbar_change_cb, recnData);
-        recnData->toolbar_change_cb_id2 =
-            gnc_gconf_add_anon_notification (DESKTOP_GNOME_INTERFACE,
-                                            gnc_toolbar_change_cb, recnData);
     }
 
     g_signal_connect (recnData->window, "popup-menu",
@@ -1801,7 +1750,7 @@ recnWindow2WithBalance (GtkWidget *parent, Account *account,
 
         /* Force a reasonable starting size */
         gtk_window_set_default_size (GTK_WINDOW (recnData->window), 800, 600);
-        gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW (recnData->window));
+        gnc_restore_window_size (GNC_PREFS_GROUP_RECONCILE, GTK_WINDOW (recnData->window));
 
         gtk_container_add(GTK_CONTAINER(frame), main_area);
         gtk_container_set_border_width(GTK_CONTAINER(main_area), 10);
@@ -1911,8 +1860,6 @@ recnWindow2WithBalance (GtkWidget *parent, Account *account,
 
     recnRecalculateBalance (recnData);
 
-    gnc_recn_refresh_toolbar (recnData);
-
     gnc_window_adjust_for_screen (GTK_WINDOW (recnData->window));
 
     /* Set the sort orders of the debit and credit tree views */
@@ -1959,11 +1906,6 @@ recn_destroy_cb (GtkWidget *w, gpointer data)
     RecnWindow2 *recnData = data;
 
     gnc_unregister_gui_component_by_data (WINDOW_RECONCILE_CM_CLASS, recnData);
-
-    gnc_gconf_remove_anon_notification (GCONF_GENERAL,
-                                       recnData->toolbar_change_cb_id);
-    gnc_gconf_remove_anon_notification (DESKTOP_GNOME_INTERFACE,
-                                       recnData->toolbar_change_cb_id2);
 
     if (recnData->delete_refresh)
         gnc_resume_gui_refresh ();
@@ -2117,8 +2059,7 @@ recnFinishCB (GtkAction *action, RecnWindow2 *recnData)
     gnc_reconcile_view_commit (GNC_RECONCILE_VIEW (recnData->credit), date);
     gnc_reconcile_view_commit (GNC_RECONCILE_VIEW (recnData->debit), date);
 
-    auto_payment = gnc_gconf_get_bool (GCONF_RECONCILE_SECTION,
-                                      "auto_cc_payment", NULL);
+    auto_payment = gnc_prefs_get_bool (GNC_PREFS_GROUP_RECONCILE, GNC_PREF_AUTO_CC_PAYMENT);
 
     account = recn_get_account (recnData);
 

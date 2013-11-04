@@ -33,7 +33,7 @@
 #include "gnc-tree-model-split-reg.h"
 #include "gnc-component-manager.h"
 #include "gnc-commodity.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-engine.h"
 #include "gnc-event.h"
 #include "gnc-gobject-utils.h"
@@ -46,7 +46,7 @@
 
 #define TREE_MODEL_SPLIT_REG_CM_CLASS "tree-model-split-reg"
 
-#define GCONF_SECTION "window/pages/register2"
+#define STATE_SECTION_PREFIX "window/pages/register2/"
 
 /* Signal codes */
 enum
@@ -341,26 +341,26 @@ gnc_tree_model_split_reg_class_init (GncTreeModelSplitRegClass *klass)
 
 
 static void
-gnc_tree_model_split_reg_gconf_changed (GConfEntry *entry, gpointer user_data)
+gnc_tree_model_split_reg_prefs_changed (gpointer prefs, gchar *pref, gpointer user_data)
 {
     GncTreeModelSplitReg *model = user_data;
 
-    g_return_if_fail (entry && entry->key);
+    g_return_if_fail (pref);
 
     if (model == NULL)
         return;
 
-    if (g_str_has_suffix (entry->key, KEY_ACCOUNTING_LABELS))
+    if (g_str_has_suffix (pref, GNC_PREF_ACCOUNTING_LABELS))
     {
-        model->use_accounting_labels = gnc_gconf_get_bool (GCONF_GENERAL, KEY_ACCOUNTING_LABELS, NULL);
+        model->use_accounting_labels = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL, GNC_PREF_ACCOUNTING_LABELS);
     }
-    else if (g_str_has_suffix (entry->key, KEY_ACCOUNT_SEPARATOR))
+    else if (g_str_has_suffix (pref, GNC_PREF_ACCOUNT_SEPARATOR))
     {
         model->separator_changed = TRUE;
     }
     else
     {
-        g_warning("gnc_tree_model_split_reg_gconf_changed: Unknown gconf key %s", entry->key);
+        g_warning("gnc_tree_model_split_reg_prefs_changed: Unknown preference %s", pref);
     }
 }
 
@@ -378,12 +378,14 @@ gnc_tree_model_split_reg_init (GncTreeModelSplitReg *model)
 
     model->priv = g_new0 (GncTreeModelSplitRegPrivate, 1);
 
-    gnc_gconf_general_register_cb (KEY_ACCOUNTING_LABELS,
-                                  gnc_tree_model_split_reg_gconf_changed,
-                                  model);
-    gnc_gconf_general_register_cb (KEY_ACCOUNT_SEPARATOR,
-                                  gnc_tree_model_split_reg_gconf_changed,
-                                  model);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_ACCOUNTING_LABELS,
+                           gnc_tree_model_split_reg_prefs_changed,
+                           model);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_ACCOUNT_SEPARATOR,
+                           gnc_tree_model_split_reg_prefs_changed,
+                           model);
     LEAVE(" ");
 }
 
@@ -491,9 +493,9 @@ gnc_tree_model_split_reg_new (SplitRegisterType2 reg_type, SplitRegisterStyle2 s
     priv->bsplit_node = g_list_append (priv->bsplit_node, priv->bsplit);
 
     /* Setup some config entries */
-    model->use_accounting_labels = gnc_gconf_get_bool (GCONF_GENERAL, KEY_ACCOUNTING_LABELS, NULL);
-    model->use_theme_colors = gnc_gconf_get_bool (GCONF_GENERAL_REGISTER, "use_theme_colors", NULL);
-    model->alt_colors_by_txn = gnc_gconf_get_bool (GCONF_GENERAL_REGISTER, "alternate_color_by_transaction", NULL);
+    model->use_accounting_labels = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL, GNC_PREF_ACCOUNTING_LABELS);
+    model->use_theme_colors = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_USE_THEME_COLORS);
+    model->alt_colors_by_txn = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_ALT_COLOR_BY_TRANS);
     model->read_only = FALSE;
 
     /* Create the ListStores for the auto completion / combo's */
@@ -947,12 +949,14 @@ gnc_tree_model_split_reg_destroy (GncTreeModelSplitReg *model)
     g_object_unref (priv->action_list);
     g_object_unref (priv->account_list);
 
-    gnc_gconf_general_remove_cb (KEY_ACCOUNTING_LABELS,
-                                gnc_tree_model_split_reg_gconf_changed,
-                                model);
-    gnc_gconf_general_remove_cb (KEY_ACCOUNT_SEPARATOR,
-                                gnc_tree_model_split_reg_gconf_changed,
-                                model);
+    gnc_prefs_remove_cb_by_func (GNC_PREFS_GROUP_GENERAL,
+                                 GNC_PREF_ACCOUNTING_LABELS,
+                                 gnc_tree_model_split_reg_prefs_changed,
+                                 model);
+    gnc_prefs_remove_cb_by_func (GNC_PREFS_GROUP_GENERAL,
+                                 GNC_PREF_ACCOUNT_SEPARATOR,
+                                 gnc_tree_model_split_reg_prefs_changed,
+                                 model);
     LEAVE(" ");
 }
 
@@ -998,40 +1002,42 @@ gnc_tree_model_split_reg_get_sub_account (GncTreeModelSplitReg *model)
 void
 gnc_tree_model_split_reg_default_query (GncTreeModelSplitReg *model, Account *default_account, Query *query)
 {
-    gchar *gconf_key;
+    gchar *state_key;
     const GncGUID * guid;
-    const gchar *gconf_section;
     const gchar *sort_string;
     gint  depth, col;
     
     guid = xaccAccountGetGUID (default_account);
 
     /* Used for saving different register column widths under seperate keys */
-    if (model->priv->display_subacc == TRUE)
-        gconf_key = g_strconcat (GCONF_SECTION,"/", (gchar*)guid_to_string (guid), "_sub", NULL);
-    else
-        gconf_key = g_strconcat (GCONF_SECTION,"/", (gchar*)guid_to_string (guid), NULL);
- 
     // We need to give the General Ledger a Key other than all zeros which the search register gets.
     if (model->priv->display_gl == TRUE && model->type == GENERAL_LEDGER2)
-        gconf_key = g_strconcat (GCONF_SECTION,"/", "00000000000000000000000000000001", NULL);
+        state_key = g_strconcat (STATE_SECTION_PREFIX, "00000000000000000000000000000001", NULL);
+    else if (model->priv->display_subacc == TRUE)
+        state_key = g_strconcat (STATE_SECTION_PREFIX, (gchar*)guid_to_string (guid), "_sub", NULL);
+    else
+        state_key = g_strconcat (STATE_SECTION_PREFIX, (gchar*)guid_to_string (guid), NULL);
+ 
 
-    /* Restore the sort column from gconf */
-    col = gnc_gconf_get_int (gconf_key, "sort_col", NULL);
+    /* Restore the sort column from saved state */
+    // FIXME currently not implemented
+    col = 0;
     if (col == 0)    
         model->sort_col = 1;
     else
         model->sort_col = col;
 
-    /* Restore the sort depth from gconf */
-    depth = gnc_gconf_get_int (gconf_key, "sort_depth", NULL);
+    /* Restore the sort depth from saved state */
+    // FIXME currently not implemented
+    depth = 0;
     if (depth == 0)
         model->sort_depth = 1;
     else
         model->sort_depth = depth;
 
-    /* Restore the sort order from gconf */
-    sort_string = gnc_gconf_get_string (gconf_key, "sort_order", NULL);
+    /* Restore the sort order from saved state */
+    // FIXME currently not implemented
+    sort_string = NULL;
     if (g_strcmp0 ("descending", sort_string) == 0)
         model->sort_direction = -1;
     else
@@ -3096,7 +3102,7 @@ gnc_tree_model_split_reg_update_account_list (GncTreeModelSplitReg *model)
     // Copy the accts, put it in full name order. 
     accts_cpy = g_list_copy (accts);
 
-    if (gnc_gconf_get_bool (GCONF_GENERAL_REGISTER, "show_leaf_account_names", NULL))
+    if (gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_SHOW_LEAF_ACCT_NAMES))
         accts_cpy = g_list_sort (accts_cpy, (GCompareFunc)gtm_sr_account_order_by_name);
     else
         accts_cpy = g_list_sort (accts_cpy, (GCompareFunc)gtm_sr_account_order_by_full_name);

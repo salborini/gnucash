@@ -24,14 +24,13 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
-#include <gconf/gconf.h>
 #ifdef HAVE_X11_XLIB_H
 # include <X11/Xlib.h>
 #endif
 #include <libxml/xmlIO.h>
 
-#include "assistant-gconf-setup.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-gnome-utils.h"
 //#include "gnc-html.h"
 #include "gnc-engine.h"
@@ -96,9 +95,8 @@ gnc_options_dialog_set_new_book_option_values (GNCOptionDB *odb)
     gboolean num_source_is_split_action;
 
     if (!odb) return;
-    num_source_is_split_action = gnc_gconf_get_bool(GCONF_GENERAL,
-                                                    KEY_NUM_SOURCE,
-                                                    NULL);
+    num_source_is_split_action = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL,
+                                                    GNC_PREF_NUM_SOURCE);
     if (num_source_is_split_action)
     {
         num_source_option = gnc_option_db_get_option_by_name(odb,
@@ -127,31 +125,20 @@ gnc_commodity_help_cb (void)
 static void
 gnc_configure_date_format (void)
 {
-    char *format_code = gnc_gconf_get_string(GCONF_GENERAL,
-                        KEY_DATE_FORMAT, NULL);
+    QofDateFormat df = gnc_prefs_get_int(GNC_PREFS_GROUP_GENERAL,
+                                         GNC_PREF_DATE_FORMAT);
 
-    QofDateFormat df;
-
-    if (format_code == NULL)
-        format_code = g_strdup("locale");
-    if (*format_code == '\0')
+    /* Only a subset of the qof date formats is currently
+     * supported for date entry.
+     */
+    if ((df > QOF_DATE_FORMAT_LOCALE)
+            || (df > QOF_DATE_FORMAT_LOCALE))
     {
-        g_free(format_code);
-        format_code = g_strdup("locale");
-    }
-
-    if (gnc_date_string_to_dateformat(format_code, &df))
-    {
-        PERR("Incorrect date format code");
-        if (format_code != NULL)
-            free(format_code);
+        PERR("Incorrect date format");
         return;
     }
 
     qof_date_format_set(df);
-
-    if (format_code != NULL)
-        free(format_code);
 }
 
 /* gnc_configure_date_completion
@@ -166,44 +153,19 @@ gnc_configure_date_format (void)
 static void
 gnc_configure_date_completion (void)
 {
-    char *date_completion = gnc_gconf_get_string(GCONF_GENERAL,
-                            KEY_DATE_COMPLETION, NULL);
-    int backmonths = gnc_gconf_get_float(GCONF_GENERAL,
-                                         KEY_DATE_BACKMONTHS, NULL);
-    QofDateCompletion dc;
+    QofDateCompletion dc = QOF_DATE_COMPLETION_THISYEAR;
+    int backmonths = gnc_prefs_get_float(GNC_PREFS_GROUP_GENERAL,
+                                         GNC_PREF_DATE_BACKMONTHS);
 
     if (backmonths < 0)
-    {
         backmonths = 0;
-    }
     else if (backmonths > 11)
-    {
         backmonths = 11;
-    }
 
-    if (date_completion && strcmp(date_completion, "sliding") == 0)
-    {
+    if (gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL, GNC_PREF_DATE_COMPL_SLIDING))
         dc = QOF_DATE_COMPLETION_SLIDING;
-    }
-    else if (date_completion && strcmp(date_completion, "thisyear") == 0)
-    {
-        dc = QOF_DATE_COMPLETION_THISYEAR;
-    }
-    else
-    {
-        /* No preference has been set yet */
-        PINFO("Incorrect date completion code, using defaults");
-        dc = QOF_DATE_COMPLETION_THISYEAR;
-        backmonths = 6;
-        gnc_gconf_set_string (GCONF_GENERAL, KEY_DATE_COMPLETION, "thisyear", NULL);
-        gnc_gconf_set_float (GCONF_GENERAL, KEY_DATE_BACKMONTHS, 6.0, NULL);
-    }
-    qof_date_completion_set(dc, backmonths);
 
-    if (date_completion != NULL)
-    {
-        free(date_completion);
-    }
+    qof_date_completion_set(dc, backmonths);
 }
 
 void
@@ -633,8 +595,8 @@ gnc_gui_init(void)
 
     g_set_application_name(PACKAGE_NAME);
 
+    gnc_prefs_init();
     gnc_show_splash_screen();
-    assistant_gconf_install_check_schemas();
 
     gnome_is_initialized = TRUE;
 
@@ -642,14 +604,25 @@ gnc_gui_init(void)
     gnc_configure_date_format();
     gnc_configure_date_completion();
 
-    gnc_gconf_general_register_cb(
-        KEY_DATE_FORMAT, (GncGconfGeneralCb)gnc_configure_date_format, NULL);
-    gnc_gconf_general_register_cb(
-        KEY_DATE_COMPLETION, (GncGconfGeneralCb)gnc_configure_date_completion, NULL);
-    gnc_gconf_general_register_cb(
-        KEY_DATE_BACKMONTHS, (GncGconfGeneralCb)gnc_configure_date_completion, NULL);
-    gnc_gconf_general_register_any_cb(
-        (GncGconfGeneralAnyCb)gnc_gui_refresh_all, NULL);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_DATE_FORMAT,
+                           gnc_configure_date_format,
+                           NULL);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_DATE_COMPL_THISYEAR,
+                           gnc_configure_date_completion,
+                           NULL);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_DATE_COMPL_SLIDING,
+                           gnc_configure_date_completion,
+                           NULL);
+    gnc_prefs_register_cb (GNC_PREFS_GROUP_GENERAL,
+                           GNC_PREF_DATE_BACKMONTHS,
+                           gnc_configure_date_completion,
+                           NULL);
+    gnc_prefs_register_group_cb (GNC_PREFS_GROUP_GENERAL,
+                                gnc_gui_refresh_all,
+                                NULL);
 
     gnc_ui_commodity_set_help_callback (gnc_commodity_help_cb);
     gnc_file_set_shutdown_callback (gnc_shutdown);

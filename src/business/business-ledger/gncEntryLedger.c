@@ -37,6 +37,7 @@
 
 #include "gnc-component-manager.h"
 #include "gnc-ui.h"
+#include "gnome-utils/gnc-warnings.h"
 
 #include "gncEntry.h"
 #include "gncEntryLedger.h"
@@ -44,6 +45,8 @@
 #include "gncEntryLedgerLayout.h"
 #include "gncEntryLedgerModel.h"
 #include "gncEntryLedgerControl.h"
+
+static QofLogModule log_module = "Business Entry Ledger";
 
 /** Static Functions ***************************************************/
 
@@ -289,7 +292,7 @@ GncEntryLedger * gnc_entry_ledger_new (QofBook *book, GncEntryLedgerType type)
     ledger->type = type;
     ledger->book = book;
     ledger->traverse_to_new = TRUE;
-    ledger->gconf_section = NULL;
+    ledger->prefs_group = NULL;
 
     /* Orders and Invoices are "invoices" for lookups */
     switch (type)
@@ -321,6 +324,11 @@ GncEntryLedger * gnc_entry_ledger_new (QofBook *book, GncEntryLedgerType type)
         ledger->is_cust_doc = FALSE;
         ledger->is_credit_note = TRUE;
         break;
+    default:
+	PWARN ("Bad GncEntryLedgerType");
+	g_free (ledger);
+	return NULL;
+	break;
     }
 
     ledger->blank_entry_guid = *guid_null();
@@ -910,7 +918,7 @@ gnc_entry_ledger_duplicate_current_entry (GncEntryLedger *ledger)
                                GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                                _("_Record"), GTK_RESPONSE_ACCEPT,
                                NULL);
-        response = gnc_dialog_run(GTK_DIALOG(dialog), "invoice_entry_duplicated");
+        response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_INV_ENTRY_DUP);
         gtk_widget_destroy(dialog);
 
         if (response != GTK_RESPONSE_ACCEPT)
@@ -956,12 +964,12 @@ gnc_entry_ledger_get_query (GncEntryLedger *ledger)
 }
 
 void
-gnc_entry_ledger_set_gconf_section (GncEntryLedger *ledger, const gchar *string)
+gnc_entry_ledger_set_prefs_group (GncEntryLedger *ledger, const gchar *string)
 {
     if (!ledger)
         return;
 
-    ledger->gconf_section = string;
+    ledger->prefs_group = string;
 }
 
 void gnc_entry_ledger_move_current_entry_updown (GncEntryLedger *ledger,

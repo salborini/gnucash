@@ -15,8 +15,7 @@ AM_CPPFLAGS = \
   -DTEST_MYSQL_URL=\"${TEST_MYSQL_URL}\" \
   -DTEST_PGSQL_URL=\"${TEST_PGSQL_URL}\" \
   ${GLIB_CFLAGS} \
-  ${GUILE_INCS} \
-  ${GCONF_CFLAGS}
+  ${GUILE_INCS}
 
 LDADD = ${top_builddir}/src/test-core/libtest-core.la \
         ${top_builddir}/src/gnc-module/libgnc-module.la \
@@ -61,8 +60,7 @@ endif
 
 test_backend_dbi_SOURCES = \
     test-backend-dbi.c \
-    utest-backend-dbi-basic.c \
-    utest-backend-dbi-business.c \
+    test-backend-dbi-basic.c \
     test-dbi-stuff.c \
     test-dbi-business-stuff.c
 

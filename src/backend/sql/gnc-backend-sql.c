@@ -72,15 +72,12 @@
 #include "gnc-tax-table-sql.h"
 #include "gnc-vendor-sql.h"
 
-#include "gnc-core-prefs.h"
+#include "gnc-prefs.h"
 
 #if defined( S_SPLINT_S )
 #include "splint-defs.h"
 #endif
 
-#if 0
-static const gchar* convert_search_obj( QofIdType objType );
-#endif
 static void gnc_sql_init_object_handlers( void );
 static void update_progress( GncSqlBackend* be );
 static void finish_progress( GncSqlBackend* be );
@@ -279,59 +276,6 @@ gnc_sql_load( GncSqlBackend* be, /*@ dependent @*/ QofBook *book, QofBackendLoad
 
 /* ================================================================= */
 
-#if 0
-static gint
-compare_namespaces(gconstpointer a, gconstpointer b)
-{
-    const gchar *sa = (const gchar *) a;
-    const gchar *sb = (const gchar *) b;
-
-    return( g_strcmp0( sa, sb ) );
-}
-
-static gint
-compare_commodity_ids(gconstpointer a, gconstpointer b)
-{
-    const gnc_commodity *ca = (const gnc_commodity *) a;
-    const gnc_commodity *cb = (const gnc_commodity *) b;
-
-    return( g_strcmp0( gnc_commodity_get_mnemonic( ca ),
-    gnc_commodity_get_mnemonic( cb ) ) );
-}
-
-static void
-write_commodities( GncSqlBackend* be, QofBook* book )
-{
-    gnc_commodity_table* tbl;
-    GList* namespaces;
-    GList* lp;
-
-    g_return_if_fail( be != NULL );
-    g_return_if_fail( book != NULL );
-
-    tbl = gnc_commodity_table_get_table( book );
-    namespaces = gnc_commodity_table_get_namespaces( tbl );
-    if ( namespaces != NULL )
-    {
-        namespaces = g_list_sort( namespaces, compare_namespaces );
-    }
-    for ( lp = namespaces; lp != NULL; lp = lp->next )
-    {
-        GList* comms;
-        GList* lp2;
-
-        comms = gnc_commodity_table_get_commodities( tbl, lp->data );
-        comms = g_list_sort( comms, compare_commodity_ids );
-
-        for ( lp2 = comms; lp2 != NULL; lp2 = lp2->next )
-        {
-            gnc_sql_save_commodity( be, GNC_COMMODITY(lp2->data) );
-        }
-    }
-    update_progress( be );
-}
-#endif
-
 static gboolean
 write_account_tree( GncSqlBackend* be, Account* root )
 {
@@ -495,7 +439,7 @@ gnc_sql_sync_all( GncSqlBackend* be, /*@ dependent @*/ QofBook *book )
     ENTER( "book=%p, be->book=%p", book, be->book );
     update_progress( be );
     (void)reset_version_info( be );
-    gnc_sql_set_table_version( be, "Gnucash", gnc_core_prefs_get_long_version() );
+    gnc_sql_set_table_version( be, "Gnucash", gnc_prefs_get_long_version() );
     gnc_sql_set_table_version( be, "Gnucash-Resave", GNUCASH_RESAVE_VERSION );
 
     /* Create new tables */
@@ -1938,8 +1882,13 @@ load_timespec( const GncSqlBackend* be, GncSqlRow* row,
     }
     else
     {
-        if ( G_VALUE_HOLDS_STRING( val ) )
+        if ( G_VALUE_HOLDS_INT64( val ) )
         {
+	    timespecFromTime64 (&ts, (time64)(g_value_get_int64 (val)));
+	    isOK = TRUE;
+	}
+	else if (G_VALUE_HOLDS_STRING (val))
+	{
             const gchar* s = g_value_get_string( val );
             if ( s != NULL )
             {
@@ -1955,7 +1904,6 @@ load_timespec( const GncSqlBackend* be, GncSqlRow* row,
                 g_free( buf );
                 isOK = TRUE;
             }
-
         }
         else
         {
@@ -2047,7 +1995,6 @@ load_date( const GncSqlBackend* be, GncSqlRow* row,
            const GncSqlColumnTableEntry* table_row )
 {
     const GValue* val;
-    GDate* date;
 
     g_return_if_fail( be != NULL );
     g_return_if_fail( row != NULL );
@@ -2058,11 +2005,30 @@ load_date( const GncSqlBackend* be, GncSqlRow* row,
     val = gnc_sql_row_get_value_at_col_name( row, table_row->col_name );
     if ( val != NULL )
     {
-        if ( G_VALUE_HOLDS_STRING( val ) )
+	if (G_VALUE_HOLDS_INT64 (val))
+	{
+	    gint64 time = g_value_get_int64 (val);
+	    GDateTime *gdt = g_date_time_new_from_unix_utc (time);
+	    gint day, month, year;
+	    GDate *date;
+	    g_date_time_get_ymd (gdt, &year, &month, &day);
+	    date = g_date_new_dmy (day, month, year);
+	    g_date_time_unref (gdt);
+	    if ( table_row->gobj_param_name != NULL )
+	    {
+		g_object_set( pObject, table_row->gobj_param_name, date, NULL );
+	    }
+	    else
+	    {
+		(*setter)( pObject, date );
+	    }
+	    g_date_free( date );
+	}
+        else if ( G_VALUE_HOLDS_STRING( val ) )
         {
             // Format of date is YYYYMMDD
             const gchar* s = g_value_get_string( val );
-
+	    GDate *date;
             if ( s != NULL )
             {
                 gchar buf[5];

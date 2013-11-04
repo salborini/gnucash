@@ -68,7 +68,7 @@ _gnucash_core_c_includes= \
 	${top_srcdir}/src/engine/gncTaxTable.h \
 	${top_srcdir}/src/engine/gncIDSearch.h \
 	${top_srcdir}/src/engine/gnc-pricedb.h \
-	${top_srcdir}/src/app-utils/gnc-prefs.h
+	${top_srcdir}/src/app-utils/gnc-prefs-utils.h
 
 
 gnucash_core.c: $(SWIG_FILES) ${top_srcdir}/src/base-typemaps.i ${top_srcdir}/src/engine/engine-common.i $(_gnucash_core_c_includes)
@@ -129,7 +129,7 @@ endif
 
 noinst_DATA = .py-links
 
-CLEANFILES = $(BUILT_SOURCES) .py-links gnucash_core.c gnucash_core.c.py
+CLEANFILES = $(BUILT_SOURCES) .py-links gnucash_core.c.py
 
 clean-local:
 	rm -rf gnucash

@@ -1,4 +1,4 @@
-SUBDIRS = . schemas
+SUBDIRS = . gschemas
 
 pkglib_LTLIBRARIES = libgncmod-aqbanking.la
 
@@ -45,7 +45,6 @@ libgncmod_aqbanking_la_LIBADD = \
   ${top_builddir}/src/gnc-module/libgnc-module.la \
   ${top_builddir}/src/libqof/qof/libgnc-qof.la \
   ${GTK_LIBS} \
-  ${GCONF_LIBS} \
   ${GLIB_LIBS} \
   ${GWENGUI_GTK2_LIBS} \
   ${AQBANKING_LIBS}
@@ -64,7 +63,6 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/gnc-module \
   -I${top_srcdir}/src/libqof/qof \
   ${GTK_CFLAGS} \
-  ${GCONF_CFLAGS} \
   ${GLIB_CFLAGS} \
   ${AQBANKING_CFLAGS}
 
@@ -77,6 +75,6 @@ gtkbuilder_DATA = \
   assistant-ab-initial.glade \
   dialog-ab.glade
 
-EXTRA_DIST = ${ui_DATA} ${gtkbuilder_DATA}
+EXTRA_DIST = ${ui_DATA} ${gtkbuilder_DATA} migratable-prefs-aqbanking.xml
 
 AM_CPPFLAGS += -DG_LOG_DOMAIN=\"gnc.import.aqbanking\"

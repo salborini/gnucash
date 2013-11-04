@@ -28,8 +28,9 @@
 #include "Scrub.h"
 #include "combocell.h"
 #include "gnc-component-manager.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "pricecell.h"
 #include "datecell.h"
 #include "dialog-transfer.h"
@@ -923,8 +924,8 @@ gnc_split_register_auto_completion (SplitRegister *reg,
         gnc_resume_gui_refresh ();
 
         /* now move to the non-empty amount column unless config setting says not */
-        if ( !gnc_gconf_get_bool(GCONF_GENERAL_REGISTER,
-                                 "tab_includes_transfer_on_memorised", NULL) )
+        if ( !gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                 GNC_PREF_TAB_TRANS_MEMORISED) )
         {
             amount = xaccSplitGetAmount (blank_split);
             cell_name = (gnc_numeric_negative_p (amount)) ? CRED_CELL : DEBT_CELL;
@@ -1546,7 +1547,7 @@ transaction_changed_confirm(VirtualLocation *p_new_virt_loc,
                            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                            _("_Record Changes"), GTK_RESPONSE_ACCEPT,
                            NULL);
-    response = gnc_dialog_run(GTK_DIALOG(dialog), "transaction_changed");
+    response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_REG_TRANS_MOD);
     gtk_widget_destroy(dialog);
 
     switch (response)
@@ -1845,7 +1846,7 @@ gnc_split_register_recn_cell_confirm (char old_flag, gpointer data)
             "%s", message);
     gtk_dialog_add_button(GTK_DIALOG(dialog), _("_Unreconcile"),
                           GTK_RESPONSE_YES);
-    response = gnc_dialog_run(GTK_DIALOG(dialog), "mark_split_unreconciled");
+    response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_REG_RECD_SPLIT_UNREC);
     gtk_widget_destroy(dialog);
     return (response == GTK_RESPONSE_YES);
 }

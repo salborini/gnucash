@@ -1,4 +1,4 @@
-SUBDIRS = gtkbuilder schemas . test ui
+SUBDIRS = gtkbuilder gschemas . test ui
 
 pkglib_LTLIBRARIES = libgncmod-gnome-utils.la
 
@@ -16,7 +16,6 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/libqof/qof \
   ${GLIB_CFLAGS} \
   ${GTK_CFLAGS} \
-  ${GCONF_CFLAGS} \
   ${GNOME_KEYRING_CFLAGS} \
   ${GUILE_INCS} \
   ${QOF_CFLAGS} \
@@ -26,7 +25,6 @@ AM_CPPFLAGS = \
 
 libgncmod_gnome_utils_la_SOURCES = \
   account-quickfill.c \
-  assistant-gconf-setup.c \
   assistant-utils.c \
   assistant-xml-encoding.c \
   cursors.c \
@@ -101,9 +99,11 @@ libgncmod_gnome_utils_la_SOURCES = \
   gnc-tree-view-split-reg.c \
   gnc-tree-view-sx-list.c \
   gnc-tree-view.c \
+  gnc-warnings.c \
   gnc-window.c \
   gncmod-gnome-utils.c \
   misc-gnome-utils.c \
+  tree-view-utils.c \
   search-param.c \
   print-session.c \
   swig-gnome-utils.c \
@@ -112,7 +112,6 @@ libgncmod_gnome_utils_la_SOURCES = \
 gncincludedir = ${GNC_INCLUDE_DIR}
 gncinclude_HEADERS = \
   account-quickfill.h \
-  assistant-gconf-setup.h \
   assistant-utils.h \
   assistant-xml-encoding.h \
   dialog-account.h \
@@ -184,6 +183,7 @@ gncinclude_HEADERS = \
   gnc-ui.h \
   gnc-window.h \
   misc-gnome-utils.h \
+  tree-view-utils.h \
   print-session.h \
   window-main-summarybar.h
 
@@ -205,7 +205,6 @@ libgncmod_gnome_utils_la_LIBADD = \
   $(top_builddir)/lib/libc/libc-missing.la \
   ${top_builddir}/src/libqof/qof/libgnc-qof.la \
   ${GTK_LIBS} \
-  ${GCONF_LIBS} \
   ${GNOME_KEYRING_LIBS} \
   ${GUILE_LIBS} \
   ${GLIB_LIBS} \
@@ -213,6 +212,14 @@ libgncmod_gnome_utils_la_LIBADD = \
   ${REGEX_LIBS} \
   ${LIBXML2_LIBS} \
   ${GTK_MAC_LIBS}
+
+BUILT_SOURCES = gnc-warnings.c gnc-warnings.h
+
+gnc-warnings.c: gschemas/org.gnucash.warnings.gschema.xml.in make-gnc-warnings-c.xsl
+	$(XSLTPROC) -o $@ $(srcdir)/make-gnc-warnings-c.xsl $<
+
+gnc-warnings.h: gschemas/org.gnucash.warnings.gschema.xml.in make-gnc-warnings-h.xsl
+	$(XSLTPROC) -o $@ $(srcdir)/make-gnc-warnings-h.xsl $<
 
 if HAVE_X11_XLIB_H
   libgncmod_gnome_utils_la_LIBADD += -lX11
@@ -233,6 +240,8 @@ gncscm_DATA = gnc-menu-extensions.scm
 
 EXTRA_DIST = \
   gnome-utils.i \
+  make-gnc-warnings-c.xsl \
+  make-gnc-warnings-h.xsl \
   ${gncmod_DATA} \
   ${gncscm_DATA}
 

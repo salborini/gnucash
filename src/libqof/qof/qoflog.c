@@ -51,6 +51,7 @@
 #include "qoflog.h"
 
 #define QOF_LOG_MAX_CHARS 50
+#define QOF_LOG_MAX_CHARS_WITH_ALLOWANCE 100
 #define QOF_LOG_INDENT_WIDTH 4
 #define NUM_CLOCKS 10
 
@@ -238,28 +239,33 @@ qof_log_set_level(QofLogModule log_module, QofLogLevel level)
 const char *
 qof_log_prettify (const char *name)
 {
-    gchar *p, *buffer;
+    gchar *p, *buffer, *begin;
     gint length;
 
     if (!name)
     {
         return "";
     }
-    buffer = g_strndup(name, QOF_LOG_MAX_CHARS - 1);
+/* Clang's __func__ displays the whole signature, like a good C++
+ * compier should. Gcc displays only the name of the function. Strip
+ * the extras from Clang's output so that log messages are the same
+ * regardless of compiler.
+ */
+    buffer = g_strndup(name, QOF_LOG_MAX_CHARS_WITH_ALLOWANCE - 1);
     length = strlen(buffer);
-    p = g_strstr_len(buffer, length, "(");
-    if (p)
-    {
-        *(p + 1) = ')';
-        *(p + 2) = 0x0;
-    }
+    p = g_strstr_len (buffer, length, "(");
+    if (p) *p = '\0';
+    begin = g_strrstr (buffer, "*");
+    if (begin == NULL)
+	begin = g_strrstr (buffer, " ");
+    if (begin != NULL)
+	p = begin + 1;
     else
-    {
-        strcpy (&buffer[QOF_LOG_MAX_CHARS - 6], "...()");
-    }
+	p = buffer;
+
     if (function_buffer)
         g_free(function_buffer);
-    function_buffer = g_strdup(buffer);
+    function_buffer = g_strdup(p);
     g_free(buffer);
     return function_buffer;
 }
@@ -366,11 +372,12 @@ qof_log_check(QofLogModule log_domain, QofLogLevel log_level)
 
     {
         gpointer match_level;
-        if ((match_level = g_hash_table_lookup(log_levels, "")) != NULL)
+        if (log_levels &&
+	    (match_level = g_hash_table_lookup(log_levels, "")) != NULL)
             longest_match_level = (QofLogLevel)GPOINTER_TO_INT(match_level);
     }
 
-    _QLC_DBG( { printf("trying [%s] (%d):", log_domain, g_hash_table_size(log_levels)); });
+_QLC_DBG( { printf("trying [%s] (%d):", log_domain, log_levels != NULL ? g_hash_table_size(log_levels) : 0); });
     if (G_LIKELY(log_levels))
     {
         // e.g., "a.b.c\0" -> "a\0b.c\0" -> "a.b\0c\0", "a.b.c\0"

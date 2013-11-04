@@ -37,8 +37,9 @@
 #include "gnc-tree-view-split-reg.h"
 #include "gnc-component-manager.h"
 #include "gnc-ui.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-gdate-utils.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "dialog-utils.h"
 #include "dialog-dup-trans.h"
 #include "dialog-account.h"
@@ -146,7 +147,7 @@ gnc_tree_control_split_reg_trans_open_and_warn (GncTreeViewSplitReg *view, Trans
                 "%s", message);
         gtk_dialog_add_button (GTK_DIALOG (dialog),
                               _("_Record"), GTK_RESPONSE_ACCEPT);
-        response = gnc_dialog_run (GTK_DIALOG (dialog), "transaction_being_edited");
+        response = gnc_dialog_run (GTK_DIALOG (dialog), GNC_PREF_WARN_REG_TRANS_MOD);
         gtk_widget_destroy (dialog);
 
         if (response != GTK_RESPONSE_ACCEPT)
@@ -796,8 +797,8 @@ gnc_tree_control_split_reg_enter (GncTreeViewSplitReg *view)
 
     model = gnc_tree_view_split_reg_get_model_from_view (view);
 
-    goto_blank = gnc_gconf_get_bool (GCONF_GENERAL_REGISTER,
-                                    "enter_moves_to_end", NULL);
+    goto_blank = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                     GNC_PREF_ENTER_MOVES_TO_END);
 
     ENTER("view=%p, goto_blank = %s", view, goto_blank ? "TRUE" : "FALSE");
 
@@ -870,11 +871,11 @@ gnc_tree_control_split_reg_reinit (GncTreeViewSplitReg *view, gpointer data)
     {
         gtk_message_dialog_format_secondary_text (GTK_MESSAGE_DIALOG (dialog),
                 "%s", recn_warn);
-        warning = "register_remove_all_splits2";
+        warning = GNC_PREF_WARN_REG_SPLIT_DEL_ALL_RECD;
     }
     else
     {
-        warning = "register_remove_all_splits";
+        warning = GNC_PREF_WARN_REG_SPLIT_DEL_ALL;
     }
 
     gtk_dialog_add_button (GTK_DIALOG (dialog),
@@ -1007,11 +1008,11 @@ gnc_tree_control_split_reg_delete (GncTreeViewSplitReg *view, gpointer data)
         {
             gtk_message_dialog_format_secondary_text (GTK_MESSAGE_DIALOG (dialog),
                     "%s", recn_warn);
-            warning = "register_delete_split2";
+            warning = GNC_PREF_WARN_REG_SPLIT_DEL_RECD;
         }
         else
         {
-            warning = "register_delete_split";
+            warning = GNC_PREF_WARN_REG_SPLIT_DEL;
         }
 
         gtk_dialog_add_button (GTK_DIALOG (dialog),
@@ -1048,11 +1049,11 @@ gnc_tree_control_split_reg_delete (GncTreeViewSplitReg *view, gpointer data)
         {
             gtk_message_dialog_format_secondary_text (GTK_MESSAGE_DIALOG (dialog),
                     "%s", recn_warn);
-            warning = "register_delete_trans2";
+            warning = GNC_PREF_WARN_REG_TRANS_DEL_RECD;
         }
         else
         {
-            warning = "register_delete_trans";
+            warning = GNC_PREF_WARN_REG_TRANS_DEL;
         }
         gtk_dialog_add_button (GTK_DIALOG (dialog),
                               GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
@@ -1820,7 +1821,7 @@ gnc_tree_control_split_reg_recn_change (GncTreeViewSplitReg *view, GtkTreePath *
             "%s", message);
     gtk_dialog_add_button (GTK_DIALOG (dialog), _("_Unreconcile"),
                           GTK_RESPONSE_YES);
-    response = gnc_dialog_run (GTK_DIALOG (dialog), "mark_split_unreconciled");
+    response = gnc_dialog_run (GTK_DIALOG (dialog), GNC_PREF_WARN_REG_RECD_SPLIT_UNREC);
     gtk_widget_destroy (dialog);
 
     if (response == GTK_RESPONSE_YES)
@@ -1928,7 +1929,7 @@ gnc_tree_control_split_reg_recn_test (GncTreeViewSplitReg *view, GtkTreePath *sp
                 "%s", message);
         gtk_dialog_add_button (GTK_DIALOG (dialog), _("Chan_ge Split"),
                               GTK_RESPONSE_YES);
-        response = gnc_dialog_run (GTK_DIALOG (dialog), "change_reconciled_split");
+        response = gnc_dialog_run (GTK_DIALOG (dialog), GNC_PREF_WARN_REG_RECD_SPLIT_MOD);
         gtk_widget_destroy (dialog);
 
         if (response != GTK_RESPONSE_YES)
@@ -1960,7 +1961,7 @@ gnc_tree_control_split_reg_get_account_by_name (GncTreeViewSplitReg *view, const
         return NULL;
 
     /* Find the account */
-    if (gnc_gconf_get_bool (GCONF_GENERAL_REGISTER, "show_leaf_account_names", NULL))
+    if (gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_SHOW_LEAF_ACCT_NAMES))
         account = gnc_account_lookup_by_name (gnc_get_current_root_account(), name);
     else
         account = gnc_account_lookup_by_full_name (gnc_get_current_root_account(), name);

@@ -31,6 +31,7 @@
 
 typedef enum
 {
+    GNC_ENTRY_ORDER_NONE = -1, //Force clang to use int representation of enum.
     GNCENTRY_ORDER_ENTRY,
     GNCENTRY_ORDER_VIEWER,
     GNCENTRY_INVOICE_ENTRY,
@@ -156,6 +157,6 @@ void gnc_entry_ledger_move_current_entry_updown (GncEntryLedger *ledger,
 
 QofQuery * gnc_entry_ledger_get_query (GncEntryLedger *ledger);
 
-void gnc_entry_ledger_set_gconf_section (GncEntryLedger *ledger, const gchar *string);
+void gnc_entry_ledger_set_prefs_group (GncEntryLedger *ledger, const gchar *string);
 
 #endif /* GNC_ENTRY_LEDGER_H */

@@ -41,7 +41,7 @@
 #include "gnc-currency-edit.h"
 #include "gnc-exp-parser.h"
 #include "gnc-general-select.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-hooks.h"
 #include "gnc-component-manager.h"
 #include "gnc-path.h"
@@ -56,7 +56,8 @@
 #include "gnc-engine.h"
 static QofLogModule log_module = GNC_MOD_IMPORT;
 
-#define GCONF_SECTION "dialogs/new_hierarchy"
+#define GNC_PREFS_GROUP           "dialogs.new-hierarchy"
+#define GNC_PREF_SHOW_ON_NEW_FILE "show-on-new-file"
 
 typedef enum
 {
@@ -118,7 +119,7 @@ void on_finish (GtkAssistant  *gtkassistant, hierarchy_data *data);
 static void
 delete_hierarchy_dialog (hierarchy_data *data)
 {
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(data->dialog));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(data->dialog));
     gtk_widget_destroy (data->dialog);
 }
 
@@ -906,7 +907,7 @@ on_final_account_prepare (hierarchy_data  *data)
 
     /* Now build a new account tree */
     data->final_account_tree
-    = GNC_TREE_VIEW_ACCOUNT(gnc_tree_view_account_new_with_root (data->our_account_tree, FALSE));
+        = GNC_TREE_VIEW_ACCOUNT(gnc_tree_view_account_new_with_root (data->our_account_tree, FALSE));
     tree_view = GTK_TREE_VIEW(data->final_account_tree);
     gnc_tree_view_account_set_name_edited(data->final_account_tree,
                                           gnc_tree_view_account_name_edited_cb);
@@ -1132,7 +1133,7 @@ gnc_create_hierarchy_assistant (gboolean use_defaults, GncHierarchyAssistantFini
 
     data->balance_hash = g_hash_table_new(NULL, NULL);
 
-    gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW(data->dialog));
+    gnc_restore_window_size (GNC_PREFS_GROUP, GTK_WINDOW(data->dialog));
 
     g_signal_connect (G_OBJECT(dialog), "destroy",
                       G_CALLBACK (gnc_hierarchy_destroy_cb), data);
@@ -1171,7 +1172,7 @@ create_account_page(void)
 static void
 gnc_ui_hierarchy_assistant_hook (void)
 {
-    if (gnc_gconf_get_bool(GCONF_SECTION, "show_on_new_file", NULL))
+    if (gnc_prefs_get_bool(GNC_PREFS_GROUP, GNC_PREF_SHOW_ON_NEW_FILE))
     {
         gnc_ui_hierarchy_assistant_with_callback(TRUE, create_account_page);
     }

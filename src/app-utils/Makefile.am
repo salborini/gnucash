@@ -33,8 +33,9 @@ AM_CPPFLAGS = \
   ${GUILE_INCS} \
   ${PYTHON_CPPFLAGS} \
   ${GLIB_CFLAGS} \
-  ${GCONF_CFLAGS} \
-  ${GTK_CFLAGS}
+  ${GTK_CFLAGS} \
+  ${LIBXML2_CFLAGS} \
+  ${LIBXSLT_CFLAGS}
 
 libgncmod_app_utils_la_SOURCES = \
   calculation/expression_parser.c \
@@ -52,11 +53,12 @@ libgncmod_app_utils_la_SOURCES = \
   gnc-entry-quickfill.c \
   gnc-euro.c \
   gnc-exp-parser.c \
-  gnc-gconf-utils.c \
   gnc-gettext-util.c \
+  gnc-gsettings.c \
   gnc-helpers.c \
-  gnc-prefs.c \
+  gnc-prefs-utils.c \
   gnc-sx-instance-model.c \
+  gnc-state.c \
   gncmod-app-utils.c \
   gnc-ui-balances.c \
   gnc-ui-util.c \
@@ -78,12 +80,13 @@ gncinclude_HEADERS = \
   gnc-entry-quickfill.h \
   gnc-euro.h \
   gnc-exp-parser.h \
-  gnc-gconf-utils.h \
   gnc-gettext-util.h \
+  gnc-gsettings.h \
   gnc-help-utils.h \
   gnc-helpers.h \
-  gnc-prefs.h \
+  gnc-prefs-utils.h \
   gnc-sx-instance-model.h \
+  gnc-state.h \
   gnc-ui-balances.h \
   gnc-ui-util.h \
   guile-util.h \
@@ -96,10 +99,11 @@ libgncmod_app_utils_la_LIBADD = \
   ${top_builddir}/src/engine/libgncmod-engine.la \
   ${top_builddir}/src/core-utils/libgnc-core-utils.la \
   ${top_builddir}/src/libqof/qof/libgnc-qof.la \
-  ${GCONF_LIBS} \
   ${GTK_LIBS} \
   ${GUILE_LIBS} \
-  ${GLIB_LIBS}
+  ${GLIB_LIBS} \
+  ${LIBXML2_LIBS} \
+  ${LIBXSLT_LIBS}
 
 if BUILDING_FROM_SCM
 swig-app-utils-guile.c: app-utils.i ${top_srcdir}/src/base-typemaps.i
@@ -136,9 +140,15 @@ gncscm_DATA = \
   config-var.scm \
   date-utilities.scm \
   hooks.scm \
+  migrate-prefs.scm \
   options.scm \
   prefs.scm \
   simple-obj.scm
+  
+prefsmigrationdir = $(GNC_SHAREDIR)
+prefsmigration_DATA = \
+  make-prefs-migration-script.xsl \
+  migratable-prefs.xml
 
 noinst_DATA = .scm-links
 
@@ -152,7 +162,8 @@ EXTRA_DIST = \
   swig-app-utils-python.c \
   app-utils.i \
   ${gncmod_DATA} \
-  ${gncscm_DATA}
+  ${gncscm_DATA} \
+  ${prefsmigration_DATA}
 
 if OS_WIN32
 libgncmod_app_utils_la_SOURCES += gnc-help-utils.c

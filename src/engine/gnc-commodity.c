@@ -35,7 +35,7 @@
 #include <regex.h>
 
 #include "gnc-commodity.h"
-#include "gnc-core-prefs.h"
+#include "gnc-prefs.h"
 
 static QofLogModule log_module = GNC_MOD_COMMODITY;
 
@@ -627,7 +627,12 @@ gnc_commodity_finalize(GObject* comp)
 {
     G_OBJECT_CLASS(gnc_commodity_parent_class)->finalize(comp);
 }
-
+/* Note that g_value_set_object() refs the object, as does
+ * g_object_get(). But g_object_get() only unrefs once when it disgorges
+ * the object, leaving an unbalanced ref, which leaks. So instead of
+ * using g_value_set_object(), use g_value_take_object() which doesn't
+ * ref the object when used in get_property().
+ */
 static void
 gnc_commodity_get_property (GObject         *object,
                             guint            prop_id,
@@ -644,7 +649,7 @@ gnc_commodity_get_property (GObject         *object,
     switch (prop_id)
     {
     case PROP_NAMESPACE:
-        g_value_set_object(value, priv->namespace);
+        g_value_take_object(value, priv->namespace);
         break;
     case PROP_FULL_NAME:
         g_value_set_string(value, priv->fullname);
@@ -1124,6 +1129,18 @@ gnc_commodity_get_quote_tz(const gnc_commodity *cm)
 }
 
 /********************************************************************
+ * gnc_commodity_get_user_symbol
+ ********************************************************************/
+
+const char*
+gnc_commodity_get_user_symbol(const gnc_commodity *cm)
+{
+    const char *str;
+    if (!cm) return NULL;
+    return kvp_frame_get_string(cm->inst.kvp_data, "user_symbol");
+}
+
+/********************************************************************
  * gnc_commodity_set_mnemonic
  ********************************************************************/
 
@@ -1354,6 +1371,25 @@ gnc_commodity_set_quote_tz(gnc_commodity *cm, const char *tz)
     priv->quote_tz = CACHE_INSERT (tz);
     mark_commodity_dirty(cm);
     gnc_commodity_commit_edit(cm);
+    LEAVE(" ");
+}
+
+/********************************************************************
+ * gnc_commodity_set_user_symbol
+ ********************************************************************/
+
+void
+gnc_commodity_set_user_symbol(gnc_commodity * cm, const char * user_symbol)
+{
+    if (!cm) return;
+
+    ENTER ("(cm=%p, symbol=%s)", cm, user_symbol ? user_symbol : "(null)");
+
+    gnc_commodity_begin_edit(cm);
+    kvp_frame_set_string(cm->inst.kvp_data, "user_symbol", user_symbol);
+    mark_commodity_dirty(cm);
+    gnc_commodity_commit_edit(cm);
+
     LEAVE(" ");
 }
 
@@ -2024,7 +2060,7 @@ gnc_commodity_table_get_quotable_commodities(const gnc_commodity_table * table)
     GList * nslist, * tmp;
     GList * l = NULL;
     regex_t pattern;
-    const char *expression = gnc_core_prefs_get_namespace_regexp();
+    const char *expression = gnc_prefs_get_namespace_regexp();
 
     ENTER("table=%p, expression=%s", table, expression);
     if (!table)

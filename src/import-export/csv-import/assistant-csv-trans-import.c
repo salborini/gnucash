@@ -49,7 +49,7 @@
 #include <goffice/gtk/go-charmap-sel.h>
 
 #define MIN_COL_WIDTH 70
-#define GCONF_SECTION "dialogs/import/csv"
+#define GNC_PREFS_GROUP "dialogs.import.csv"
 #define ASSISTANT_CSV_IMPORT_TRANS_CM_CLASS "assistant-csv-trans-import"
 
 /* This static indicates the debugging module that this .o belongs to.  */
@@ -1270,7 +1270,7 @@ void load_settings (CsvImportTrans *info)
     info->starting_dir = NULL;
 
     /* The default directory for the user to select files. */
-    info->starting_dir = gnc_get_default_directory(GCONF_SECTION);
+    info->starting_dir = gnc_get_default_directory(GNC_PREFS_GROUP);
 }
 
 /*======================================================================*/
@@ -1510,7 +1510,7 @@ csv_import_trans_assistant_summary_page_prepare (GtkAssistant *assistant,
     gchar *text, *mtext;
 
     /* Save the Window size and directory */
-    gnc_set_default_directory(GCONF_SECTION, info->starting_dir);
+    gnc_set_default_directory(GNC_PREFS_GROUP, info->starting_dir);
 
     /* Remove the added button */
     gtk_assistant_remove_action_widget (assistant, info->help_button);
@@ -1619,7 +1619,7 @@ csv_import_trans_close_handler (gpointer user_data)
     if (!(info->gnc_csv_importer_gui == NULL))
         info->gnc_csv_importer_gui = NULL;
 
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(info->window));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(info->window));
     gtk_widget_destroy (info->window);
 }
 
@@ -1719,7 +1719,7 @@ csv_import_trans_assistant_create (CsvImportTrans *info)
         for (i = 0; i < SEP_NUM_OF_TYPES; i++)
         {
             info->sep_buttons[i]
-            = (GtkCheckButton*)GTK_WIDGET(gtk_builder_get_object (builder, sep_button_names[i]));
+                = (GtkCheckButton*)GTK_WIDGET(gtk_builder_get_object (builder, sep_button_names[i]));
             /* Connect them to the sep_button_clicked event handler. */
             g_signal_connect(G_OBJECT(info->sep_buttons[i]), "toggled",
                              G_CALLBACK(sep_button_clicked), (gpointer)info);
@@ -1728,7 +1728,7 @@ csv_import_trans_assistant_create (CsvImportTrans *info)
         /* Load and connect the custom separator checkbutton in the same way
          * as the other separator buttons. */
         info->custom_cbutton
-        = (GtkCheckButton*)GTK_WIDGET(gtk_builder_get_object (builder, "custom_cbutton"));
+            = (GtkCheckButton*)GTK_WIDGET(gtk_builder_get_object (builder, "custom_cbutton"));
         g_signal_connect(G_OBJECT(info->custom_cbutton), "clicked",
                          G_CALLBACK(sep_button_clicked), (gpointer)info);
 
@@ -1815,7 +1815,7 @@ csv_import_trans_assistant_create (CsvImportTrans *info)
     g_signal_connect (G_OBJECT(window), "destroy",
                       G_CALLBACK (csv_import_trans_assistant_destroy_cb), info);
 
-    gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW(info->window));
+    gnc_restore_window_size (GNC_PREFS_GROUP, GTK_WINDOW(info->window));
 
     gtk_builder_connect_signals(builder, info);
     g_object_unref(G_OBJECT(builder));
@@ -1844,8 +1844,8 @@ gnc_file_csv_trans_import(void)
     csv_import_trans_assistant_create (info);
 
     gnc_register_gui_component (ASSISTANT_CSV_IMPORT_TRANS_CM_CLASS,
-				NULL, csv_import_trans_close_handler,
-				info);
+                                NULL, csv_import_trans_close_handler,
+                                info);
 
     gtk_widget_show_all (info->window);
 

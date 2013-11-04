@@ -48,12 +48,11 @@
 #include "gnucash-style.h"
 #include "table-allgui.h"
 #include "table-gnome.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-engine.h"
 
 #include "gnc-ledger-display.h"
 
-#define GCONF_SECTION "window/pages/register"
 
 
 /** Static Globals *****************************************************/
@@ -65,16 +64,12 @@ static QofLogModule log_module = GNC_MOD_REGISTER;
 /** Implementation *****************************************************/
 
 void
-gnc_table_save_state (Table *table, gchar * gconf_key)
+gnc_table_save_state (Table *table, gchar * state_key)
 {
     GnucashSheet *sheet;
     GNCHeaderWidths widths;
     GList *node;
     gchar *key;
-    
-    gchar * gconf_section = NULL;
-    if(gconf_key != NULL)gconf_section = g_strjoin(NULL,GCONF_SECTION, "/", gconf_key,NULL);
-    PINFO("gconf_key=%s",gconf_key );
     
     if (!table)
         return;
@@ -82,7 +77,7 @@ gnc_table_save_state (Table *table, gchar * gconf_key)
     if (table->ui_data == NULL)
         return;
 
-    if (!gnc_gconf_get_bool(GCONF_GENERAL, KEY_SAVE_GEOMETRY, NULL))
+    if (!gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_SAVE_GEOMETRY))
         return;
 
     sheet = GNUCASH_SHEET (table->ui_data);
@@ -106,7 +101,7 @@ gnc_table_save_state (Table *table, gchar * gconf_key)
 
         /* Remember whether the column is visible */
         key = g_strdup_printf("%s_width", cell->cell_name);
-        gnc_gconf_set_int( gconf_section, key, width, NULL);
+        // FIXME the actual state saving is currently not implemented
         g_free(key);
     }
 
@@ -157,7 +152,7 @@ table_destroy_cb (Table *table)
    to pass NULL as second parameter. */
    
 void
-gnc_table_init_gui (GtkWidget *widget, gchar * gconf_key)
+gnc_table_init_gui (GtkWidget *widget, gchar * state_key)
 {
     GNCHeaderWidths widths;
     GnucashSheet *sheet;
@@ -168,13 +163,10 @@ gnc_table_init_gui (GtkWidget *widget, gchar * gconf_key)
     guint value;
  
     // Stuff for per-register settings load.
-    gchar * gconf_section = NULL;
-    if(gconf_key != NULL) gconf_section =g_strjoin(NULL,GCONF_SECTION, "/", gconf_key,NULL);
-    
     g_return_if_fail (widget != NULL);
     g_return_if_fail (GNUCASH_IS_REGISTER (widget));
     
-    PINFO("gconf_key=%s",gconf_key);
+    PINFO("state_key=%s",state_key);
     
     ENTER("widget=%p, data=%p", widget, "");
     
@@ -193,7 +185,7 @@ gnc_table_init_gui (GtkWidget *widget, gchar * gconf_key)
 
     widths = gnc_header_widths_new ();
 
-    if (gnc_gconf_get_bool(GCONF_GENERAL, KEY_SAVE_GEOMETRY, NULL))
+    if (gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_SAVE_GEOMETRY))
     {
         node = gnc_table_layout_get_cells (table->layout);
         for (; node; node = node->next)
@@ -205,7 +197,8 @@ gnc_table_init_gui (GtkWidget *widget, gchar * gconf_key)
 
             /* Remember whether the column is visible */
             key = g_strdup_printf("%s_width", cell->cell_name);
-            value = gnc_gconf_get_int(gconf_section, key, NULL);
+            // FIXME the actual state loading is currently not implemented
+            value = 0;
             if (value != 0)
                 gnc_header_widths_set_width (widths, cell->cell_name, value);
             g_free(key);

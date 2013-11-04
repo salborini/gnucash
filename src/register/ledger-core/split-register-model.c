@@ -28,8 +28,9 @@
 #include "datecell.h"
 #include "dialog-utils.h"
 #include "gnc-engine.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "pricecell.h"
 #include "recncell.h"
 #include "split-register.h"
@@ -595,9 +596,8 @@ gnc_split_register_get_bg_color (VirtualLocation virt_loc,
             g_strcmp0 (cursor_name, CURSOR_DOUBLE_LEDGER) == 0 ||
             g_strcmp0 (cursor_name, CURSOR_DOUBLE_LEDGER_NUM_ACTN) == 0)
     {
-        double_alternate_virt = gnc_gconf_get_bool(GCONF_GENERAL_REGISTER,
-                                "alternate_color_by_transaction",
-                                NULL);
+        double_alternate_virt = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                                    GNC_PREF_ALT_COLOR_BY_TRANS);
         if (is_current)
         {
             if (double_alternate_virt)
@@ -680,9 +680,8 @@ gnc_split_register_get_gtkrc_bg_color (VirtualLocation virt_loc,
             g_strcmp0 (cursor_name, CURSOR_DOUBLE_LEDGER) == 0 ||
             g_strcmp0 (cursor_name, CURSOR_DOUBLE_LEDGER_NUM_ACTN) == 0)
     {
-        double_alternate_virt = gnc_gconf_get_bool(GCONF_GENERAL_REGISTER,
-                                "alternate_color_by_transaction",
-                                NULL);
+        double_alternate_virt = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                                    GNC_PREF_ALT_COLOR_BY_TRANS);
         if (is_current)
         {
             if (double_alternate_virt)
@@ -982,17 +981,17 @@ gnc_split_register_get_num_help (VirtualLocation virt_loc,
         case RECEIVABLE_REGISTER:
         case PAYABLE_REGISTER:
             help = reg->use_tran_num_for_num_field ?
-                    _("Enter a reference, such as an invoice or check number "
-                        ", common to all entry lines (splits)") :
-                    _("Enter a reference, such as an invoice or check number "
-                        ", unique to each entry line (split)");
+                    _("Enter a reference, such as an invoice or check number, "
+                        "common to all entry lines (splits)") :
+                    _("Enter a reference, such as an invoice or check number, "
+                        "unique to each entry line (split)");
             break;
         default:
             help = reg->use_tran_num_for_num_field ?
-                    _("Enter a reference, such as a check number "
-                        ", common to all entry lines (splits)") :
-                    _("Enter a reference, such as a check number "
-                        ", unique to each entry line (split)");
+                    _("Enter a reference, such as a check number, "
+                        "common to all entry lines (splits)") :
+                    _("Enter a reference, such as a check number, "
+                        "unique to each entry line (split)");
             break;
         }
 
@@ -2064,7 +2063,7 @@ gnc_split_register_confirm (VirtualLocation virt_loc, gpointer user_data)
                 "%s", message);
         gtk_dialog_add_button(GTK_DIALOG(dialog), _("Chan_ge Split"),
                               GTK_RESPONSE_YES);
-        response = gnc_dialog_run(GTK_DIALOG(dialog), "change_reconciled_split");
+        response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_REG_RECD_SPLIT_MOD);
         gtk_widget_destroy(dialog);
         if (response != GTK_RESPONSE_YES)
             return FALSE;
@@ -2266,25 +2265,22 @@ gnc_split_register_guid_copy (gpointer p_to, gconstpointer p_from)
 
 
 static void
-gnc_split_register_colorize_negative (GConfEntry *entry, gpointer unused)
+gnc_split_register_colorize_negative (gpointer gsettings, gchar *key, gpointer unused)
 {
-    GConfValue *value;
-
-    value = gconf_entry_get_value(entry);
-    use_red_for_negative = gconf_value_get_bool(value);
+    use_red_for_negative = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL,
+                                              GNC_PREF_NEGATIVE_IN_RED);
 }
 
 
 static gpointer
 gnc_split_register_model_add_hooks (gpointer unused)
 {
-    gnc_gconf_general_register_cb(KEY_NEGATIVE_IN_RED,
-                                  gnc_split_register_colorize_negative,
-                                  NULL);
+    gnc_prefs_register_cb(GNC_PREFS_GROUP_GENERAL, GNC_PREF_NEGATIVE_IN_RED,
+                          gnc_split_register_colorize_negative,
+                          NULL);
     /* Get the initial value */
-    use_red_for_negative = gnc_gconf_get_bool(GCONF_GENERAL,
-                           KEY_NEGATIVE_IN_RED,
-                           NULL);
+    use_red_for_negative = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL,
+                                              GNC_PREF_NEGATIVE_IN_RED);
     return NULL;
 }
 

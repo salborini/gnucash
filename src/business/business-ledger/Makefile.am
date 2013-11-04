@@ -30,6 +30,7 @@ libgnc_business_ledger_la_LIBADD = \
 
 AM_CPPFLAGS = \
   -I${top_srcdir}/src \
+  -I${top_builddir}/src \
   -I${top_srcdir}/src/engine \
   -I${top_srcdir}/src/core-utils \
   -I${top_srcdir}/src/gnc-module \
@@ -37,7 +38,6 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/gnome-utils \
   -I${top_srcdir}/src/register/register-core \
   -I${top_srcdir}/src/libqof/qof \
-  ${GCONF_CFLAGS} \
   ${GTK_CFLAGS} \
   ${GLIB_CFLAGS}
 

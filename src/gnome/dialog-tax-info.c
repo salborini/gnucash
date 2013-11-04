@@ -36,7 +36,7 @@
 #include "Account.h"
 #include "gnc-ui-util.h"
 #include "dialog-utils.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-tree-view-account.h"
 #include "gnc-component-manager.h"
 #include "gnc-session.h"
@@ -44,8 +44,8 @@
 #include "gnc-ui.h"
 
 #define DIALOG_TAX_INFO_CM_CLASS "dialog-tax-info"
-#define GCONF_SECTION "dialogs/tax_info"
-#define PANED_POSITION "paned_position"
+#define GNC_PREFS_GROUP    "dialogs.tax-info"
+#define GNC_PREF_PANED_POS "paned-position"
 
 enum
 {
@@ -95,7 +95,6 @@ typedef struct
 typedef struct
 {
     GtkWidget * dialog;
-    GtkWidget * paned;
 
     GtkWidget * entity_name_display;
     GtkWidget * entity_name_entry;
@@ -613,7 +612,7 @@ account_to_gui (TaxInfoDialog *ti_dialog, Account *account)
     const char *str;
     TXFInfo *info;
     GList *infos;
-    guint index;
+    gint index = 0;
 
     if (!account)
     {
@@ -631,8 +630,7 @@ account_to_gui (TaxInfoDialog *ti_dialog, Account *account)
     info = txf_infos_find_code (infos, str);
     if (info)
         index = g_list_index (infos, info);
-    else
-        index = 0;
+
     if (index < 0)
         index = 0;
 
@@ -1457,14 +1455,13 @@ gnc_tax_info_dialog_create (GtkWidget * parent, TaxInfoDialog *ti_dialog)
     clear_gui (ti_dialog);
     gnc_tax_info_set_changed (ti_dialog, FALSE);
 
-    gnc_restore_window_size(GCONF_SECTION, GTK_WINDOW(ti_dialog->dialog));
+    gnc_restore_window_size(GNC_PREFS_GROUP, GTK_WINDOW(ti_dialog->dialog));
 
-    ti_dialog->paned = GTK_WIDGET(gtk_builder_get_object (builder, "paned"));
 
-    if (gnc_gconf_get_bool(GCONF_GENERAL, KEY_SAVE_GEOMETRY, NULL))
+    if (gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_SAVE_GEOMETRY))
     {
-        gint position = gnc_gconf_get_int(GCONF_SECTION, PANED_POSITION, NULL);
-        gtk_paned_set_position(GTK_PANED(ti_dialog->paned), position);
+        GObject *object = gtk_builder_get_object (builder, "paned");
+        gnc_prefs_bind (GNC_PREFS_GROUP, GNC_PREF_PANED_POS, object, "position");
     }
     g_object_unref (builder);
 }
@@ -1474,13 +1471,7 @@ close_handler (gpointer user_data)
 {
     TaxInfoDialog *ti_dialog = user_data;
 
-    if (gnc_gconf_get_bool(GCONF_GENERAL, KEY_SAVE_GEOMETRY, NULL))
-    {
-        gnc_gconf_set_int(GCONF_SECTION, PANED_POSITION,
-                          gtk_paned_get_position(GTK_PANED(ti_dialog->paned)), NULL);
-    }
-
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(ti_dialog->dialog));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(ti_dialog->dialog));
     gtk_widget_destroy (ti_dialog->dialog);
 }
 

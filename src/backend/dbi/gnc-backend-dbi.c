@@ -65,6 +65,9 @@
 #define GETPID() getpid()
 #endif
 
+/* For direct access to dbi data structs, sadly needed for datetime */
+#include <dbi/dbi-dev.h>
+
 #define GNC_HOST_NAME_MAX 255
 #define TRANSACTION_NAME "trans"
 
@@ -1292,7 +1295,7 @@ conn_get_index_list_pgsql( dbi_conn conn )
     GSList *list = NULL;
     const gchar *errmsg;
     dbi_result result;
-    g_print( "Retrieving postgres index list\n");
+    PINFO ( "Retrieving postgres index list\n");
     result = dbi_conn_query( conn, "SELECT relname FROM pg_class AS a INNER JOIN pg_index AS b ON (b.indexrelid = a.oid) INNER JOIN pg_namespace AS c ON (a.relnamespace = c.oid) WHERE reltype = '0' AND indisprimary = 'f' AND nspname = 'public'" );
     if ( dbi_conn_error( conn, &errmsg ) != DBI_ERROR_NONE )
     {
@@ -1555,49 +1558,6 @@ conn_table_operation( GncSqlConnection *sql_conn, GSList *table_name_list,
     gnc_table_slist_free( full_table_name_list );
     return result;
 }
-
-#if 0 /* Not Used */
-/**
- * Really a bit of an understatement. More like "delete everything in
- * storage and replace with what's in memory".
- *
- * THIS ROUTINE IS EXTREMELY DANGEROUS AND CAN LEAD TO SEVERE DATA
- * LOSS It should be used *only* by gnc_dbi_safe_sync_all!
- *
- * @param qbe: QofBackend for the session.
- * @param book: QofBook to be saved in the database.
- */
-static void
-gnc_dbi_sync_all( QofBackend* qbe, /*@ dependent @*/ QofBook *book )
-{
-    GncDbiBackend* be = (GncDbiBackend*)qbe;
-    GncDbiSqlConnection *conn = (GncDbiSqlConnection*)(((GncSqlBackend*)be)->conn);
-    GSList* table_name_list;
-    const gchar* dbname;
-
-    g_return_if_fail( be != NULL );
-    g_return_if_fail( book != NULL );
-
-    ENTER( "book=%p, primary=%p", book, be->primary_book );
-
-    /* Destroy the current contents of the database */
-    dbname = dbi_conn_get_option( be->conn, "dbname" );
-    table_name_list = conn->provider->get_table_list( conn->conn, dbname );
-    if ( !conn_table_operation( (GncSqlConnection*)conn, table_name_list,
-                                drop ) )
-    {
-        qof_backend_set_error( qbe, ERR_BACKEND_SERVER_ERR );
-        return;
-    }
-    gnc_table_slist_free( table_name_list );
-    /* Save all contents */
-    be->is_pristine_db = TRUE;
-    be->primary_book = book;
-    gnc_sql_sync_all( &be->sql_be, book );
-
-    LEAVE( "book=%p", book );
-}
-#endif
 
 /**
  * Safely resave a database by renaming all of its tables, recreating
@@ -2008,7 +1968,6 @@ row_get_value_at_col_name( GncSqlRow* row, const gchar* col_name )
     gushort type;
     guint attrs;
     GValue* value;
-    time64 time;
 
     type = dbi_result_get_field_type( dbi_row->result, col_name );
     attrs = dbi_result_get_field_attribs( dbi_row->result, col_name );
@@ -2048,27 +2007,20 @@ row_get_value_at_col_name( GncSqlRow* row, const gchar* col_name )
         {
             return NULL;
         }
-	time = dbi_result_get_datetime( dbi_row->result, col_name );
-	/* Protect gmtime from time values < 0 to work around a mingw
-	   bug that fills struct_tm with garbage values which in turn
-	   creates a string that GDate can't parse. */
-	if (time >= 0)
-	  {
-            struct tm *tm_struct = gnc_gmtime (&time);
-            (void)g_value_init (value, G_TYPE_STRING);
-            g_value_take_string (value,
-                                 g_strdup_printf ("%d%02d%02d%02d%02d%02d",
-                                                  1900 + tm_struct->tm_year,
-						  tm_struct->tm_mon + 1,
-						  tm_struct->tm_mday,
-                                                  tm_struct->tm_hour,
-						  tm_struct->tm_min,
-						  tm_struct->tm_sec));
-	    gnc_tm_free (tm_struct);
-	  }
 	else
-	  g_value_take_string (value, "19691231235959");
-
+	{
+	    /* A seriously evil hack to work around libdbi bug #15
+	     * https://sourceforge.net/p/libdbi/bugs/15/. When libdbi
+	     * v0.9 is widely available this can be replaced with
+	     * dbi_result_get_as_longlong.
+	     */
+	    dbi_result_t *result = (dbi_result_t*)(dbi_row->result);
+	    guint64 row = dbi_result_get_currow (result);
+	    guint idx = dbi_result_get_field_idx (result, col_name) - 1;
+	    time64 time = result->rows[row]->field_values[idx].d_datetime;
+	    (void)g_value_init( value, G_TYPE_INT64 );
+	    g_value_set_int64 (value, time);
+	}
         break;
     default:
         PERR( "Field %s: unknown DBI_TYPE: %d\n", col_name, type );
@@ -2347,22 +2299,6 @@ conn_create_statement_from_sql( /*@ observer @*/ GncSqlConnection* conn, const g
 
     return create_dbi_statement( conn, sql );
 }
-
-#if 0 /* Not Used */
-static GValue*
-create_gvalue_from_string( /*@ only @*/ gchar* s )
-{
-    GValue* s_gval;
-
-    s_gval = g_new0( GValue, 1 );
-    g_assert( s_gval != NULL );
-
-    (void)g_value_init( s_gval, G_TYPE_STRING );
-    g_value_take_string( s_gval, s );
-
-    return s_gval;
-}
-#endif
 
 static gboolean
 conn_does_table_exist( GncSqlConnection* conn, const gchar* table_name )

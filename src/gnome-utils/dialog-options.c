@@ -45,7 +45,7 @@
 #include "gnc-currency-edit.h"
 #include "gnc-date-edit.h"
 #include "gnc-engine.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-gui-query.h"
 #include "gnc-session.h"
 #include "gnc-ui.h"
@@ -55,6 +55,8 @@
 #include "guile-mappings.h"
 #include "gnc-date-format.h"
 #include "misc-gnome-utils.h"
+
+#define GNC_PREF_CLOCK_24H "clock-24h"
 
 #define FUNC_NAME G_STRFUNC
 /* TODO: clean up "register-stocks" junk
@@ -461,7 +463,7 @@ gnc_option_create_date_widget (GNCOption *option)
 
     type = gnc_option_date_option_get_subtype(option);
     show_time = gnc_option_show_time(option);
-    use24 = gnc_gconf_get_bool(GCONF_GENERAL, "24hour_time", FALSE);
+    use24 = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_CLOCK_24H);
 
     if (g_strcmp0(type, "relative") != 0)
     {
@@ -485,11 +487,11 @@ gnc_option_create_date_widget (GNCOption *option)
         g_return_val_if_fail(num_values >= 0, NULL);
 
         {
-        /* GtkComboBox still does not support per-item tooltips, so have
-           created a basic one called Combott implemented in gnc-combott.
-           Have highlighted changes in this file with comments for when  
-           the feature of per-item tooltips is implemented in gtk,
-           see http://bugzilla.gnome.org/show_bug.cgi?id=303717 */
+            /* GtkComboBox still does not support per-item tooltips, so have
+               created a basic one called Combott implemented in gnc-combott.
+               Have highlighted changes in this file with comments for when
+               the feature of per-item tooltips is implemented in gtk,
+               see http://bugzilla.gnome.org/show_bug.cgi?id=303717 */
 
             GtkListStore *store;
             GtkTreeIter  iter;
@@ -593,7 +595,7 @@ gnc_option_create_multichoice_widget(GNCOption *option)
     {
         /* GtkComboBox still does not support per-item tooltips, so have
            created a basic one called Combott implemented in gnc-combott.
-           Have highlighted changes in this file with comments for when  
+           Have highlighted changes in this file with comments for when
            the feature of per-item tooltips is implemented in gtk,
            see http://bugzilla.gnome.org/show_bug.cgi?id=303717 */
         GtkListStore *store;
@@ -608,7 +610,7 @@ gnc_option_create_multichoice_widget(GNCOption *option)
             itemstring = gnc_option_permissible_value_name(option, i);
             description = gnc_option_permissible_value_description(option, i);
             gtk_list_store_append (store, &iter);
-            gtk_list_store_set (store, &iter, 0, 
+            gtk_list_store_set (store, &iter, 0,
                                 (itemstring && *itemstring) ? _(itemstring) : "", 1,
                                 (description && *description) ? _(description) : "", -1);
             if (itemstring)
@@ -1451,7 +1453,7 @@ gnc_options_dialog_new_modal(gboolean modal, gchar *title)
 
         apply_button = GTK_WIDGET(gtk_builder_get_object (builder, "applybutton"));
         gtk_widget_hide (apply_button);
-    } 
+    }
 
     /* glade doesn't suport a notebook with zero pages */
     hbox = GTK_WIDGET(gtk_builder_get_object (builder, "notebook placeholder"));

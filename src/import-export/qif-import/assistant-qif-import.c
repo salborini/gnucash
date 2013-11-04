@@ -48,19 +48,21 @@
 #include "gnc-guile-utils.h"
 #include "gnc-currency-edit.h"
 #include "gnc-ui-util.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-gtk-utils.h"
 #include "gnc-main-window.h"
 #include "gnc-plugin-page-account-tree.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
 #include "guile-mappings.h"
 
 #include "swig-runtime.h"
 
 #define ASSISTANT_QIF_IMPORT_CM_CLASS "assistant-qif-import"
-#define GCONF_SECTION "dialogs/import/qif"
-#define GCONF_NAME_SHOW_DOC "show_doc"
-#define GCONF_NAME_DEFAULT_TRANSACTION_STATUS "default_status"
+#define GNC_PREFS_GROUP   "dialogs.import.qif"
+#define GNC_PREF_SHOW_DOC "show-doc"
+#define GNC_PREF_DEFAULT_TRANS_STATUS_CLEARED "default-status-cleared"
+#define GNC_PREF_DEFAULT_TRANS_STATUS_NOTCLEARED "default-status-notcleared"
+#define GNC_PREF_DEFAULT_TRANS_STATUS_RECONCILED "default-status-reconciled"
 
 #define PREV_ROW "prev_row"
 
@@ -1370,49 +1372,20 @@ gnc_ui_qif_import_assistant_get_mappings(QIFImportWindow * w)
 static void
 get_preferences(QIFImportWindow *wind)
 {
-    GError * err = NULL;
-    gchar *status_pref = NULL;
     gchar tmp_transaction_status = 'n';
 
     g_return_if_fail(wind);
 
     /* Get the user's preference for showing documentation pages. */
     wind->show_doc_pages =
-        gnc_gconf_get_bool(GCONF_SECTION, GCONF_NAME_SHOW_DOC, &err);
-    if (err != NULL)
-    {
-        g_warning("QIF import: gnc_gconf_get_bool error: %s", err->message);
-        g_error_free(err);
-
-        /* Show documentation pages by default. */
-        g_warning("QIF import: Couldn't get %s setting from gconf.",
-                  GCONF_NAME_SHOW_DOC);
-        g_warning("QIF import: Documentation pages will be shown by default.");
-        wind->show_doc_pages = TRUE;
-    }
+        gnc_prefs_get_bool (GNC_PREFS_GROUP, GNC_PREF_SHOW_DOC);
 
     /* Clear / Reconcile transaction if not specified in QIF file. */
-    status_pref = gnc_gconf_get_string(
-                      GCONF_SECTION, GCONF_NAME_DEFAULT_TRANSACTION_STATUS, &err);
-    if (err != NULL)
-    {
-        g_warning("QIF import: gnc_gconf_get_string error: %s", err->message);
-        g_error_free(err);
-        g_warning("QIF import: Couldn't get %s setting from gconf.",
-                  GCONF_NAME_DEFAULT_TRANSACTION_STATUS);
-    }
-    else
-    {
-        if (g_strcmp0(status_pref, "cleared") == 0)
-        {
-            tmp_transaction_status = 'c';
-        }
-        else if (g_strcmp0(status_pref, "reconciled") == 0)
-        {
-            tmp_transaction_status = 'y';
-        }
-    }
-    g_free(status_pref);
+    if (gnc_prefs_get_bool (GNC_PREFS_GROUP, GNC_PREF_DEFAULT_TRANS_STATUS_CLEARED))
+        tmp_transaction_status = 'c';
+    else if (gnc_prefs_get_bool (GNC_PREFS_GROUP, GNC_PREF_DEFAULT_TRANS_STATUS_RECONCILED))
+        tmp_transaction_status = 'y';
+
     wind->transaction_status = SCM_MAKE_CHAR(tmp_transaction_status);
 }
 
@@ -1601,7 +1574,7 @@ gnc_ui_qif_import_select_file_cb(GtkButton * button,
     char *file_name, *default_dir;
 
     /* Default to whatever's already present */
-    default_dir = gnc_get_default_directory(GCONF_SECTION);
+    default_dir = gnc_get_default_directory(GNC_PREFS_GROUP);
 
     filter = gtk_file_filter_new();
     gtk_file_filter_set_name(filter, "*.qif");
@@ -1627,7 +1600,7 @@ gnc_ui_qif_import_select_file_cb(GtkButton * button,
         /* Update the working directory */
         g_free(default_dir);
         default_dir = g_path_get_dirname(file_name);
-        gnc_set_default_directory(GCONF_SECTION, default_dir);
+        gnc_set_default_directory(GNC_PREFS_GROUP, default_dir);
     }
     g_free(default_dir);
 
@@ -2518,14 +2491,14 @@ gnc_ui_qif_import_currency_prepare(GtkAssistant *assistant,
     if (wind->new_book)
     {
         gtk_assistant_set_page_title (assistant, page,
-            _("Choose the QIF file currency and select Book Options"));
+                                      _("Choose the QIF file currency and select Book Options"));
         gtk_widget_show (wind->book_option_label);
         gtk_widget_show (wind->book_option_message);
     }
     else
     {
         gtk_assistant_set_page_title (assistant, page,
-            _("Choose the QIF file currency"));
+                                      _("Choose the QIF file currency"));
         gtk_widget_hide (wind->book_option_label);
         gtk_widget_hide (wind->book_option_message);
     }
@@ -3611,7 +3584,7 @@ gnc_ui_qif_import_assistant_make(QIFImportWindow *qif_win)
     box = GTK_WIDGET(gtk_builder_get_object (builder, "currency_picker_hbox"));
     gtk_box_pack_start(GTK_BOX(box), qif_win->currency_picker, TRUE, TRUE, 0);
 
-    gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW(qif_win->window));
+    gnc_restore_window_size (GNC_PREFS_GROUP, GTK_WINDOW(qif_win->window));
 
     g_signal_connect( qif_win->window, "destroy",
                       G_CALLBACK(gnc_ui_qif_import_assistant_destroy), qif_win );
@@ -3635,7 +3608,7 @@ gnc_ui_qif_import_assistant_close_handler( gpointer user_data )
 {
     QIFImportWindow *qif_win = user_data;
 
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(qif_win->window));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(qif_win->window));
     gtk_widget_destroy( qif_win->window );
 }
 

@@ -88,6 +88,7 @@ typedef enum {
 }RowDepth;
 
 typedef enum {
+    COL_END_OF_LIST = -1,
     COL_CONTROL,      //0 TreeView Control columns
     COL_DATE,         //1
     COL_DUEDATE,      //2
@@ -139,7 +140,7 @@ void gnc_tree_view_split_reg_set_uiupdate_cb (GncTreeViewSplitReg *view, GFunc c
 
 gboolean gnc_tree_view_split_reg_call_uiupdate_cb(GncTreeViewSplitReg *view);
 
-void gnc_tree_view_split_reg_refresh_from_gconf (GncTreeViewSplitReg *view);
+void gnc_tree_view_split_reg_refresh_from_prefs (GncTreeViewSplitReg *view);
 
 GtkWidget * gnc_tree_view_split_reg_get_parent (GncTreeViewSplitReg *view);
 

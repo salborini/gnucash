@@ -29,7 +29,6 @@
 #include <gtk/gtk.h>
 #include "qof.h"
 
-GtkToolbarStyle gnc_get_toolbar_style (void);
 void gnc_get_deficit_color (GdkColor *color);
 void gnc_set_label_color (GtkWidget *label, gnc_numeric value);
 
@@ -98,7 +97,7 @@ void gnc_gtk_dialog_add_button (GtkWidget *dialog,
 /** Note: This dialog is modal!  (It calls gtk_dialog_run() which is modal.)
  */
 gint
-gnc_dialog_run(GtkDialog *dialog, const gchar *gconf_key);
+gnc_dialog_run(GtkDialog *dialog, const gchar *pref_key);
 
 /* If this is a new book, this function can be used to display book options
  * dialog so user can specify options, before any transactions can be

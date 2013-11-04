@@ -43,17 +43,20 @@
 typedef QofSession * (*QofSessionCB) (void);
 
 
+gchar *gnc_normalize_account_separator (const gchar* separator);
 gboolean gnc_reverse_balance(const Account *account);
 
 /* Default directory sections ***************************************/
-#define GCONF_DIR_OPEN_SAVE "dialogs/open_save"
-#define GCONF_DIR_EXPORT "dialogs/export_accounts"
-#define GCONF_DIR_REPORT "dialogs/report"
+#define GNC_PREFS_GROUP_OPEN_SAVE    "dialogs.open-save"
+#define GNC_PREFS_GROUP_EXPORT       "dialogs.export-accounts"
+#define GNC_PREFS_GROUP_REPORT       "dialogs.report"
+#define GNC_PREF_AUTO_DECIMAL_POINT  "auto-decimal-point"
+#define GNC_PREF_AUTO_DECIMAL_PLACES "auto-decimal-places"
 
 /* Default directories **********************************************/
 
-gchar *gnc_get_default_directory (const gchar *gconf_section);
-void gnc_set_default_directory (const gchar *gconf_section,
+gchar *gnc_get_default_directory (const gchar *section);
+void gnc_set_default_directory (const gchar *section,
                                 const gchar *directory);
 
 /* Engine enhancements & i18n ***************************************/
@@ -90,11 +93,11 @@ gnc_commodity_table * gnc_get_current_commodities (void);
 gchar *gnc_get_account_name_for_register(const Account *account);
 
 /**
- * Retrieve the account matching the given name starting from the descandants of
+ * Retrieve the account matching the given name starting from the descendants of
  * base_account.
  * @a name is either considered to be the name of the leaf in the account tree
  * or to be the full account path, depending on the configuration parameter
- * general/register/show_leaf_account_names.
+ * general.register/show_leaf_account_names.
  *
  * @param base_account The account to start the search at.
  * @param name The name to search for.
@@ -256,6 +259,7 @@ const char * xaccPrintAmount (gnc_numeric val, GNCPrintAmountInfo info);
 int xaccSPrintAmount (char *buf, gnc_numeric val, GNCPrintAmountInfo info);
 
 const gchar *printable_value(gdouble val, gint denom);
+const char*gnc_commodity_get_nice_symbol(const gnc_commodity *cm);
 gchar *number_to_words(gdouble val, gint64 denom);
 gchar *numeric_to_words(gnc_numeric val);
 

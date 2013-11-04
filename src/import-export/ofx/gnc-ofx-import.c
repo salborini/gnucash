@@ -46,14 +46,15 @@
 #include "gnc-engine.h"
 #include "gnc-ui-util.h"
 #include "gnc-glib-utils.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnome-utils/gnc-ui.h"
 #include "gnome-utils/dialog-account.h"
 #include "dialog-utils.h"
 
 #include "gnc-ofx-kvp.h"
 
-#define GCONF_SECTION "dialogs/import/ofx"
+#define GNC_PREFS_GROUP "dialogs.import.ofx"
+#define GNC_PREF_AUTO_COMMODITY "auto-create-commodity"
 
 static QofLogModule log_module = GNC_MOD_IMPORT;
 
@@ -368,7 +369,8 @@ int ofx_proc_transaction_cb(struct OfxTransactionData data, void * transaction_u
     {
         /* The hopeful case: We have a posted_date */
         xaccTransSetDatePostedSecsNormalized(transaction, data.date_posted);
-    } else if (data.date_initiated_valid && (data.date_initiated != 0))
+    }
+    else if (data.date_initiated_valid && (data.date_initiated != 0))
     {
         /* No posted date? Maybe we have an initiated_date */
         xaccTransSetDatePostedSecsNormalized(transaction, data.date_initiated);
@@ -534,13 +536,13 @@ int ofx_proc_transaction_cb(struct OfxTransactionData data, void * transaction_u
 
                 investment_account_onlineid = g_strdup_printf( "%s%s", data.account_id, data.unique_id);
                 investment_account = gnc_import_select_account(NULL,
-                                                               investment_account_onlineid,
-                                                               1,
-                                                               investment_account_text,
-                                                               investment_commodity,
-                                                               ACCT_TYPE_STOCK,
-                                                               NULL,
-                                                               NULL);
+                                     investment_account_onlineid,
+                                     1,
+                                     investment_account_text,
+                                     investment_commodity,
+                                     ACCT_TYPE_STOCK,
+                                     NULL,
+                                     NULL);
 
                 // but use it only if that's really the right commodity
                 if (investment_account
@@ -653,7 +655,7 @@ int ofx_proc_transaction_cb(struct OfxTransactionData data, void * transaction_u
                     else if (data.reference_number_valid)
                     {
                         gnc_set_num_action(transaction, split,
-                                                data.reference_number, NULL);
+                                           data.reference_number, NULL);
                     }
                     if (data.security_data_ptr->memo_valid)
                     {
@@ -929,7 +931,7 @@ void gnc_file_ofx_import (void)
 
     DEBUG("gnc_file_ofx_import(): Begin...\n");
 
-    default_dir = gnc_get_default_directory(GCONF_SECTION);
+    default_dir = gnc_get_default_directory(GNC_PREFS_GROUP);
     selected_filename = gnc_file_dialog(_("Select an OFX/QFX file to process"),
                                         NULL,
                                         default_dir,
@@ -944,7 +946,7 @@ void gnc_file_ofx_import (void)
 
         /* Remember the directory as the default. */
         default_dir = g_path_get_dirname(selected_filename);
-        gnc_set_default_directory(GCONF_SECTION, default_dir);
+        gnc_set_default_directory(GNC_PREFS_GROUP, default_dir);
         g_free(default_dir);
 
         /*strncpy(file,selected_filename, 255);*/
@@ -953,9 +955,9 @@ void gnc_file_ofx_import (void)
         /* Create the Generic transaction importer GUI. */
         gnc_ofx_importer_gui = gnc_gen_trans_list_new(NULL, NULL, FALSE, 42);
 
-        /* Look up the needed gconf options */
+        /* Look up the needed preferences */
         auto_create_commodity =
-            gnc_gconf_get_bool(GCONF_IMPORT_SECTION, "auto_create_commodity", NULL);
+            gnc_prefs_get_bool (GNC_PREFS_GROUP_IMPORT, GNC_PREF_AUTO_COMMODITY);
 
         /* Initialize libofx */
 

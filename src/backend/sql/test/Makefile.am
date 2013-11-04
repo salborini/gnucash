@@ -47,8 +47,7 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/backend/sql \
   -I${top_srcdir}/src/libqof/qof \
   ${GLIB_CFLAGS} \
-  ${GUILE_INCS} \
-  ${GCONF_CFLAGS}
+  ${GUILE_INCS}
 
 AM_CPPFLAGS += -DG_LOG_DOMAIN=\"gnc.backend.sql\"
 
@@ -68,6 +67,7 @@ test_sqlbe_LDADD = \
 	$(top_builddir)/$(MODULEPATH)/libgnc-backend-sql.la \
 	$(top_builddir)/src/libqof/qof/libgnc-qof.la \
 	$(top_builddir)/src/test-core/libtest-core.la \
+	$(top_builddir)/src/core-utils/libgnc-core-utils.la \
 	$(GLIB_LIBS)
 
 test_sqlbe_CFLAGS = \

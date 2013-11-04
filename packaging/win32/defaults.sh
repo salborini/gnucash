@@ -238,9 +238,6 @@ set_default FREETYPE_URL            "$GNOME_WIN32_DEPS_URL/freetype_2.4.4-1_win3
 set_default FREETYPE_DEV_URL        "$GNOME_WIN32_DEPS_URL/freetype-dev_2.4.4-1_win32.zip"
 set_default GAIL_URL                "$GNOME_WIN32_URL/gail/1.22/gail-1.22.0.zip"
 set_default GAIL_DEV_URL            "$GNOME_WIN32_URL/gail/1.22/gail-dev-1.22.0.zip"
-GCONF_VERSION="2.22.0"
-set_default GCONF_URL               "$GNOME_WIN32_URL/GConf/2.22/GConf_${GCONF_VERSION}-3_win32.zip"
-set_default GCONF_DEV_URL           "$GNOME_WIN32_URL/GConf/2.22/GConf-dev_${GCONF_VERSION}-3_win32.zip"
 GDK_PIXBUF_VERSION=2.24.0
 set_default GDK_PIXBUF_URL          "$GNOME_WIN32_URL/gdk-pixbuf/2.24/gdk-pixbuf_${GDK_PIXBUF_VERSION}-1_win32.zip"
 set_default GDK_PIXBUF_DEV_URL      "$GNOME_WIN32_URL/gdk-pixbuf/2.24/gdk-pixbuf-dev_${GDK_PIXBUF_VERSION}-1_win32.zip"
@@ -269,8 +266,6 @@ set_default LIBTIFF_URL             "$GNOME_WIN32_DEPS_URL/libtiff_3.9.2-1_win32
 set_default LIBTIFF_DEV_URL         "$GNOME_WIN32_DEPS_URL/libtiff-dev_3.9.2-1_win32.zip"
 set_default LIBXML2_URL             "$GNOME_WIN32_DEPS_URL/libxml2_2.7.7-1_win32.zip"
 set_default LIBXML2_DEV_URL         "$GNOME_WIN32_DEPS_URL/libxml2-dev_2.7.7-1_win32.zip"
-set_default ORBIT2_URL              "$GNOME_WIN32_URL/ORBit2/2.14/ORBit2_2.14.16-1_win32.zip"
-set_default ORBIT2_DEV_URL          "$GNOME_WIN32_URL/ORBit2/2.14/ORBit2-dev_2.14.16-1_win32.zip"
 set_default PANGO_URL               "$GNOME_WIN32_URL/pango/1.29/pango_1.29.4-1_win32.zip"
 set_default PANGO_DEV_URL           "$GNOME_WIN32_URL/pango/1.29/pango-dev_1.29.4-1_win32.zip"
 set_default PKG_CONFIG_URL          "$GNOME_WIN32_DEPS_URL/pkg-config_0.25-1_win32.zip"
@@ -356,8 +351,8 @@ set_default AQBANKING5 yes
 # needed.
 
 if [ "$AQBANKING5" = "yes" ]; then
-    GWENHYWFAR_VERSION="4.6.0beta"
-    set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=69&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
+    GWENHYWFAR_VERSION="4.7.0beta"
+    set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=70&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
 else
     GWENHYWFAR_VERSION="3.11.3"
     set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=31&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
@@ -365,13 +360,13 @@ else
 fi
 set_default GWENHYWFAR_DIR $GLOBAL_DIR\\gwenhywfar
 
-KTOBLZCHECK_VERSION="1.41"
+KTOBLZCHECK_VERSION="1.43"
 set_default KTOBLZCHECK_URL "$SF_MIRROR/ktoblzcheck/ktoblzcheck-${KTOBLZCHECK_VERSION}.tar.gz"
 # ktoblzcheck is being installed into GWENHYWFAR_DIR
 
 if [ "$AQBANKING5" = "yes" ]; then
-    AQBANKING_VERSION="5.0.28beta"
-    set_default AQBANKING_URL "http://www2.aquamaniac.de/sites/download/download.php?package=03&release=98&file=01&dummy=aqbanking-${AQBANKING_VERSION}.tar.gz"
+    AQBANKING_VERSION="5.0.32beta"
+    set_default AQBANKING_URL "http://www2.aquamaniac.de/sites/download/download.php?package=03&release=102&file=01&dummy=aqbanking-${AQBANKING_VERSION}.tar.gz"
     set_default AQBANKING_WITH_QT no
 else
     AQBANKING_VERSION="4.2.4"

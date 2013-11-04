@@ -31,12 +31,12 @@
 #include "gnc-ui.h"
 #include "gnc-file.h"
 #include "gnc-window.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-main-window.h"
 #include "gnc-gui-query.h"
 
-#define KEY_AUTOSAVE_SHOW_EXPLANATION "autosave_show_explanation"
-#define KEY_AUTOSAVE_INTERVAL "autosave_interval_minutes"
+#define GNC_PREF_AUTOSAVE_SHOW_EXPLANATION "autosave-show-explanation"
+#define GNC_PREF_AUTOSAVE_INTERVAL         "autosave-interval-minutes"
 #define AUTOSAVE_SOURCE_ID "autosave_source_id"
 
 #ifdef G_LOG_DOMAIN
@@ -79,7 +79,7 @@ static gboolean autosave_confirm(GtkWidget *toplevel)
 {
     GtkWidget *dialog;
     guint interval_mins =
-        gnc_gconf_get_float(GCONF_GENERAL, KEY_AUTOSAVE_INTERVAL, NULL);
+        gnc_prefs_get_float(GNC_PREFS_GROUP_GENERAL, GNC_PREF_AUTOSAVE_INTERVAL);
     gboolean switch_off_autosave, show_expl_again, save_now;
     gint response;
 
@@ -150,14 +150,14 @@ static gboolean autosave_confirm(GtkWidget *toplevel)
     };
 
     /* Should we show this explanation again? */
-    gnc_gconf_set_bool(GCONF_GENERAL, KEY_AUTOSAVE_SHOW_EXPLANATION, show_expl_again, NULL);
+    gnc_prefs_set_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_AUTOSAVE_SHOW_EXPLANATION, show_expl_again);
     g_debug("autosave_timeout_cb: Show explanation again=%s\n",
             (show_expl_again ? "TRUE" : "FALSE"));
 
     /* Should we switch off autosave? */
     if (switch_off_autosave)
     {
-        gnc_gconf_set_float(GCONF_GENERAL, KEY_AUTOSAVE_INTERVAL, 0, NULL);
+        gnc_prefs_set_float(GNC_PREFS_GROUP_GENERAL, GNC_PREF_AUTOSAVE_INTERVAL, 0);
         g_debug("autosave_timeout_cb: User chose to disable auto-save.\n");
     }
 
@@ -184,9 +184,9 @@ static gboolean autosave_timeout_cb(gpointer user_data)
     /* Store the current toplevel window for later use. */
     toplevel = gnc_ui_get_toplevel();
 
-    /* Lookup gconf key to show an explanatory dialog, if wanted. */
+    /* Lookup preference to show an explanatory dialog, if wanted. */
     show_explanation =
-        gnc_gconf_get_bool(GCONF_GENERAL, KEY_AUTOSAVE_SHOW_EXPLANATION, NULL);
+        gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_AUTOSAVE_SHOW_EXPLANATION);
     if (show_explanation)
     {
         save_now = autosave_confirm(toplevel);
@@ -252,7 +252,7 @@ void gnc_autosave_remove_timer(QofBook *book)
 static void gnc_autosave_add_timer(QofBook *book)
 {
     guint interval_mins =
-        gnc_gconf_get_float(GCONF_GENERAL, KEY_AUTOSAVE_INTERVAL, NULL);
+        gnc_prefs_get_float(GNC_PREFS_GROUP_GENERAL, GNC_PREF_AUTOSAVE_INTERVAL);
 
     /* Interval zero means auto-save is turned off. */
     if ( interval_mins > 0
@@ -262,15 +262,8 @@ static void gnc_autosave_add_timer(QofBook *book)
         /* Add a new timer (timeout) that runs until the next autosave
            timeout. */
         guint autosave_source_id =
-#if GLIB_CHECK_VERSION(2, 14, 0)
-            /* g_timeout_add_seconds is much more suitable here, but is new in
-            	 glib-2.14. */
             g_timeout_add_seconds(interval_mins * 60,
                                   autosave_timeout_cb, book);
-#else
-            g_timeout_add(interval_mins * 60 * 1000,
-                          autosave_timeout_cb, book);
-#endif
         g_debug("Adding new auto-save timer with id %d\n", autosave_source_id);
 
         /* Save the event source id for a potential removal, and also

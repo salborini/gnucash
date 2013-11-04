@@ -35,8 +35,8 @@
 #include "gnc-date.h"
 #include "gnc-engine.h"
 #include "gnc-event.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-ledger-display2.h"
+#include "gnc-prefs.h"
 #include "gnc-ui-util.h"
 
 #include "split-register-control.h"
@@ -49,6 +49,12 @@
 #define REGISTER_SUBACCOUNT_CM_CLASS "register-subaccount"
 #define REGISTER_GL_CM_CLASS         "register-gl"
 #define REGISTER_TEMPLATE_CM_CLASS   "register-template"
+
+#define GNC_PREF_DOUBLE_LINE_MODE         "double-line-mode"
+#define GNC_PREF_MAX_TRANS                "max-transactions"
+#define GNC_PREF_DEFAULT_STYLE_LEDGER     "default-style-ledger"
+#define GNC_PREF_DEFAULT_STYLE_AUTOLEDGER "default-style-autoledger"
+#define GNC_PREF_DEFAULT_STYLE_JOURNAL    "default-style-journal"
 
 
 struct gnc_ledger_display2
@@ -198,37 +204,17 @@ find_by_reg (gpointer find_data, gpointer user_data)
     return ld->model == model;
 }
 
-
 static SplitRegisterStyle2
 gnc_get_default_register_style (GNCAccountType type)
 {
     SplitRegisterStyle2 new_style = REG2_STYLE_LEDGER;
-    gchar *style_string;
 
-    switch (type)
-    {
-#if 0
-    case ACCT_TYPE_PAYABLE:
-    case ACCT_TYPE_RECEIVABLE:
-        new_style = REG_STYLE_LEDGER;
-        break;
-#endif
-
-    default:
-        style_string = gnc_gconf_get_string(GCONF_GENERAL_REGISTER,
-                                            "default_style", NULL);
-        if (g_strcmp0(style_string, "journal") == 0)
-            new_style = REG2_STYLE_JOURNAL;
-        else if (g_strcmp0(style_string, "auto_ledger") == 0)
-            new_style = REG2_STYLE_AUTO_LEDGER;
-        else
-            new_style = REG2_STYLE_LEDGER;
-
-        if (style_string != NULL)
-            g_free(style_string);
-
-        break;
-    }
+    if (gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER,
+                            GNC_PREF_DEFAULT_STYLE_JOURNAL))
+        new_style = REG2_STYLE_JOURNAL;
+    else if (gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                 GNC_PREF_DEFAULT_STYLE_AUTOLEDGER))
+        new_style = REG2_STYLE_AUTO_LEDGER;
 
     return new_style;
 }
@@ -358,7 +344,7 @@ gboolean
 gnc_ledger_display2_default_double_line (GNCLedgerDisplay2 *gld)
 {
     return (gld->use_double_line_default ||
-            gnc_gconf_get_bool(GCONF_GENERAL_REGISTER, "double_line_mode", NULL));
+            gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_DOUBLE_LINE_MODE));
 }
 
 /* Opens up a register window to display a single account */
@@ -603,7 +589,7 @@ refresh_handler (GHashTable *changes, gpointer user_data)
 //FIXME Not Needed ?    gnc_ledger_display2_set_watches (ld, splits);
 //    gnc_ledger_display2_set_watches (ld, splits);
 
-    //gconf changes come this way
+    //preference changes come this way
     gnc_ledger_display2_refresh_internal (ld, splits);
 
     LEAVE(" ");
@@ -792,7 +778,7 @@ gnc_ledger_display2_internal (Account *lead_account, Query *q,
     ld->get_parent = NULL;
     ld->user_data = NULL;
 
-    limit = gnc_gconf_get_float(GCONF_GENERAL_REGISTER, "max_transactions", NULL);
+    limit = gnc_prefs_get_float(GNC_PREFS_GROUP_GENERAL_REGISTER, GNC_PREF_MAX_TRANS);
 
     /* set up the query filter */
     if (q)

@@ -30,7 +30,7 @@
 #include "account-quickfill.h"
 #include "combocell.h"
 #include "gnc-component-manager.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-ui-util.h"
 #include "recncell.h"
 
@@ -42,6 +42,9 @@
 #include "quickfillcell.h"
 #include "app-utils/gnc-entry-quickfill.h"
 
+#define GNC_PREF_TAX_INCL "tax-included"
+
+static const QofLogModule log_module = "Business Entry Ledger";
 
 /* XXX: This should go elsewhere */
 const char * gnc_entry_ledger_type_string_getter (char flag)
@@ -230,6 +233,9 @@ load_xfer_type_cells (GncEntryLedger *ledger)
         store = gnc_get_shared_account_name_list_store (root, EKEY,
                 skip_income_acct_cb, NULL);
         break;
+    default:
+	PWARN ("Bad GncEntryLedgerType");
+	break;
     }
 
     cell = (ComboCell *)
@@ -398,9 +404,9 @@ void gnc_entry_ledger_load (GncEntryLedger *ledger, GList *entry_list)
                     taxincluded = FALSE;
                     break;
                 case GNC_TAXINCLUDED_USEGLOBAL:
-                    if (ledger->gconf_section)
+                    if (ledger->prefs_group)
                     {
-                        taxincluded = gnc_gconf_get_bool(ledger->gconf_section, "tax_included", NULL);
+                        taxincluded = gnc_prefs_get_bool (ledger->prefs_group, GNC_PREF_TAX_INCL);
                     }
                     else
                     {

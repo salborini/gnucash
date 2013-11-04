@@ -68,7 +68,7 @@ typedef struct
     void (*double_click_split) (GNCReconcileView *view, Split *split);
 } GNCReconcileViewClass;
 
-#define GCONF_RECONCILE_SECTION "dialogs/reconcile"
+#define GNC_PREFS_GROUP_RECONCILE "dialogs.reconcile"
 
 /***********************************************************
  *                public functions                         *

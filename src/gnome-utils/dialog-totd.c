@@ -31,14 +31,14 @@
 #include "dialog-utils.h"
 #include "gnc-component-manager.h"
 #include "gnc-filepath-utils.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-gnome-utils.h"
 #include "gnc-engine.h"
 
-#define GCONF_SECTION   "dialogs/tip_of_the_day"
-#define KEY_CURRENT_TIP "current_tip"
-#define KEY_SHOW_TIPS   "show_at_startup"
-#define DIALOG_TOTD_CM_CLASS	"dialog-totd"
+#define GNC_PREFS_GROUP      "dialogs.totd"
+#define GNC_PREF_CURRENT_TIP "current-tip"
+#define GNC_PREF_SHOW_TIPS   "show-at-startup"
+#define DIALOG_TOTD_CM_CLASS "dialog-totd"
 
 #define GNC_RESPONSE_FORWARD 1
 #define GNC_RESPONSE_BACK    2
@@ -66,7 +66,7 @@ typedef struct
 /***********************************************************************
  *  This function should be called to change the tip number.  It
  *  handles clamping the number to the range of tips available, saving
- *  the number in the GConf database, and updating the dialog window
+ *  the number in the preferences database, and updating the dialog window
  *  with the text of the newly selected tip.
  *
  *  @param Tip of the day structure. This points to the dialog and
@@ -91,7 +91,7 @@ gnc_new_tip_number (TotdDialog *totd_dialog, gint offset)
         current_tip_number = tip_count - 1;
     if (current_tip_number >= tip_count)
         current_tip_number = 0;
-    gnc_gconf_set_int(GCONF_SECTION, KEY_CURRENT_TIP, current_tip_number, NULL);
+    gnc_prefs_set_int(GNC_PREFS_GROUP, GNC_PREF_CURRENT_TIP, current_tip_number);
 
     /* A tip consists of a translatable string, which might contain a %s
      * placeholder, optionally followed by a | and a (non-translated)
@@ -145,7 +145,7 @@ void gnc_totd_dialog_response_cb (GtkDialog *dialog,
         break;
 
     case GTK_RESPONSE_CLOSE:
-        gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(totd_dialog->dialog));
+        gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(totd_dialog->dialog));
         /* fall through */
 
     default:
@@ -164,7 +164,7 @@ gnc_totd_dialog_startup_toggled_cb (GtkToggleButton *button,
     gboolean active;
 
     active = gtk_toggle_button_get_active(button);
-    gnc_gconf_set_bool(GCONF_SECTION, KEY_SHOW_TIPS, active, NULL);
+    gnc_prefs_set_bool(GNC_PREFS_GROUP, GNC_PREF_SHOW_TIPS, active);
 }
 
 
@@ -312,7 +312,7 @@ gnc_totd_dialog (GtkWindow *parent, gboolean startup)
 
     totd_dialog = g_new0 (TotdDialog, 1);
 
-    show_tips = gnc_gconf_get_bool(GCONF_SECTION, KEY_SHOW_TIPS, NULL);
+    show_tips = gnc_prefs_get_bool(GNC_PREFS_GROUP, GNC_PREF_SHOW_TIPS);
     if (startup && !show_tips)
         return;
 
@@ -320,7 +320,7 @@ gnc_totd_dialog (GtkWindow *parent, gboolean startup)
     {
         if (!gnc_totd_initialize())
             return;
-        current_tip_number =  gnc_gconf_get_int(GCONF_SECTION, KEY_CURRENT_TIP, NULL);
+        current_tip_number =  gnc_prefs_get_int(GNC_PREFS_GROUP, GNC_PREF_CURRENT_TIP);
     }
 
     if (gnc_forall_gui_components(DIALOG_TOTD_CM_CLASS, show_handler, NULL))
@@ -349,7 +349,7 @@ gnc_totd_dialog (GtkWindow *parent, gboolean startup)
 
     gnc_new_tip_number(totd_dialog, 1);
 
-    gnc_restore_window_size(GCONF_SECTION, GTK_WINDOW(totd_dialog->dialog));
+    gnc_restore_window_size(GNC_PREFS_GROUP, GTK_WINDOW(totd_dialog->dialog));
     gtk_widget_show(GTK_WIDGET (totd_dialog->dialog));
 
     gnc_register_gui_component(DIALOG_TOTD_CM_CLASS,

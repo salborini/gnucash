@@ -50,7 +50,6 @@
 #include "dialog-custom-report.h"
 #include "gnc-component-manager.h"
 #include "gnc-engine.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-gnome-utils.h"
 #include "gnc-guile-utils.h"
 #include "gnc-html-history.h"
@@ -60,6 +59,7 @@
 #include "gnc-plugin.h"
 #include "gnc-plugin-page-report.h"
 #include "gnc-plugin-file-history.h"
+#include "gnc-prefs.h"
 #include "gnc-report.h"
 #include "gnc-session.h"
 #include "gnc-ui-util.h"
@@ -1137,7 +1137,7 @@ gnc_plugin_page_report_constr_init(GncPluginPageReport *plugin_page, gint report
 
     /* Init parent declared variables */
     parent = GNC_PLUGIN_PAGE(plugin_page);
-    use_new = gnc_gconf_get_bool(GCONF_GENERAL_REPORT, KEY_USE_NEW, NULL);
+    use_new = gnc_prefs_get_bool (GNC_PREFS_GROUP_GENERAL_REPORT, GNC_PREF_USE_NEW);
     name = gnc_report_name( priv->initial_report );
     g_object_set(G_OBJECT(plugin_page),
                  "page-name",      name,
@@ -1402,7 +1402,7 @@ gnc_get_export_filename (SCM choice)
 
     /* %s is the type of what is about to be saved, e.g. "HTML". */
     title = g_strdup_printf (_("Save %s To File"), type);
-    default_dir = gnc_get_default_directory(GCONF_DIR_REPORT);
+    default_dir = gnc_get_default_directory(GNC_PREFS_GROUP_REPORT);
 
     filepath = gnc_file_dialog (title, NULL, default_dir, GNC_FILE_DIALOG_EXPORT);
 
@@ -1418,7 +1418,7 @@ gnc_get_export_filename (SCM choice)
         return NULL;
 
     default_dir = g_path_get_dirname(filepath);
-    gnc_set_default_directory (GCONF_DIR_REPORT, default_dir);
+    gnc_set_default_directory (GNC_PREFS_GROUP_REPORT, default_dir);
     g_free(default_dir);
 
     rc = g_stat (filepath, &statbuf);
@@ -1613,7 +1613,9 @@ static GncInvoice *lookup_invoice(GncPluginPageReportPrivate *priv)
             "Invoice Number", NULL);
 }
 
-#define GCONF_GENERAL_REPORT_PDFEXPORT GCONF_GENERAL_REPORT "/pdf_export"
+#define GNC_PREFS_GROUP_REPORT_PDFEXPORT GNC_PREFS_GROUP_GENERAL_REPORT ".pdf-export"
+#define GNC_PREF_FILENAME_DATE_FMT "filename-date-format"
+#define GNC_PREF_FILENAME_FMT "filename-format"
 
 static gchar *report_create_jobname(GncPluginPageReportPrivate *priv)
 {
@@ -1626,18 +1628,11 @@ static gchar *report_create_jobname(GncPluginPageReportPrivate *priv)
     g_assert(priv);
 
     {
-        // Look up the date format that was chosen in the gconf registry
+        // Look up the date format that was chosen in the preferences database
         QofDateFormat date_format_here;
         QofDateFormat date_format_old = qof_date_format_get();
-        char *format_code = gnc_gconf_get_string(GCONF_GENERAL_REPORT_PDFEXPORT,
-                            "filename_date_format", NULL);
-
-        if (format_code == NULL)
-        {
-            format_code = g_strdup("locale");
-            g_warning("No gconf key found for " GCONF_GENERAL_REPORT_PDFEXPORT
-                      "/filename_date_format, using default %s", format_code);
-        }
+        char *format_code = gnc_prefs_get_string(GNC_PREFS_GROUP_REPORT_PDFEXPORT,
+                            GNC_PREF_FILENAME_DATE_FMT);
         if (*format_code == '\0')
         {
             g_free(format_code);
@@ -1706,14 +1701,8 @@ static gchar *report_create_jobname(GncPluginPageReportPrivate *priv)
 
     if (report_name && job_date)
     {
-        // Look up the sprintf format of the output name from the gconf registry
-        char* format = gnc_gconf_get_string(GCONF_GENERAL_REPORT_PDFEXPORT, "filename_format", NULL);
-        if (!format)
-        {
-            // Fallback name format in case the gconf does not contain this key
-            format = g_strdup("%s_%s_%s");
-            g_warning("No gconf key found for " GCONF_GENERAL_REPORT_PDFEXPORT "/filename_format, using default %s", format);
-        }
+        // Look up the sprintf format of the output name from the preferences database
+        char* format = gnc_prefs_get_string(GNC_PREFS_GROUP_REPORT_PDFEXPORT, GNC_PREF_FILENAME_FMT);
 
         job_name = g_strdup_printf(format, report_name, report_number, job_date);
 

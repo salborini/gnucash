@@ -34,7 +34,7 @@
 #include "gnc-uri-utils.h"
 #include "gnc-component-manager.h"
 #include "gnc-date-edit.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-tree-view-account.h"
 #include "dialog-utils.h"
 #include "Query.h"
@@ -45,8 +45,8 @@
 #include "csv-tree-export.h"
 #include "csv-transactions-export.h"
 
-#define GCONF_SECTION "dialogs/export/csv"
-#define PANED_POSITION "paned_position"
+#define GNC_PREFS_GROUP    "dialogs.export.csv"
+#define GNC_PREF_PANED_POS "paned-position"
 #define ASSISTANT_CSV_EXPORT_CM_CLASS "assistant-csv-export"
 
 /* This static indicates the debugging module that this .o belongs to.  */
@@ -250,7 +250,7 @@ void load_settings (CsvExportInfo *info)
     info->starting_dir = NULL;
 
     /* The default directory for the user to select files. */
-    info->starting_dir = gnc_get_default_directory(GCONF_SECTION);
+    info->starting_dir = gnc_get_default_directory(GNC_PREFS_GROUP);
 }
 
 /* =============================================================== */
@@ -744,11 +744,7 @@ csv_export_assistant_summary_page_prepare (GtkAssistant *assistant,
 {
     CsvExportInfo *info = user_data;
     gchar *text, *mtext;
-
-    /* Save the Window size, paned position and directory */
-    gnc_gconf_set_int(GCONF_SECTION, PANED_POSITION,
-                      gtk_paned_get_position(GTK_PANED(info->csva.paned)), NULL);
-    gnc_set_default_directory(GCONF_SECTION, info->starting_dir);
+    gnc_set_default_directory(GNC_PREFS_GROUP, info->starting_dir);
 
     if (info->failed)
         text = _("There was a problem with the export, this could be due to lack of space, "
@@ -841,7 +837,7 @@ csv_export_close_handler (gpointer user_data)
     g_free(info->file_name);
     g_free(info->starting_dir);
 
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(info->window));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(info->window));
     gtk_widget_destroy (info->window);
 }
 
@@ -1003,14 +999,11 @@ csv_export_assistant_create (CsvExportInfo *info)
     g_signal_connect (G_OBJECT(window), "destroy",
                       G_CALLBACK (csv_export_assistant_destroy_cb), info);
 
-    gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW(info->window));
-
-    info->csva.paned = GTK_WIDGET(gtk_builder_get_object (builder, "paned"));
-
-    if (gnc_gconf_get_bool(GCONF_SECTION, KEY_SAVE_GEOMETRY, NULL))
+    gnc_restore_window_size (GNC_PREFS_GROUP, GTK_WINDOW(info->window));
+    if (gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL, GNC_PREF_SAVE_GEOMETRY))
     {
-        gint position = gnc_gconf_get_int(GCONF_SECTION, PANED_POSITION, NULL);
-        gtk_paned_set_position(GTK_PANED(info->csva.paned), position);
+        GObject *object = gtk_builder_get_object (builder, "paned");
+        gnc_prefs_bind (GNC_PREFS_GROUP, GNC_PREF_PANED_POS, object, "position");
     }
 
     gtk_builder_connect_signals(builder, info);
@@ -1035,8 +1028,8 @@ gnc_file_csv_export (CsvExportType export_type)
     info->export_type = export_type;
     csv_export_assistant_create (info);
     gnc_register_gui_component (ASSISTANT_CSV_EXPORT_CM_CLASS,
-				NULL, csv_export_close_handler,
-				info);
+                                NULL, csv_export_close_handler,
+                                info);
     gtk_widget_show_all (info->window);
     gnc_window_adjust_for_screen (GTK_WINDOW(info->window));
 }

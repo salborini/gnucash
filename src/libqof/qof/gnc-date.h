@@ -120,13 +120,13 @@ typedef enum
     QOF_DATE_FORMAT_UK,       /**< Britain: dd/mm/yyyy */
     QOF_DATE_FORMAT_CE,       /**< Continental Europe: dd.mm.yyyy */
     QOF_DATE_FORMAT_ISO,      /**< ISO: yyyy-mm-dd */
-    QOF_DATE_FORMAT_UTC,      /**< UTC: 2004-12-12T23:39:11Z */
     QOF_DATE_FORMAT_LOCALE,   /**< Take from locale information */
+    QOF_DATE_FORMAT_UTC,      /**< UTC: 2004-12-12T23:39:11Z */
     QOF_DATE_FORMAT_CUSTOM    /**< Used by the check printing code */
 } QofDateFormat;
 
 #define DATE_FORMAT_FIRST QOF_DATE_FORMAT_US
-#define DATE_FORMAT_LAST  QOF_DATE_FORMAT_LOCALE
+#define DATE_FORMAT_LAST  QOF_DATE_FORMAT_UTC
 
 /** Enum for date completion modes (for dates entered without year) */
 typedef enum
@@ -233,6 +233,12 @@ time64 gnc_time_utc (time64 *tbuf);
  * later than secs1 the value will be negative.
  */
 gdouble gnc_difftime (const time64 secs1, const time64 secs2);
+
+/** Wrapper for g_date_time_new_from_unix_local() that takes special care on
+ * windows to take the local timezone into account. On unix, it just calles the
+ * g_date function. */
+GDateTime*
+gnc_g_date_time_new_from_unix_local (time64 time);
 
 /** \brief free a struct tm* created with gnc_localtime() or gnc_gmtime()
  * \param time: The struct tm* to be freed.
@@ -582,7 +588,7 @@ void gnc_tm_set_day_start (struct tm *tm)
     tm->tm_isdst = -1;
 }
 
-/** The gnc_tm_set_day_start() inline routine will set the appropriate
+/** The gnc_tm_set_day_middle() inline routine will set the appropriate
  *  fields in the struct tm to indicate noon of that day.  This
  *  routine assumes that the contents of the data structure is already
  *  in normalized form.*/
@@ -597,7 +603,7 @@ void gnc_tm_set_day_middle (struct tm *tm)
     tm->tm_isdst = -1;
 }
 
-/** The gnc_tm_set_day_start() inline routine will set the appropriate
+/** The gnc_tm_set_day_end() inline routine will set the appropriate
  *  fields in the struct tm to indicate the last second of that day.
  *  This routine assumes that the contents of the data structure is
  *  already in normalized form.*/

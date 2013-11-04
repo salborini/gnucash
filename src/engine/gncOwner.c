@@ -807,7 +807,7 @@ gncOwnerCreatePaymentLot (const GncOwner *owner, Transaction *txn,
         {
             /* Need to value the payment in terms of the owner commodity */
             gnc_numeric payment_value = gnc_numeric_mul(amount,
-                    exch, GNC_DENOM_AUTO, GNC_HOW_RND_ROUND_HALF_UP);
+                                        exch, GNC_DENOM_AUTO, GNC_HOW_RND_ROUND_HALF_UP);
 
             xaccSplitSetAmount(split, amount);
             xaccSplitSetValue(split, payment_value);
@@ -1024,10 +1024,10 @@ void
 gncOwnerApplyPayment (const GncOwner *owner, Transaction *txn, GList *lots,
                       Account *posted_acc, Account *xfer_acc,
                       gnc_numeric amount, gnc_numeric exch, Timespec date,
-                      const char *memo, const char *num)
+                      const char *memo, const char *num, gboolean auto_pay)
 {
     GNCLot *payment_lot;
-    GList *selected_lots;
+    GList *selected_lots = NULL;
 
     /* Verify our arguments */
     if (!owner || !posted_acc || !xfer_acc) return;
@@ -1039,9 +1039,9 @@ gncOwnerApplyPayment (const GncOwner *owner, Transaction *txn, GList *lots,
 
     if (lots)
         selected_lots = lots;
-    else
+    else if (auto_pay)
         selected_lots = xaccAccountFindOpenLots (posted_acc, gncOwnerLotMatchOwnerFunc,
-                                                 (gpointer)owner, NULL);
+                        (gpointer)owner, NULL);
 
     /* And link the selected lots and the payment lot together as well as possible.
      * If the payment was bigger than the selected documents/overpayments, only
@@ -1050,6 +1050,7 @@ gncOwnerApplyPayment (const GncOwner *owner, Transaction *txn, GList *lots,
     if (payment_lot)
         selected_lots = g_list_prepend (selected_lots, payment_lot);
     gncOwnerAutoApplyPaymentsWithLots (owner, selected_lots);
+    g_list_free (selected_lots);
 }
 
 GList *

@@ -20,7 +20,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.5], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.5.7], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 
@@ -60,16 +60,6 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_GNU_SOURCE
 AC_PROG_INTLTOOL
-
-AM_GCONF_SOURCE_2
-
-# Override gconf default install locations.  The default is to always
-# put them into /etc.  This change puts them into $(prefix)/etc.
-if test "x$GCONF_SCHEMA_INSTALL_SOURCE" = "x"; then
-  GCONF_SCHEMA_CONFIG_SOURCE="xml::${sysconfdir}/gconf/gconf.xml.defaults"
-fi
-GCONF_SCHEMA_CONFIG_SOURCE_DIRONLY=`echo $GCONF_SCHEMA_CONFIG_SOURCE | cut -d ':' -f 3`
-AC_SUBST(GCONF_SCHEMA_CONFIG_SOURCE_DIRONLY)
 
 
 AC_SUBST(GNUCASH_MAJOR_VERSION)
@@ -255,24 +245,34 @@ fi
 # We first check for other versions due to deprecations.
 # 2.36 deprecated g_type_init
 # 2.32 deprecated some gthread functions
-PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.36 gthread-2.0 gobject-2.0 gmodule-2.0,
+PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.38 gio-2.0 >= 2.25 gthread-2.0 gobject-2.0 gmodule-2.0,
 [
+  AC_DEFINE([HAVE_GLIB_2_38], [1], [Configure leading quote around assertions])
   AC_DEFINE([HAVE_GLIB_2_36], [1], [Configure g_type_init deprecation])
   AC_DEFINE([HAVE_GLIB_2_32], [1], [Configure gthread deprecations])
 ],
 [
   PKG_CHECK_MODULES(GLIB,
-                        glib-2.0 >= 2.32 gthread-2.0 gobject-2.0 gmodule-2.0,
+                        glib-2.0 >= 2.36 gio-2.0 >= 2.25 gthread-2.0 gobject-2.0 gmodule-2.0,
   [
+    AC_DEFINE([HAVE_GLIB_2_36], [1], [Configure g_type_init deprecation])
     AC_DEFINE([HAVE_GLIB_2_32], [1], [Configure gthread deprecations])
   ],
   [
     PKG_CHECK_MODULES(GLIB,
-                        glib-2.0 >= 2.28 gthread-2.0 gobject-2.0 gmodule-2.0)
+                        glib-2.0 >= 2.32 gio-2.0 >= 2.25 gthread-2.0 gobject-2.0 gmodule-2.0,
+    [
+        AC_DEFINE([HAVE_GLIB_2_32], [1], [Configure gthread deprecations])
+    ],
+    [
+	PKG_CHECK_MODULES(GLIB,
+                        glib-2.0 >= 2.28 gio-2.0 >= 2.25 gthread-2.0 gobject-2.0 gmodule-2.0)
+    ])
   ])
 ])
-
 AC_CHECK_HEADERS(dirent.h dlfcn.h dl.h utmp.h locale.h mcheck.h unistd.h wctype.h)
+
+GLIB_GSETTINGS
 
 # I'm sure we (used to?) require this in various places, so don't remove
 # this test unless you've done sufficient code review/testing.
@@ -467,16 +467,6 @@ GUILE_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)])
 AM_CONDITIONAL(GNC_HAVE_GUILE_WWW, test "${gnc_have_guile_www}" = yes)
 
 ### --------------------------------------------------------------------------
-### look for gconf
-
-PKG_CHECK_MODULES(GCONF, gconf-2.0 >= 2.22)
-# Look up gconftool-2
-AC_PATH_PROG(GCONFTOOL, gconftool-2)
-AC_SUBST(GCONFTOOL)
-AC_SUBST(GCONF_CFLAGS)
-AC_SUBST(GCONF_LIBS)
-
-### --------------------------------------------------------------------------
 ### LIBXML -- GNOME_XML_LIB is defined by GNOME_XML_CHECK
 
 LIBXML2_REQUIRED=2.5.10
@@ -493,6 +483,22 @@ AC_CHECK_LIB(xml2, xmlElemDump, [:], [
   AC_MSG_ERROR([libxml2 is required for GnuCash])
   ])
 LIBS="$oLIBS"
+
+### --------------------------------------------------------------------------
+### LIBXSLT
+
+PKG_CHECK_MODULES(LIBXSLT, libxslt)
+AS_SCRUB_INCLUDE(LIBXLT_CFLAGS)
+AC_SUBST(LIBXSLT_CFLAGS)
+AC_SUBST(LIBXSLT_LIBS)
+
+# xsltproc is not included in libxslt on all distributions
+# so check for it separately
+AC_PATH_PROG(XSLTPROC, xsltproc, [""])
+
+if test -z "$XSLTPROC"; then
+  AC_MSG_ERROR([xsltproc is required to build GnuCash])
+fi
 
 ### --------------------------------------------------------------------------
 ### Zlib
@@ -531,15 +537,58 @@ AC_ARG_ENABLE(dbi,
    [want_dbi=true])
 if test x${want_dbi} = xtrue
 then
+  EXTRA_SEARCH_LIBS=""
   AC_CHECK_HEADERS(dbi/dbi.h)
   if test "x$ac_cv_header_dbi_dbi_h" != xno; then
+    save_libs=$LIBS
     AC_ARG_WITH( dbi-dbd-dir,
       [AS_HELP_STRING([--with-dbi-dbd-dir=PATH],[specify location of libdbi drivers @<:@default=${libdir}/dbd@:>@])],
-      GNC_DBD_DIR="$with_dbi_dbd_dir",
-      GNC_DBD_DIR="")
+      [[GNC_DBD_DIR="$with_dbi_dbd_dir"
+       EXTRA_SEARCH_LIBS=$GNC_DBD_DIR]],
+      [[GNC_DBD_DIR=""
+       EXTRA_SEARCH_LIBS="/usr/lib/dbd:/usr/lib64/dbd:${libdir}/dbd"]]
+       )
+    case $host_os in
+       win32*|mingw*)
+	 LDINC="#include <windows.h>"
+	 LDFUNCARGS=""
+	 LDEXT=dll
+	 ;;
+       *)
+	 LDINC="#include <dlfcn.h>"
+	 LDFUNCARGS=", RTLD_NOW"
+	 LDEXT=so
+	 export LIBS="$lt_cv_dlopen_libs $LIBS"
+	 ;;
+      esac
+      export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$EXTRA_SEARCH_LIBS"
+      AC_MSG_CHECKING([Looking for at least one supported DBD module])
+      AC_RUN_IFELSE([AC_LANG_PROGRAM([$LDINC],
+				     [[if (!$lt_cv_dlopen("libdbdsqlite3.$LDEXT"$LDFUNCARGS)) return -1;
+				     ]])],AC_MSG_RESULT([SQLite3]),
+      	AC_RUN_IFELSE([AC_LANG_PROGRAM([$LDINC],
+				     [[if (!$lt_cv_dlopen("libdbdmysql.$LDEXT"$LDFUNCARGS)) return -1;
+					]])],AC_MSG_RESULT([MySql]),
+	  AC_RUN_IFELSE([AC_LANG_PROGRAM([$LDINC],
+				     [[if (!$lt_cv_dlopen("libdbdpgsql.$LDEXT"$LDFUNCARGS)) return -1;
+					 ]])],AC_MSG_RESULT([Postgresql]),
+        				 AC_MSG_ERROR([
+Unable to find any of the supported dbd modules
+(libdbdsqlite3, libdbdmysql, or libdbdpgsql) needed to actually use the SQL
+backend.
+
+If you do have them installed the problem is either that dlopen cannot
+find them or that dlopen itself is not getting linked. Check config.log
+to find out which.  You can add the option --with-dbi-dbd-dir pointing to
+the directory in which they are located.
+
+If you do not actually want to build with libdi add --disable-dbi
+to the configure argument list and run it again.
+       ]))))
 
     LIBDBI_LIBS=-ldbi
     _COMPONENTS="$_COMPONENTS dbi"
+    LIBS=$saved_libs
   else
     AC_MSG_ERROR([
 
@@ -603,8 +652,19 @@ AC_ARG_ENABLE( profile,
   LDFLAGS="${LDFLAGS} -pg")
 
 ### --------------------------------------------------------------------------
+### Register2
+AC_ARG_ENABLE( register2,
+  [AS_HELP_STRING([--enable-register2],[compile with register2 enabled])],
+  if test x$enableval = xyes; then
+    AC_DEFINE(REGISTER2_ENABLED,1,We are using Register2)
+  else
+    AC_DEFINE(REGISTER2_ENABLED,0,We are not using Register2)
+  fi)
+
+### --------------------------------------------------------------------------
 ### OFX
 want_ofx=auto
+have_ofx=no
 AC_ARG_ENABLE( ofx,
   [AS_HELP_STRING([--enable-ofx],[compile with ofx support (needs LibOFX)])],
   [ case "$enableval" in
@@ -618,11 +678,28 @@ case "${want_ofx}" in
   no)   AC_MSG_RESULT(no) ;;
   auto) AC_MSG_RESULT(yes -- automatic test) ;;
 esac
+
 if test x${want_ofx} != xno ; then
-  PKG_CHECK_MODULES(LIBOFX, libofx, [want_ofx="yes"], [want_ofx="no"])
-  _COMPONENTS="$_COMPONENTS ofx"
+  PKG_CHECK_MODULES(LIBOFX, libofx, [have_ofx="yes"], [ have_ofx="no" ])
 fi
-AM_CONDITIONAL([WITH_OFX], [test "x${want_ofx}" != xno])
+
+if test x${want_ofx} = xyes && test x${have_ofx} = xno; then
+  AC_MSG_ERROR([
+
+ OFX support wanted, but libofx development libraries not found.
+ Either install the libofx development package (such as libofx-dev or
+ libofx-devel), or drop ofx support. You can do tis by removing
+ --enable-dbi from the configure parameters.])
+fi
+
+MIGRATABLE_PREFS_OFX="/dev/null"
+if test x${have_ofx} = xyes ; then
+  _COMPONENTS="$_COMPONENTS ofx"
+  MIGRATABLE_PREFS_OFX="$srcdir/src/import-export/ofx/migratable-prefs-ofx.xml"
+fi
+
+AM_CONDITIONAL([WITH_OFX], [test "x${have_ofx}" = xyes])
+AC_SUBST_FILE([MIGRATABLE_PREFS_OFX])
 ### --------------------------------------------------------------------------
 ### MT940
 AC_ARG_ENABLE( mt940,
@@ -644,6 +721,8 @@ AC_ARG_ENABLE( hbci,
   if test "x$enableval" != "xno" ; then
     AC_MSG_ERROR([--enable-hbci is obsolete -- the option has been renamed into --enable-aqbanking])
   fi)
+
+MIGRATABLE_PREFS_AQBANKING="/dev/null"
 if test x${want_aqbanking} = xyes ;
 then
   # Check for Aqbanking library
@@ -666,10 +745,19 @@ then
   AC_SUBST(AQBANKING_LIBS)
   AC_SUBST(AQBANKING_CFLAGS)
   _COMPONENTS="$_COMPONENTS aqbanking"
+  MIGRATABLE_PREFS_AQBANKING="$srcdir/src/import-export/aqbanking/migratable-prefs-aqbanking.xml"
 fi
 AM_CONDITIONAL([WITH_AQBANKING], [test x${want_aqbanking} = xyes])
+AC_SUBST_FILE([MIGRATABLE_PREFS_AQBANKING])
 
-AC_ARG_WITH(qt3_wizard_package,
+AC_ARG_WITH(xdg-data-dirs,
+                 [AS_HELP_STRING([--with-xdg-data-dirs],
+                 [search path for system XDG data directories [default /usr/local/share/;/usr/share/]])],
+                 [GNC_SYSTEM_XDG_DATA_DIRS=$withval],
+                 [GNC_SYSTEM_XDG_DATA_DIRS="/usr/local/share;/usr/share"])
+AC_SUBST(GNC_SYSTEM_XDG_DATA_DIRS)
+
+AC_ARG_WITH(qt3-wizard-package,
                  [AS_HELP_STRING([--with-qt3-wizard-package=name],[name of package containing qt3-wizard (aqbanking)])],
     [QT3_WIZARD_PACKAGE=$withval], [QT3_WIZARD_PACKAGE=aqbanking])
 AC_DEFINE_UNQUOTED([QT3_WIZARD_PACKAGE],["$QT3_WIZARD_PACKAGE"],[Name of package containing qt3-wizard.])
@@ -1265,32 +1353,33 @@ AC_CONFIG_FILES(
   src/gnc-module/test/misc-mods/Makefile
   src/gnome/Makefile
   src/gnome/gtkbuilder/Makefile
-  src/gnome/schemas/Makefile
+  src/gnome/gschemas/Makefile
   src/gnome/ui/Makefile
   src/gnome-utils/Makefile
   src/gnome-utils/gtkbuilder/Makefile
-  src/gnome-utils/schemas/Makefile
+  src/gnome-utils/gschemas/Makefile
   src/gnome-utils/test/Makefile
   src/gnome-utils/ui/Makefile
   src/gnome-search/Makefile
   src/html/Makefile
   src/import-export/Makefile
   src/import-export/test/Makefile
+  src/import-export/ofx/gschemas/Makefile
   src/import-export/qif-import/Makefile
   src/import-export/qif/Makefile
   src/import-export/qif/test/Makefile
-  src/import-export/qif-import/schemas/Makefile
+  src/import-export/qif-import/gschemas/Makefile
   src/import-export/qif-import/test/Makefile
-  src/import-export/schemas/Makefile
+  src/import-export/gschemas/Makefile
   src/import-export/ofx/Makefile
   src/import-export/ofx/test/Makefile
   src/import-export/csv-import/Makefile
-  src/import-export/csv-import/schemas/Makefile
+  src/import-export/csv-import/gschemas/Makefile
   src/import-export/csv-export/Makefile
-  src/import-export/csv-export/schemas/Makefile
+  src/import-export/csv-export/gschemas/Makefile
   src/import-export/log-replay/Makefile
   src/import-export/aqbanking/Makefile
-  src/import-export/aqbanking/schemas/Makefile
+  src/import-export/aqbanking/gschemas/Makefile
   src/import-export/price-csv/Makefile
   src/libqof/Makefile
   src/libqof/qof/Makefile
@@ -1336,7 +1425,7 @@ AC_CONFIG_FILES(
   src/business/Makefile
   src/business/business-gnome/Makefile
   src/business/business-gnome/gtkbuilder/Makefile
-  src/business/business-gnome/schemas/Makefile
+  src/business/business-gnome/gschemas/Makefile
   src/business/business-gnome/ui/Makefile
   src/business/business-ledger/Makefile
   dnl # Stuff for bill/invoice import plugin
@@ -1351,6 +1440,7 @@ AC_CONFIG_FILES(
   dnl # non-makefiles
   packaging/win32/gnucash.iss
   src/bin/gnucash.rc
+  src/app-utils/migratable-prefs.xml
   src/gnome/gnucash.desktop.in
 
   dnl # Please read doc/build-system before adding *anything* here

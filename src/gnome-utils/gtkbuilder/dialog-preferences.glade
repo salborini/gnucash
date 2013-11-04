@@ -1,26 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk+" version="2.16"/>
+  <requires lib="gtk+" version="2.24"/>
   <!-- interface-naming-policy project-wide -->
-  <object class="GtkAdjustment" id="auto_decimal_places_adj">
-    <property name="lower">1</property>
-    <property name="upper">8</property>
-    <property name="value">2</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">4</property>
-  </object>
-  <object class="GtkAdjustment" id="autosave_interval_minutes_adj">
-    <property name="upper">99999</property>
-    <property name="value">3</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">10</property>
-  </object>
-  <object class="GtkAdjustment" id="date_backmonth_adj">
-    <property name="upper">11</property>
-    <property name="value">6</property>
-    <property name="step_increment">1</property>
-    <property name="page_increment">4</property>
-  </object>
   <object class="GtkDialog" id="GnuCash Preferences">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">GnuCash Preferences</property>
@@ -123,7 +104,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/window/pages/account_tree/summary/grand_total">
+                  <object class="GtkCheckButton" id="pref/window.pages.account-tree.summary/grand-total">
                     <property name="label" translatable="yes">Include _grand total</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -144,7 +125,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/window/pages/account_tree/summary/non_currency">
+                  <object class="GtkCheckButton" id="pref/window.pages.account-tree.summary/non-currency">
                     <property name="label" translatable="yes">Include _non-currency totals</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -195,7 +176,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/window/pages/account_tree/summary/start_choice/relative">
+                  <object class="GtkRadioButton" id="pref/window.pages.account-tree.summary/start-choice-relative">
                     <property name="label" translatable="yes">_Relative:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -216,7 +197,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/window/pages/account_tree/summary/start_choice/absolute">
+                  <object class="GtkRadioButton" id="pref/window.pages.account-tree.summary/start-choice-absolute">
                     <property name="label" translatable="yes">_Absolute:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -226,7 +207,7 @@
                     <property name="tooltip_text" translatable="yes">Use the specified absolute starting date for profit/loss calculations.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/window/pages/account_tree/summary/start_choice/relative</property>
+                    <property name="group">pref/window.pages.account-tree.summary/start-choice-relative</property>
                   </object>
                   <packing>
                     <property name="top_attach">2</property>
@@ -237,7 +218,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/window/pages/account_tree/summary/end_choice/relative">
+                  <object class="GtkRadioButton" id="pref/window.pages.account-tree.summary/end-choice-relative">
                     <property name="label" translatable="yes">Re_lative:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -258,7 +239,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/window/pages/account_tree/summary/end_choice/absolute">
+                  <object class="GtkRadioButton" id="pref/window.pages.account-tree.summary/end-choice-absolute">
                     <property name="label" translatable="yes">Ab_solute:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -268,7 +249,7 @@
                     <property name="tooltip_text" translatable="yes">Use the specified absolute ending date for profit/loss calculations. Also use this date for net assets calculations.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/window/pages/account_tree/summary/end_choice/relative</property>
+                    <property name="group">pref/window.pages.account-tree.summary/end-choice-relative</property>
                   </object>
                   <packing>
                     <property name="top_attach">6</property>
@@ -305,7 +286,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/window/pages/account_tree/summary/start_period">
+                  <object class="GtkHBox" id="pref/window.pages.account-tree.summary/start-period">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -322,7 +303,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/window/pages/account_tree/summary/start_date">
+                  <object class="GtkHBox" id="pref/window.pages.account-tree.summary/start-date">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -339,7 +320,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/window/pages/account_tree/summary/end_period">
+                  <object class="GtkHBox" id="pref/window.pages.account-tree.summary/end-period">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -356,7 +337,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/window/pages/account_tree/summary/end_date">
+                  <object class="GtkHBox" id="pref/window.pages.account-tree.summary/end-date">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -486,7 +467,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/use_accounting_labels">
+                  <object class="GtkCheckButton" id="pref/general/use-accounting-labels">
                     <property name="label" translatable="yes">Use _formal accounting labels</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -535,7 +516,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/reversed_accounts/none">
+                  <object class="GtkRadioButton" id="pref/general/reversed-accounts-none">
                     <property name="label" translatable="yes">_None</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -557,7 +538,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/reversed_accounts/credit">
+                  <object class="GtkRadioButton" id="pref/general/reversed-accounts-credit">
                     <property name="label" translatable="yes">C_redit accounts</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -567,7 +548,7 @@
                     <property name="tooltip_text" translatable="yes">Sign reverse balances on the following: Credit Card, Payable, Liability, Equity, and Income.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/reversed_accounts/none</property>
+                    <property name="group">pref/general/reversed-accounts-none</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
@@ -579,7 +560,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/reversed_accounts/income_expense">
+                  <object class="GtkRadioButton" id="pref/general/reversed-accounts-incomeexpense">
                     <property name="label" translatable="yes">_Income &amp; expense</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -589,7 +570,7 @@
                     <property name="tooltip_text" translatable="yes">Sign reverse balances on income and expense accounts.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/reversed_accounts/none</property>
+                    <property name="group">pref/general/reversed-accounts-none</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
@@ -679,7 +660,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkRadioButton" id="gconf/general/currency_choice/locale">
+                      <object class="GtkRadioButton" id="pref/general/currency-choice-locale">
                         <property name="label" translatable="yes">Loc_ale:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -706,7 +687,7 @@
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkRadioButton" id="gconf/general/currency_choice/other">
+                      <object class="GtkRadioButton" id="pref/general/currency-choice-other">
                         <property name="label" translatable="yes">Ch_oose:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -716,7 +697,7 @@
                         <property name="tooltip_text" translatable="yes">Use the specified currency for all newly created accounts.</property>
                         <property name="use_underline">True</property>
                         <property name="draw_indicator">True</property>
-                        <property name="group">gconf/general/currency_choice/locale</property>
+                        <property name="group">pref/general/currency-choice-locale</property>
                       </object>
                     </child>
                   </object>
@@ -728,18 +709,21 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry" id="gconf/general/account_separator">
+                  <object class="GtkEntry" id="pref/general/account-separator">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="events">GDK_FOCUS_CHANGE_MASK | GDK_STRUCTURE_MASK</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">The character that will be used between components of an account name. A legal value is any single character except letters and numbers, or any of the following strings: &amp;quot;colon&amp;quot; &amp;quot;slash&amp;quot;, &amp;quot;backslash&amp;quot;, &amp;quot;dash&amp;quot; and &amp;quot;period&amp;quot;.</property>
                     <property name="tooltip_text" translatable="yes">The character that will be used between components of an account name. A legal value is any single character except letters and numbers, or any of the following strings: "colon" "slash", "backslash", "dash" and "period".</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
                     <property name="primary_icon_sensitive">True</property>
                     <property name="secondary_icon_sensitive">True</property>
+                    <signal name="changed" handler="gnc_account_separator_pref_changed_cb" swapped="no"/>
+                    <signal name="focus-out-event" handler="gnc_account_separator_validate_cb" swapped="no"/>
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
@@ -795,7 +779,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/general/currency_other">
+                  <object class="GtkHBox" id="pref/general/currency-other">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -859,7 +843,7 @@
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/show_account_color">
+                  <object class="GtkCheckButton" id="pref/general/show-account-color">
                     <property name="label" translatable="yes">Show the Account Color as background</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -893,7 +877,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/show_account_color_tabs">
+                  <object class="GtkCheckButton" id="pref/general/show-account-color-tabs">
                     <property name="label" translatable="yes">Show the Account Color on tabs</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -939,17 +923,8 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
-                <property name="n_rows">17</property>
+                <property name="n_rows">14</property>
                 <property name="n_columns">4</property>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
                 <child>
                   <placeholder/>
                 </child>
@@ -1040,8 +1015,8 @@
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">10</property>
-                    <property name="bottom_attach">11</property>
+                    <property name="top_attach">6</property>
+                    <property name="bottom_attach">7</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -1053,194 +1028,10 @@
                     <property name="xalign">0</property>
                   </object>
                   <packing>
-                    <property name="top_attach">9</property>
-                    <property name="bottom_attach">10</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="label102">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="label" translatable="yes">2005-07-31</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
-                    <property name="top_attach">8</property>
-                    <property name="bottom_attach">9</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="label101">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="label" translatable="yes">31.07.2005</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
-                    <property name="top_attach">7</property>
-                    <property name="bottom_attach">8</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="label100">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="label" translatable="yes">31/07/2005</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
-                    <property name="top_attach">6</property>
-                    <property name="bottom_attach">7</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="label99">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="label" translatable="yes">07/31/2005</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
                     <property name="top_attach">5</property>
                     <property name="bottom_attach">6</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="locale_date_sample">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                  </object>
-                  <packing>
-                    <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
-                    <property name="top_attach">4</property>
-                    <property name="bottom_attach">5</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_format/iso">
-                    <property name="label" translatable="yes">_ISO:</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the date format specified by the ISO-8601 standard.</property>
-                    <property name="tooltip_text" translatable="yes">Use the date format specified by the ISO-8601 standard.</property>
-                    <property name="use_underline">True</property>
-                    <property name="active">True</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">8</property>
-                    <property name="bottom_attach">9</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_format/ce">
-                    <property name="label" translatable="yes">_Europe:</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the date format common in continental Europe.</property>
-                    <property name="tooltip_text" translatable="yes">Use the date format common in continental Europe.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/date_format/iso</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">7</property>
-                    <property name="bottom_attach">8</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_format/uk">
-                    <property name="label" translatable="yes">U_K:</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the date format common in the United Kingdom.</property>
-                    <property name="tooltip_text" translatable="yes">Use the date format common in the United Kingdom.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/date_format/iso</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">6</property>
-                    <property name="bottom_attach">7</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_format/us">
-                    <property name="label" translatable="yes">_US:</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the date format common in the United States.</property>
-                    <property name="tooltip_text" translatable="yes">Use the date format common in the United States.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/date_format/iso</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">5</property>
-                    <property name="bottom_attach">6</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_format/locale">
-                    <property name="label" translatable="yes">Loc_ale:</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the date format specified by the system locale.</property>
-                    <property name="tooltip_text" translatable="yes">Use the date format specified by the system locale.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/date_format/iso</property>
-                  </object>
-                  <packing>
-                    <property name="top_attach">4</property>
-                    <property name="bottom_attach">5</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
@@ -1286,7 +1077,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/24hour_clock">
+                  <object class="GtkCheckButton" id="pref/general/clock-24h">
                     <property name="label" translatable="yes">U_se 24-hour clock</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1315,8 +1106,8 @@
                     <property name="use_markup">True</property>
                   </object>
                   <packing>
-                    <property name="top_attach">12</property>
-                    <property name="bottom_attach">13</property>
+                    <property name="top_attach">8</property>
+                    <property name="bottom_attach">9</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -1331,8 +1122,8 @@
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">13</property>
-                    <property name="bottom_attach">14</property>
+                    <property name="top_attach">9</property>
+                    <property name="bottom_attach">10</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -1344,7 +1135,7 @@
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_completion/thisyear">
+                  <object class="GtkRadioButton" id="pref/general/date-completion-thisyear">
                     <property name="label" translatable="yes">In the current calendar year</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1358,16 +1149,16 @@
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">14</property>
-                    <property name="bottom_attach">15</property>
+                    <property name="top_attach">10</property>
+                    <property name="bottom_attach">11</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/date_completion/sliding">
-                    <property name="label" translatable="yes">In a sliding 12-month window starting this 
+                  <object class="GtkRadioButton" id="pref/general/date-completion-sliding">
+                    <property name="label" translatable="yes">In a sliding 12-month window starting this
 many months before the current month:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1377,12 +1168,12 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Dates will be completed so that they are close to the current date. Enter the maximum number of months to go backwards in time when completing dates.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/date_completion/thisyear</property>
+                    <property name="group">pref/general/date-completion-thisyear</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">15</property>
-                    <property name="bottom_attach">16</property>
+                    <property name="top_attach">11</property>
+                    <property name="bottom_attach">12</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
@@ -1392,13 +1183,13 @@ many months before the current month:</property>
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkSpinButton" id="gconf/general/date_backmonths">
+                  <object class="GtkSpinButton" id="pref/general/date-backmonths">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">Enter number of months.</property>
                     <property name="tooltip_text" translatable="yes">Enter number of months.</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
@@ -1408,10 +1199,38 @@ many months before the current month:</property>
                     <property name="climb_rate">1</property>
                   </object>
                   <packing>
-                    <property name="top_attach">16</property>
-                    <property name="bottom_attach">17</property>
+                    <property name="top_attach">12</property>
+                    <property name="bottom_attach">13</property>
                     <property name="x_options"/>
                     <property name="y_options"/>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkComboBox" id="pref/general/date-format">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="tooltip_markup">Use the date format specified by the system locale.</property>
+                    <property name="tooltip_text" translatable="yes">Use the date format specified by the system locale.</property>
+                    <property name="model">date_formats</property>
+                    <property name="active">3</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="format_renderer"/>
+                      <attributes>
+                        <attribute name="text">0</attribute>
+                      </attributes>
+                    </child>
+                    <child>
+                      <object class="GtkCellRendererText" id="example_renderer"/>
+                      <attributes>
+                        <attribute name="text">1</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="top_attach">4</property>
+                    <property name="bottom_attach">5</property>
+                    <property name="y_options">GTK_FILL</property>
                   </packing>
                 </child>
               </object>
@@ -1436,44 +1255,8 @@ many months before the current month:</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
-                <property name="n_rows">22</property>
+                <property name="n_rows">25</property>
                 <property name="n_columns">4</property>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
                 <child>
                   <placeholder/>
                 </child>
@@ -1542,14 +1325,14 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/new_hierarchy/show_on_new_file">
+                  <object class="GtkCheckButton" id="pref/dialogs.new-hierarchy/show-on-new-file">
                     <property name="label" translatable="yes">Perform account list _setup on new file</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">Present the new account list dialog when you choose File -&gt; New File.</property>
-                    <property name="tooltip_text" translatable="yes">Present the new account list dialog when you choose File -> New File.</property>
+                    <property name="tooltip_text" translatable="yes">Present the new account list dialog when you choose File -&gt; New File.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
                   </object>
@@ -1563,7 +1346,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/num_source">
+                  <object class="GtkCheckButton" id="pref/general/num-source">
                     <property name="label" translatable="yes">Set book option on new files to use split "action" field for "Num" field on registers/reports</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1584,7 +1367,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/tip_of_the_day/show_at_startup">
+                  <object class="GtkCheckButton" id="pref/dialogs.totd/show-at-startup">
                     <property name="label" translatable="yes">Display "_tip of the day" dialog</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1610,13 +1393,13 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">6</property>
                     <child>
-                      <object class="GtkSpinButton" id="gconf/general/retain_days">
+                      <object class="GtkSpinButton" id="pref/general/retain-days">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="has_tooltip">True</property>
                         <property name="tooltip_markup">How many days to keep old log/backup files.</property>
                         <property name="tooltip_text" translatable="yes">How many days to keep old log/backup files.</property>
-                        <property name="invisible_char">&#x25CF;</property>
+                        <property name="invisible_char">●</property>
                         <property name="invisible_char_set">True</property>
                         <property name="primary_icon_activatable">False</property>
                         <property name="secondary_icon_activatable">False</property>
@@ -1648,8 +1431,8 @@ many months before the current month:</property>
                   <packing>
                     <property name="left_attach">1</property>
                     <property name="right_attach">3</property>
-                    <property name="top_attach">17</property>
-                    <property name="bottom_attach">18</property>
+                    <property name="top_attach">20</property>
+                    <property name="bottom_attach">21</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options">GTK_FILL</property>
                   </packing>
@@ -1661,19 +1444,19 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">_Retain log files:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/general/retain_days</property>
+                    <property name="mnemonic_widget">pref/general/retain-days</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">15</property>
-                    <property name="bottom_attach">16</property>
+                    <property name="top_attach">18</property>
+                    <property name="bottom_attach">19</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/file_compression">
+                  <object class="GtkCheckButton" id="pref/general/file-compression">
                     <property name="label" translatable="yes">Com_press files</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1728,7 +1511,7 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">_Decimal places:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/general/auto_decimal_places</property>
+                    <property name="mnemonic_widget">pref/general/auto-decimal-places</property>
                   </object>
                   <packing>
                     <property name="top_attach">9</property>
@@ -1739,13 +1522,13 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSpinButton" id="gconf/general/auto_decimal_places">
+                  <object class="GtkSpinButton" id="pref/general/auto-decimal-places">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">How many automatic decimal places will be filled in.</property>
                     <property name="tooltip_text" translatable="yes">How many automatic decimal places will be filled in.</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
@@ -1764,7 +1547,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/auto_decimal_point">
+                  <object class="GtkCheckButton" id="pref/general/auto-decimal-point">
                     <property name="label" translatable="yes">_Automatic decimal point</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1785,7 +1568,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/negative_in_red">
+                  <object class="GtkCheckButton" id="pref/general/negative-in-red">
                     <property name="label" translatable="yes">Display ne_gative amounts in red</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1842,8 +1625,8 @@ many months before the current month:</property>
                     <property name="use_markup">True</property>
                   </object>
                   <packing>
-                    <property name="top_attach">20</property>
-                    <property name="bottom_attach">21</property>
+                    <property name="top_attach">23</property>
+                    <property name="bottom_attach">24</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -1855,24 +1638,24 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">New search _limit:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/dialogs/search/new_search_limit</property>
+                    <property name="mnemonic_widget">pref/dialogs.search/new-search-limit</property>
                   </object>
                   <packing>
-                    <property name="top_attach">21</property>
-                    <property name="bottom_attach">22</property>
+                    <property name="top_attach">24</property>
+                    <property name="bottom_attach">25</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSpinButton" id="gconf/dialogs/search/new_search_limit">
+                  <object class="GtkSpinButton" id="pref/dialogs.search/new-search-limit">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">Default to &amp;apos;new search&amp;apos; if fewer than this number of items is returned.</property>
                     <property name="tooltip_text" translatable="yes">Default to 'new search' if fewer than this number of items is returned.</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
@@ -1884,14 +1667,14 @@ many months before the current month:</property>
                   <packing>
                     <property name="left_attach">1</property>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">21</property>
-                    <property name="bottom_attach">22</property>
+                    <property name="top_attach">24</property>
+                    <property name="bottom_attach">25</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/show_splash_screen">
+                  <object class="GtkCheckButton" id="pref/general/show-splash-screen">
                     <property name="label" translatable="yes">Show splash scree_n</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -1918,7 +1701,7 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">Auto-save time _interval:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/general/autosave_interval_minutes</property>
+                    <property name="mnemonic_widget">pref/general/autosave-interval-minutes</property>
                   </object>
                   <packing>
                     <property name="top_attach">14</property>
@@ -1934,13 +1717,13 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">6</property>
                     <child>
-                      <object class="GtkSpinButton" id="gconf/general/autosave_interval_minutes">
+                      <object class="GtkSpinButton" id="pref/general/autosave-interval-minutes">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="has_tooltip">True</property>
                         <property name="tooltip_markup">The number of minutes until saving of the data file to harddisk will be started automatically. If zero, no saving will be started automatically.</property>
                         <property name="tooltip_text" translatable="yes">The number of minutes until saving of the data file to harddisk will be started automatically. If zero, no saving will be started automatically.</property>
-                        <property name="invisible_char">&#x25CF;</property>
+                        <property name="invisible_char">●</property>
                         <property name="invisible_char_set">True</property>
                         <property name="primary_icon_activatable">False</property>
                         <property name="secondary_icon_activatable">False</property>
@@ -1979,7 +1762,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/autosave_show_explanation">
+                  <object class="GtkCheckButton" id="pref/general/autosave-show-explanation">
                     <property name="label" translatable="yes">Show auto-save confirmation _question</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2015,14 +1798,14 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                   </object>
                   <packing>
-                    <property name="top_attach">19</property>
-                    <property name="bottom_attach">20</property>
+                    <property name="top_attach">17</property>
+                    <property name="bottom_attach">18</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/retain_type/never">
+                  <object class="GtkRadioButton" id="pref/general/retain-type-never">
                     <property name="label" translatable="yes">Never</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2031,16 +1814,16 @@ many months before the current month:</property>
                     <property name="tooltip_markup">Do not create log/backup files.</property>
                     <property name="tooltip_text" translatable="yes">Do not create log/backup files.</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/retain_type/days</property>
+                    <property name="group">pref/general/retain-type-days</property>
                   </object>
                   <packing>
-                    <property name="top_attach">16</property>
-                    <property name="bottom_attach">17</property>
+                    <property name="top_attach">19</property>
+                    <property name="bottom_attach">20</property>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/retain_type/days">
+                  <object class="GtkRadioButton" id="pref/general/retain-type-days">
                     <property name="label" translatable="yes">For:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2052,13 +1835,13 @@ many months before the current month:</property>
                     <property name="draw_indicator">True</property>
                   </object>
                   <packing>
-                    <property name="top_attach">17</property>
-                    <property name="bottom_attach">18</property>
+                    <property name="top_attach">20</property>
+                    <property name="bottom_attach">21</property>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/retain_type/forever">
+                  <object class="GtkRadioButton" id="pref/general/retain-type-forever">
                     <property name="label" translatable="yes">Forever</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2067,12 +1850,160 @@ many months before the current month:</property>
                     <property name="tooltip_markup">Do not delete log/backup files.</property>
                     <property name="tooltip_text" translatable="yes">Do not delete log/backup files.</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/retain_type/days</property>
+                    <property name="group">pref/general/retain-type-days</property>
                   </object>
                   <packing>
-                    <property name="top_attach">18</property>
-                    <property name="bottom_attach">19</property>
+                    <property name="top_attach">21</property>
+                    <property name="bottom_attach">22</property>
                     <property name="x_padding">12</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="pref/general/save-on-close-expires">
+                    <property name="label" translatable="yes">Enable timeout on "Save changes on closing" question</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="tooltip_text" translatable="yes">If enabeled, the "Save changes on closing" question will only wait a limited number of seconds for an answer. If the user didn't answer within that time, the changes will be saved automatically and the question window closed.</property>
+                    <property name="use_underline">True</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="right_attach">4</property>
+                    <property name="top_attach">15</property>
+                    <property name="bottom_attach">16</property>
+                    <property name="x_options">GTK_FILL</property>
+                    <property name="y_options"/>
+                    <property name="x_padding">12</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label15">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Time to wait for answer:</property>
+                    <property name="use_underline">True</property>
+                    <property name="mnemonic_widget">pref/general/autosave-interval-minutes</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">16</property>
+                    <property name="bottom_attach">17</property>
+                    <property name="x_options">GTK_FILL</property>
+                    <property name="y_options"/>
+                    <property name="x_padding">12</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkHBox" id="hbox1">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="spacing">6</property>
+                    <child>
+                      <object class="GtkSpinButton" id="pref/general/save-on-close-wait-time">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">The number of seconds to wait before the question window will be closed and the changes saved automatically.</property>
+                        <property name="invisible_char">●</property>
+                        <property name="invisible_char_set">True</property>
+                        <property name="primary_icon_activatable">False</property>
+                        <property name="secondary_icon_activatable">False</property>
+                        <property name="primary_icon_sensitive">True</property>
+                        <property name="secondary_icon_sensitive">True</property>
+                        <property name="adjustment">save_on_close_adj</property>
+                        <property name="climb_rate">1</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label16">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">seconds</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="right_attach">2</property>
+                    <property name="top_attach">16</property>
+                    <property name="bottom_attach">17</property>
+                    <property name="x_options">GTK_FILL</property>
+                    <property name="y_options">GTK_FILL</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label19">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="xalign">0</property>
+                  </object>
+                  <packing>
+                    <property name="top_attach">22</property>
+                    <property name="bottom_attach">23</property>
+                    <property name="x_options">GTK_FILL</property>
+                    <property name="y_options"/>
                   </packing>
                 </child>
               </object>
@@ -2097,132 +2028,9 @@ many months before the current month:</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
-                <property name="n_rows">10</property>
+                <property name="n_rows">5</property>
                 <property name="n_columns">4</property>
                 <property name="column_spacing">12</property>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
                 <child>
                   <placeholder/>
                 </child>
@@ -2244,7 +2052,6 @@ many months before the current month:</property>
                     <property name="use_markup">True</property>
                   </object>
                   <packing>
-                    <property name="right_attach">4</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -2255,7 +2062,7 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkCheckButton" id="gconf/dialogs/print_checks/print_date_format">
+                      <object class="GtkCheckButton" id="pref/dialogs.checkprinting/print-date-format">
                         <property name="label" translatable="yes">Print _date format</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -2288,7 +2095,7 @@ many months before the current month:</property>
                         <property name="label" translatable="yes">Default _font:</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
-                        <property name="mnemonic_widget">gconf/dialogs/print_checks/default_font</property>
+                        <property name="mnemonic_widget">pref/dialogs.checkprinting/default-font</property>
                       </object>
                     </child>
                   </object>
@@ -2300,10 +2107,10 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkFontButton" id="gconf/dialogs/print_checks/default_font">
+                  <object class="GtkFontButton" id="pref/dialogs.checkprinting/default-font">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>.
+                    <property name="receives_default">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">The default check printing font.</property>
                     <property name="tooltip_text" translatable="yes">The default check printing font.</property>
@@ -2323,7 +2130,7 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkCheckButton" id="gconf/dialogs/print_checks/blocking_chars">
+                      <object class="GtkCheckButton" id="pref/dialogs.checkprinting/blocking-chars">
                         <property name="label" translatable="yes">Print _blocking chars</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -2343,6 +2150,15 @@ many months before the current month:</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options">GTK_FILL</property>
                   </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
                 </child>
               </object>
               <packing>
@@ -2417,7 +2233,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/enter_moves_to_end">
+                  <object class="GtkCheckButton" id="pref/general.register/enter-moves-to-end">
                     <property name="label" translatable="yes">'_Enter' moves to blank transaction</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2451,7 +2267,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/auto_raise_lists">
+                  <object class="GtkCheckButton" id="pref/general.register/auto-raise-lists">
                     <property name="label" translatable="yes">_Auto-raise lists</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2501,7 +2317,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/reconcile/check_cleared">
+                  <object class="GtkCheckButton" id="pref/dialogs.reconcile/check-cleared">
                     <property name="label" translatable="yes">Check cleared _transactions</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2522,7 +2338,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/reconcile/auto_interest_transfer">
+                  <object class="GtkCheckButton" id="pref/dialogs.reconcile/auto-interest-transfer">
                     <property name="label" translatable="yes">Automatic _interest transfer</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2543,7 +2359,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/reconcile/auto_cc_payment">
+                  <object class="GtkCheckButton" id="pref/dialogs.reconcile/auto-cc-payment">
                     <property name="label" translatable="yes">Automatic credit card _payment</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2564,7 +2380,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/dialogs/reconcile/always_reconcile_to_today">
+                  <object class="GtkCheckButton" id="pref/dialogs.reconcile/always-reconcile-to-today">
                     <property name="label" translatable="yes">Always reconcile to t_oday</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2585,7 +2401,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/draw_vertical_lines">
+                  <object class="GtkCheckButton" id="pref/general.register/draw-vertical-lines">
                     <property name="label" translatable="yes">Draw _vertical lines between columns</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2606,7 +2422,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/draw_horizontal_lines">
+                  <object class="GtkCheckButton" id="pref/general.register/draw-horizontal-lines">
                     <property name="label" translatable="yes">Draw hori_zontal lines between rows</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2627,7 +2443,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/alternate_color_by_transaction">
+                  <object class="GtkCheckButton" id="pref/general.register/alternate-color-by-transaction">
                     <property name="label" translatable="yes">Double _mode colors alternate with transactions</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2648,7 +2464,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/use_theme_colors">
+                  <object class="GtkCheckButton" id="pref/general.register/use-theme-colors">
                     <property name="label" translatable="yes">_Use system theme colors</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2685,7 +2501,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/tab_includes_transfer_on_memorised">
+                  <object class="GtkCheckButton" id="pref/general.register/tab-to-transfer-on-memorised">
                     <property name="label" translatable="yes">Tab order in_cludes Transfer on Memorised Transactions</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2821,7 +2637,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/register/default_style/ledger">
+                  <object class="GtkRadioButton" id="pref/general.register/default-style-ledger">
                     <property name="label" translatable="yes">_Basic ledger</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2843,7 +2659,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/register/default_style/auto_ledger">
+                  <object class="GtkRadioButton" id="pref/general.register/default-style-autoledger">
                     <property name="label" translatable="yes">_Auto-split ledger</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2853,7 +2669,7 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Automatically expand the current transaction to show all splits. All other transactions are shown on one line. (Two in double line mode.)</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/register/default_style/ledger</property>
+                    <property name="group">pref/general.register/default-style-ledger</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
@@ -2865,7 +2681,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/register/default_style/journal">
+                  <object class="GtkRadioButton" id="pref/general.register/default-style-journal">
                     <property name="label" translatable="yes">Transaction _Journal</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2875,7 +2691,7 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">All transactions are expanded to show all splits.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/register/default_style/ledger</property>
+                    <property name="group">pref/general.register/default-style-ledger</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
@@ -2893,7 +2709,7 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">Number of _transactions:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/general/register/max_transactions</property>
+                    <property name="mnemonic_widget">pref/general.register/max-transactions</property>
                   </object>
                   <packing>
                     <property name="top_attach">9</property>
@@ -2904,13 +2720,13 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSpinButton" id="gconf/general/register/max_transactions">
+                  <object class="GtkSpinButton" id="pref/general.register/max-transactions">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">Show this many transactions in a register. A value of zero means show all transactions.</property>
                     <property name="tooltip_text" translatable="yes">Show this many transactions in a register. A value of zero means show all transactions.</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
@@ -2932,7 +2748,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/double_line_mode">
+                  <object class="GtkCheckButton" id="pref/general.register/double-line-mode">
                     <property name="label" translatable="yes">_Double line mode</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2953,7 +2769,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/use_new_window">
+                  <object class="GtkCheckButton" id="pref/general.register/use-new-window">
                     <property name="label" translatable="yes">Register opens in a new _window</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -2974,7 +2790,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/show_leaf_account_names">
+                  <object class="GtkCheckButton" id="pref/general.register/show-leaf-account-names">
                     <property name="label" translatable="yes">_Only display leaf account names</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3001,7 +2817,7 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">Number of _characters for auto complete:</property>
                     <property name="use_underline">True</property>
-                    <property name="mnemonic_widget">gconf/general/register/key_length</property>
+                    <property name="mnemonic_widget">pref/general.register/key-length</property>
                   </object>
                   <packing>
                     <property name="top_attach">10</property>
@@ -3012,13 +2828,13 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSpinButton" id="gconf/general/register/key_length">
+                  <object class="GtkSpinButton" id="pref/general.register/key-length">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_tooltip">True</property>
                     <property name="tooltip_markup">This sets the number of characters before auto complete starts for description, notes and memo fields.</property>
                     <property name="tooltip_text" translatable="yes">This sets the number of characters before auto complete starts for description, notes and memo fields.</property>
-                    <property name="invisible_char">&#x25CF;</property>
+                    <property name="invisible_char">●</property>
                     <property name="invisible_char_set">True</property>
                     <property name="primary_icon_activatable">False</property>
                     <property name="secondary_icon_activatable">False</property>
@@ -3040,7 +2856,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/show_extra_dates">
+                  <object class="GtkCheckButton" id="pref/general.register/show-extra-dates">
                     <property name="label" translatable="yes">Show the _entered and reconcile dates</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3060,7 +2876,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/show_calendar_buttons">
+                  <object class="GtkCheckButton" id="pref/general.register/show-calendar-buttons">
                     <property name="label" translatable="yes">Show the calendar b_uttons</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3080,7 +2896,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/selection_to_blank_on_expand">
+                  <object class="GtkCheckButton" id="pref/general.register/selection-to-blank-on-expand">
                     <property name="label" translatable="yes">_Move the selection to the blank split on expand</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3100,7 +2916,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/register/show_extra_dates_on_selection">
+                  <object class="GtkCheckButton" id="pref/general.register/show-extra-dates-on-selection">
                     <property name="label" translatable="yes">_Show entered and reconciled dates on selection</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3186,7 +3002,7 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkRadioButton" id="gconf/general/report/currency_choice/other">
+                      <object class="GtkRadioButton" id="pref/general.report/currency-choice-other">
                         <property name="label" translatable="yes">Ch_oose:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -3213,7 +3029,7 @@ many months before the current month:</property>
                     <property name="can_focus">False</property>
                     <property name="left_padding">12</property>
                     <child>
-                      <object class="GtkRadioButton" id="gconf/general/report/currency_choice/locale">
+                      <object class="GtkRadioButton" id="pref/general.report/currency-choice-locale">
                         <property name="label" translatable="yes">Loc_ale:</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -3223,7 +3039,7 @@ many months before the current month:</property>
                         <property name="tooltip_text" translatable="yes">Use the system locale currency for all newly created reports.</property>
                         <property name="use_underline">True</property>
                         <property name="draw_indicator">True</property>
-                        <property name="group">gconf/general/report/currency_choice/other</property>
+                        <property name="group">pref/general.report/currency-choice-other</property>
                       </object>
                     </child>
                   </object>
@@ -3278,7 +3094,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/report/use_new_window">
+                  <object class="GtkCheckButton" id="pref/general.report/use-new-window">
                     <property name="label" translatable="yes">Report opens in a new _window</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3299,7 +3115,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="gconf/general/report/currency_other">
+                  <object class="GtkHBox" id="pref/general.report/currency-other">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
@@ -3340,7 +3156,7 @@ many months before the current month:</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
-                <property name="n_rows">20</property>
+                <property name="n_rows">13</property>
                 <property name="n_columns">4</property>
                 <property name="column_spacing">12</property>
                 <child>
@@ -3377,141 +3193,6 @@ many months before the current month:</property>
                   <placeholder/>
                 </child>
                 <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/toolbar_style/text">
-                    <property name="label" translatable="yes">_Text only</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Display toolbar items as text only.</property>
-                    <property name="tooltip_text" translatable="yes">Display toolbar items as text only.</property>
-                    <property name="use_underline">True</property>
-                    <property name="active">True</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">8</property>
-                    <property name="bottom_attach">9</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/toolbar_style/icons">
-                    <property name="label" translatable="yes">_Icons only</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Display toolbar items as icons only.</property>
-                    <property name="tooltip_text" translatable="yes">Display toolbar items as icons only.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/toolbar_style/text</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">7</property>
-                    <property name="bottom_attach">8</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/toolbar_style/both_horiz">
-                    <property name="label" translatable="yes">Priority text besi_de icons</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Display toolbar items with the text label beside the icon. Labels are only shown for the most important items.</property>
-                    <property name="tooltip_text" translatable="yes">Display toolbar items with the text label beside the icon. Labels are only shown for the most important items.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/toolbar_style/text</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">6</property>
-                    <property name="bottom_attach">7</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/toolbar_style/both">
-                    <property name="label" translatable="yes">Text _below icons</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Display toolbar items with the text label below the icon. Labels are show for all items.</property>
-                    <property name="tooltip_text" translatable="yes">Display toolbar items with the text label below the icon. Labels are show for all items.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/toolbar_style/text</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">5</property>
-                    <property name="bottom_attach">6</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkRadioButton" id="gconf/general/toolbar_style/system">
-                    <property name="label" translatable="yes">Use s_ystem default</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="has_tooltip">True</property>
-                    <property name="tooltip_markup">Use the system setting for displaying toolbar items.</property>
-                    <property name="tooltip_text" translatable="yes">Use the system setting for displaying toolbar items.</property>
-                    <property name="use_underline">True</property>
-                    <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/toolbar_style/text</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">4</property>
-                    <property name="bottom_attach">5</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                    <property name="x_padding">12</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="label69">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="label" translatable="yes">&lt;b&gt;Toolbar Style&lt;/b&gt;</property>
-                    <property name="use_markup">True</property>
-                  </object>
-                  <packing>
-                    <property name="right_attach">4</property>
-                    <property name="top_attach">3</property>
-                    <property name="bottom_attach">4</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options"/>
-                  </packing>
-                </child>
-                <child>
                   <object class="GtkLabel" id="label72">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
@@ -3539,7 +3220,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/save_window_geometry">
+                  <object class="GtkCheckButton" id="pref/general/save-window-geometry">
                     <property name="label" translatable="yes">_Save window size and position</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3560,7 +3241,7 @@ many months before the current month:</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/tab_next_recent">
+                  <object class="GtkCheckButton" id="pref/general/tab-next-recent">
                     <property name="label" translatable="yes">Bring the most _recent tab to the front</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3573,8 +3254,8 @@ many months before the current month:</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">12</property>
-                    <property name="bottom_attach">13</property>
+                    <property name="top_attach">5</property>
+                    <property name="bottom_attach">6</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
@@ -3587,8 +3268,8 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                   </object>
                   <packing>
-                    <property name="top_attach">14</property>
-                    <property name="bottom_attach">15</property>
+                    <property name="top_attach">7</property>
+                    <property name="bottom_attach">8</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -3603,14 +3284,14 @@ many months before the current month:</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">15</property>
-                    <property name="bottom_attach">16</property>
+                    <property name="top_attach">8</property>
+                    <property name="bottom_attach">9</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/tab_position/top">
+                  <object class="GtkRadioButton" id="pref/general/tab-position-top">
                     <property name="label" translatable="yes">To_p</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3624,15 +3305,15 @@ many months before the current month:</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">16</property>
-                    <property name="bottom_attach">17</property>
+                    <property name="top_attach">9</property>
+                    <property name="bottom_attach">10</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/tab_position/bottom">
+                  <object class="GtkRadioButton" id="pref/general/tab-position-bottom">
                     <property name="label" translatable="yes">B_ottom</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3642,19 +3323,19 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Display the notebook tabs at the bottom of the window.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/tab_position/top</property>
+                    <property name="group">pref/general/tab-position-top</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">17</property>
-                    <property name="bottom_attach">18</property>
+                    <property name="top_attach">10</property>
+                    <property name="bottom_attach">11</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/tab_position/left">
+                  <object class="GtkRadioButton" id="pref/general/tab-position-left">
                     <property name="label" translatable="yes">_Left</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3664,19 +3345,19 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Display the notebook tabs at the left of the window.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/tab_position/top</property>
+                    <property name="group">pref/general/tab-position-top</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">18</property>
-                    <property name="bottom_attach">19</property>
+                    <property name="top_attach">11</property>
+                    <property name="bottom_attach">12</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/tab_position/right">
+                  <object class="GtkRadioButton" id="pref/general/tab-position-right">
                     <property name="label" translatable="yes">_Right</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3686,12 +3367,12 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Display the notebook tabs at the right of the window.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/tab_position/top</property>
+                    <property name="group">pref/general/tab-position-top</property>
                   </object>
                   <packing>
                     <property name="right_attach">2</property>
-                    <property name="top_attach">19</property>
-                    <property name="bottom_attach">20</property>
+                    <property name="top_attach">12</property>
+                    <property name="bottom_attach">13</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
@@ -3708,14 +3389,14 @@ many months before the current month:</property>
                   <packing>
                     <property name="left_attach">2</property>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">15</property>
-                    <property name="bottom_attach">16</property>
+                    <property name="top_attach">8</property>
+                    <property name="bottom_attach">9</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/summarybar_position/top">
+                  <object class="GtkRadioButton" id="pref/general/summarybar-position-top">
                     <property name="label" translatable="yes">Top</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3730,15 +3411,15 @@ many months before the current month:</property>
                   <packing>
                     <property name="left_attach">2</property>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">16</property>
-                    <property name="bottom_attach">17</property>
+                    <property name="top_attach">9</property>
+                    <property name="bottom_attach">10</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton" id="gconf/general/summarybar_position/bottom">
+                  <object class="GtkRadioButton" id="pref/general/summarybar-position-bottom">
                     <property name="label" translatable="yes">Bottom</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3748,13 +3429,13 @@ many months before the current month:</property>
                     <property name="tooltip_text" translatable="yes">Display the summary bar at the bottom of the page.</property>
                     <property name="use_underline">True</property>
                     <property name="draw_indicator">True</property>
-                    <property name="group">gconf/general/summarybar_position/top</property>
+                    <property name="group">pref/general/summarybar-position-top</property>
                   </object>
                   <packing>
                     <property name="left_attach">2</property>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">17</property>
-                    <property name="bottom_attach">18</property>
+                    <property name="top_attach">10</property>
+                    <property name="bottom_attach">11</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
@@ -3767,8 +3448,8 @@ many months before the current month:</property>
                     <property name="xalign">0</property>
                   </object>
                   <packing>
-                    <property name="top_attach">9</property>
-                    <property name="bottom_attach">10</property>
+                    <property name="top_attach">2</property>
+                    <property name="bottom_attach">3</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
@@ -3783,14 +3464,14 @@ many months before the current month:</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">10</property>
-                    <property name="bottom_attach">11</property>
+                    <property name="top_attach">3</property>
+                    <property name="bottom_attach">4</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="gconf/general/tab_close_buttons">
+                  <object class="GtkCheckButton" id="pref/general/tab-close-buttons">
                     <property name="label" translatable="yes">Show close button on _notebook tabs</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -3803,8 +3484,8 @@ many months before the current month:</property>
                   </object>
                   <packing>
                     <property name="right_attach">4</property>
-                    <property name="top_attach">11</property>
-                    <property name="bottom_attach">12</property>
+                    <property name="top_attach">4</property>
+                    <property name="bottom_attach">5</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options"/>
                     <property name="x_padding">12</property>
@@ -3825,8 +3506,8 @@ many months before the current month:</property>
                     </child>
                   </object>
                   <packing>
-                    <property name="top_attach">13</property>
-                    <property name="bottom_attach">14</property>
+                    <property name="top_attach">6</property>
+                    <property name="bottom_attach">7</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options">GTK_FILL</property>
                   </packing>
@@ -3836,13 +3517,13 @@ many months before the current month:</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkSpinButton" id="gconf/general/tab_width">
+                      <object class="GtkSpinButton" id="pref/general/tab-width">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="has_tooltip">True</property>
                         <property name="tooltip_markup">If the text in the tab is longer than this value (the test is approximate) then the tab label will have the middle cut and replaced with an ellipsis.</property>
                         <property name="tooltip_text" translatable="yes">If the text in the tab is longer than this value (the test is approximate) then the tab label will have the middle cut and replaced with an ellipsis.</property>
-                        <property name="invisible_char">&#x25CF;</property>
+                        <property name="invisible_char">●</property>
                         <property name="invisible_char_set">True</property>
                         <property name="primary_icon_activatable">False</property>
                         <property name="secondary_icon_activatable">False</property>
@@ -3875,8 +3556,8 @@ many months before the current month:</property>
                   <packing>
                     <property name="left_attach">1</property>
                     <property name="right_attach">3</property>
-                    <property name="top_attach">13</property>
-                    <property name="bottom_attach">14</property>
+                    <property name="top_attach">6</property>
+                    <property name="bottom_attach">7</property>
                     <property name="x_options">GTK_FILL</property>
                     <property name="y_options">GTK_FILL</property>
                   </packing>
@@ -3912,6 +3593,55 @@ many months before the current month:</property>
       <action-widget response="-7">closebutton2</action-widget>
     </action-widgets>
   </object>
+  <object class="GtkAdjustment" id="auto_decimal_places_adj">
+    <property name="lower">1</property>
+    <property name="upper">8</property>
+    <property name="value">2</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">4</property>
+  </object>
+  <object class="GtkAdjustment" id="autosave_interval_minutes_adj">
+    <property name="upper">99999</property>
+    <property name="value">3</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="date_backmonth_adj">
+    <property name="upper">11</property>
+    <property name="value">6</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">4</property>
+  </object>
+  <object class="GtkListStore" id="date_formats">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+      <!-- column-name example -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">US</col>
+        <col id="1" translatable="yes">07/31/2013</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">UK</col>
+        <col id="1" translatable="yes">31/07/2013</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Europe</col>
+        <col id="1" translatable="yes">31.07.2013</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">ISO</col>
+        <col id="1" translatable="yes">2013-07-31</col>
+      </row>
+      <row>
+        <col id="0" translatable="yes">Locale</col>
+        <col id="1" translatable="yes">(dummy)</col>
+      </row>
+    </data>
+  </object>
   <object class="GtkAdjustment" id="key_length_adj">
     <property name="lower">1</property>
     <property name="upper">999</property>
@@ -3921,7 +3651,6 @@ many months before the current month:</property>
   </object>
   <object class="GtkAdjustment" id="max_transactions_adj">
     <property name="upper">999999</property>
-    <property name="value">1</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -3936,6 +3665,12 @@ many months before the current month:</property>
     <property name="lower">1</property>
     <property name="upper">99999</property>
     <property name="value">30</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="save_on_close_adj">
+    <property name="upper">300</property>
+    <property name="value">20</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>

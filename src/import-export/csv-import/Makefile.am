@@ -1,4 +1,4 @@
-SUBDIRS = . schemas
+SUBDIRS = . gschemas
 
 pkglib_LTLIBRARIES=libgncmod-csv-import.la
 
@@ -44,7 +44,6 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/libqof/qof \
   -I${top_srcdir}/lib/libc \
   -I${top_srcdir}/lib \
-  ${GCONF_CFLAGS} \
   ${GUILE_INCS} \
   ${GLIB_CFLAGS} \
   $(GOFFICE_CFLAGS)

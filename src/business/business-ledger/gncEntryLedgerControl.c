@@ -33,17 +33,19 @@
 #include "dialog-account.h"
 #include "dialog-utils.h"
 #include "gnc-component-manager.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
 #include "gnc-ui-util.h"
 #include "gnc-gui-query.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "table-allgui.h"
 #include "pricecell.h"
 #include "dialog-tax-table.h"
-#include "gnc-gconf-utils.h"
 #include "register/register-core/checkboxcell.h"
 
 #include "gncEntryLedgerP.h"
 #include "gncEntryLedgerControl.h"
+
 
 static gboolean
 gnc_entry_ledger_save (GncEntryLedger *ledger, gboolean do_commit)
@@ -620,8 +622,8 @@ gnc_entry_ledger_auto_completion (GncEntryLedger *ledger,
     gnc_resume_gui_refresh ();
 
     /* now move to the non-empty amount column unless config setting says not */
-    if ( !gnc_gconf_get_bool(GCONF_GENERAL_REGISTER,
-                             "tab_includes_transfer_on_memorised", NULL) )
+    if ( !gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL_REGISTER,
+                             GNC_PREF_TAB_TRANS_MEMORISED) )
     {
         VirtualLocation new_virt_loc;
         const char *cell_name = ENTRY_QTY_CELL;
@@ -889,7 +891,7 @@ static gboolean gnc_entry_ledger_traverse (VirtualLocation *p_new_virt_loc,
                                        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                                        _("_Record"), GTK_RESPONSE_ACCEPT,
                                        NULL);
-                response = gnc_dialog_run(GTK_DIALOG(dialog), "invoice_entry_changed");
+                response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_INV_ENTRY_MOD);
                 gtk_widget_destroy(dialog);
                 break;
             }

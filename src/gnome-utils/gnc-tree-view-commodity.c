@@ -35,7 +35,6 @@
 #include "gnc-commodity.h"
 #include "gnc-component-manager.h"
 #include "gnc-engine.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-glib-utils.h"
 #include "gnc-gnome-utils.h"
 #include "gnc-icons.h"
@@ -372,7 +371,7 @@ gnc_tree_view_commodity_new (QofBook *book,
     /* Create our view */
     view = g_object_new (GNC_TYPE_TREE_VIEW_COMMODITY,
                          "name", "commodity_tree", NULL);
-    gnc_tree_view_set_model (view, s_model);
+    gtk_tree_view_set_model (GTK_TREE_VIEW (view), s_model);
     g_object_unref(G_OBJECT(s_model));
 
     DEBUG("model ref count is %d",   G_OBJECT(model)->ref_count);
@@ -405,6 +404,12 @@ gnc_tree_view_commodity_new (QofBook *book,
               GNC_TREE_MODEL_COMMODITY_COL_PRINTNAME,
               GNC_TREE_MODEL_COMMODITY_COL_VISIBILITY,
               sort_by_commodity_string);
+    col = gnc_tree_view_add_text_column (
+              view, _("Display symbol"), "user_symbol", NULL, "ACME",
+              GNC_TREE_MODEL_COMMODITY_COL_USER_SYMBOL,
+              GNC_TREE_MODEL_COMMODITY_COL_VISIBILITY,
+              sort_by_commodity_string);
+    g_object_set_data(G_OBJECT(col), DEFAULT_VISIBLE, GINT_TO_POINTER(1));
     col = gnc_tree_view_add_text_column (
               view, _("Unique Name"), "uniquename", NULL,
               "NASDAQ::ACMEACME", GNC_TREE_MODEL_COMMODITY_COL_UNIQUE_NAME,

@@ -45,13 +45,15 @@
 #include "gnc-tree-view-price.h"
 #include "gnc-ui.h"
 #include "gnc-ui-util.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "guile-util.h"
 #include "engine-helpers-guile.h"
 #include "swig-runtime.h"
 
 
 #define DIALOG_PRICE_DB_CM_CLASS "dialog-price-edit-db"
-#define GCONF_SECTION "dialogs/edit_prices"
+#define STATE_SECTION "dialogs/edit_prices"
+#define GNC_PREFS_GROUP "dialogs.pricedb-editor"
 
 /* This static indicates the debugging module that this .o belongs to.  */
 static QofLogModule log_module = GNC_MOD_GUI;
@@ -197,7 +199,7 @@ gnc_prices_dialog_remove_clicked (GtkWidget *widget, gpointer data)
                                GTK_STOCK_DELETE, GTK_RESPONSE_YES,
                                (gchar *)NULL);
         gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
-        response = gnc_dialog_run(GTK_DIALOG(dialog), "pricedb_remove_multiple");
+        response = gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_PRICE_QUOTES_DEL);
         gtk_widget_destroy(dialog);
     }
     else
@@ -442,7 +444,7 @@ gnc_prices_dialog_create (GtkWidget * parent, PricesDialog *pdb_dialog)
     /* price tree */
     scrolled_window = GTK_WIDGET(gtk_builder_get_object (builder, "price_list_window"));
     view = gnc_tree_view_price_new(pdb_dialog->book,
-                                   "gconf-section", GCONF_SECTION,
+                                   "state-section", STATE_SECTION,
                                    "show-column-menu", TRUE,
                                    NULL);
     pdb_dialog->price_tree = GNC_TREE_VIEW_PRICE(view);
@@ -482,7 +484,7 @@ gnc_prices_dialog_create (GtkWidget * parent, PricesDialog *pdb_dialog)
 
     g_object_unref(G_OBJECT(builder));
 
-    gnc_restore_window_size(GCONF_SECTION, GTK_WINDOW(pdb_dialog->dialog));
+    gnc_restore_window_size(GNC_PREFS_GROUP, GTK_WINDOW(pdb_dialog->dialog));
     LEAVE(" ");
 }
 
@@ -493,7 +495,7 @@ close_handler (gpointer user_data)
     PricesDialog *pdb_dialog = user_data;
 
     ENTER(" ");
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(pdb_dialog->dialog));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(pdb_dialog->dialog));
 
     gtk_widget_destroy (GTK_WIDGET (pdb_dialog->dialog));
     LEAVE(" ");

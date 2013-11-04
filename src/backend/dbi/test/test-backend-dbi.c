@@ -26,8 +26,7 @@
 #include "qof.h"
 #include "cashobjects.h"
 
-extern void test_suite_gnc_backend_dbi_basic();
-extern void test_suite_gnc_backend_dbi_business();
+extern void test_suite_gnc_backend_dbi ();
 
 #define GNC_LIB_NAME "gncmod-backend-dbi"
 
@@ -42,15 +41,9 @@ main (int   argc,
     cashobjects_register();
     g_assert (qof_load_backend_library ("../.libs/", GNC_LIB_NAME));
     g_assert (qof_load_backend_library ("../../xml/.libs",
-					"gncmod-backend-xml"));
+                                        "gncmod-backend-xml"));
 
-    /* Make the missing lock file warning not fatal so that it won't
-     * crash during teardown.
-     */
-    g_log_set_fatal_mask ("gnc.backend.dbi", G_LOG_FATAL_MASK | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL);
-    g_log_set_always_fatal (G_LOG_FATAL_MASK);
-    test_suite_gnc_backend_dbi_basic();
-    test_suite_gnc_backend_dbi_business();
+    test_suite_gnc_backend_dbi ();
 
     return g_test_run( );
 }

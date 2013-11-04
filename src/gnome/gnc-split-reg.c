@@ -43,12 +43,13 @@
 #include "gnc-date-edit.h"
 #include "gnc-engine.h"
 #include "gnc-euro.h"
-#include "gnc-gconf-utils.h"
+#include "gnc-prefs.h"
 #include "gnc-gui-query.h"
 #include "gnc-ledger-display.h"
 #include "gnc-pricedb.h"
 #include "gnc-ui-util.h"
 #include "gnc-ui.h"
+#include "gnome-utils/gnc-warnings.h"
 #include "gnucash-sheet.h"
 #include "table-allgui.h"
 
@@ -81,8 +82,6 @@ static void gsr_update_summary_label( GtkWidget *label,
                                       gboolean euroFlag );
 
 static void gsr_redraw_all_cb (GnucashRegister *g_reg, gpointer data);
-
-static void gnc_split_reg_refresh_toolbar( GNCSplitReg *gsr );
 
 static void gnc_split_reg_ld_destroy( GNCLedgerDisplay *ledger );
 
@@ -372,7 +371,6 @@ gsr_setup_table( GNCSplitReg *gsr )
     gnc_split_register_show_present_divider( sr, TRUE );
     /* events should be sufficient to redraw this */
     /* gnc_ledger_display_refresh( gsr->ledger ); */
-    gnc_split_reg_refresh_toolbar( gsr );
 
     LEAVE(" ");
 }
@@ -384,13 +382,13 @@ gsr_create_table( GNCSplitReg *gsr )
     GtkWidget *register_widget;
     SplitRegister *sr;
 
-    gchar *gconf_key;
+    gchar *prefs_key;
     const GncGUID * guid;
     Account * account;
     
     account = gnc_ledger_display_leader(gsr->ledger);
     guid = xaccAccountGetGUID(account);
-    gconf_key = (gchar*)guid_to_string (guid);
+    prefs_key = (gchar*)guid_to_string (guid);
 
     ENTER("gsr=%p", gsr);
 
@@ -403,7 +401,7 @@ gsr_create_table( GNCSplitReg *gsr )
     sr = gnc_ledger_display_get_split_register( gsr->ledger );
     register_widget = gnucash_register_new( sr->table );
     gsr->reg = GNUCASH_REGISTER( register_widget );
-    gnc_table_init_gui( GTK_WIDGET(gsr->reg), gconf_key );
+    gnc_table_init_gui( GTK_WIDGET(gsr->reg), prefs_key );
     gtk_box_pack_start (GTK_BOX (gsr), GTK_WIDGET(gsr->reg), TRUE, TRUE, 0);
     gnucash_sheet_set_window (gnucash_register_get_sheet (gsr->reg), gsr->window);
     gtk_widget_show ( GTK_WIDGET(gsr->reg) );
@@ -684,29 +682,17 @@ gsr_redraw_all_cb (GnucashRegister *g_reg, gpointer data)
 }
 
 static void
-gnc_split_reg_refresh_toolbar( GNCSplitReg *gsr )
-{
-    GtkToolbarStyle tbstyle;
-
-    if ((gsr == NULL) || (gsr->toolbar == NULL))
-        return;
-
-    tbstyle = gnc_get_toolbar_style ();
-    gtk_toolbar_set_style( GTK_TOOLBAR(gsr->toolbar), tbstyle );
-}
-
-static void
 gnc_split_reg_ld_destroy( GNCLedgerDisplay *ledger )
 {
     GNCSplitReg *gsr = gnc_ledger_display_get_user_data( ledger );
     
-    gchar *gconf_key;
+    gchar *state_key;
     const GncGUID * guid;
     Account * account;
     
     account = gnc_ledger_display_leader(ledger);
     guid = xaccAccountGetGUID(account);
-    gconf_key = (gchar*)guid_to_string (guid);
+    state_key = (gchar*)guid_to_string (guid);
     
     
     if (gsr)
@@ -716,7 +702,7 @@ gnc_split_reg_ld_destroy( GNCLedgerDisplay *ledger )
         reg = gnc_ledger_display_get_split_register (ledger);
 
         if (reg && reg->table)
-            gnc_table_save_state (reg->table, gconf_key);
+            gnc_table_save_state (reg->table, state_key);
 
         /*
          * Don't destroy the window here any more.  The register no longer
@@ -982,11 +968,11 @@ gsr_default_reinit_handler( GNCSplitReg *gsr, gpointer data )
     {
         gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
                 "%s", recn_warn);
-        warning = "register_remove_all_splits2";
+        warning = GNC_PREF_WARN_REG_SPLIT_DEL_ALL_RECD;
     }
     else
     {
-        warning = "register_remove_all_splits";
+        warning = GNC_PREF_WARN_REG_SPLIT_DEL_ALL;
     }
 
     gtk_dialog_add_button(GTK_DIALOG(dialog),
@@ -1116,11 +1102,11 @@ gsr_default_delete_handler( GNCSplitReg *gsr, gpointer data )
         {
             gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
                     "%s", recn_warn);
-            warning = "register_delete_split2";
+            warning = GNC_PREF_WARN_REG_SPLIT_DEL_RECD;
         }
         else
         {
-            warning = "register_delete_split";
+            warning = GNC_PREF_WARN_REG_SPLIT_DEL;
         }
 
         gtk_dialog_add_button(GTK_DIALOG(dialog),
@@ -1157,11 +1143,11 @@ gsr_default_delete_handler( GNCSplitReg *gsr, gpointer data )
         {
             gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
                     "%s", recn_warn);
-            warning = "register_delete_trans2";
+            warning = GNC_PREF_WARN_REG_TRANS_DEL_RECD;
         }
         else
         {
-            warning = "register_delete_trans";
+            warning = GNC_PREF_WARN_REG_TRANS_DEL;
         }
         gtk_dialog_add_button(GTK_DIALOG(dialog),
                               GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
@@ -1800,8 +1786,8 @@ gnc_split_reg_enter( GNCSplitReg *gsr, gboolean next_transaction )
 
     ENTER("gsr=%p, next_transaction=%s", gsr, next_transaction ? "TRUE" : "FALSE");
 
-    goto_blank = gnc_gconf_get_bool(GCONF_GENERAL_REGISTER,
-                                    "enter_moves_to_end", NULL);
+    goto_blank = gnc_prefs_get_bool(GNC_PREFS_GROUP_GENERAL_REGISTER,
+                                    GNC_PREF_ENTER_MOVES_TO_END);
 
     /* If we are in single or double line mode and we hit enter
      * on the blank split, go to the blank split instead of the
@@ -2003,7 +1989,7 @@ gtk_callback_bug_workaround (gpointer argp)
                                     "%s", read_only);
     gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog),
             "%s", args->string);
-    gnc_dialog_run(GTK_DIALOG(dialog), "register_read_only");
+    gnc_dialog_run(GTK_DIALOG(dialog), GNC_PREF_WARN_REG_IS_READ_ONLY);
     gtk_widget_destroy(dialog);
     g_free(args);
     return FALSE;

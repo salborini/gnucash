@@ -47,6 +47,7 @@
 #include "qof.h"
 #include "TransLog.h"
 #include "gnc-session.h"
+#include "gnc-state.h"
 #include "gnc-autosave.h"
 
 
@@ -530,6 +531,7 @@ gnc_file_new (void)
         gnc_hook_run(HOOK_BOOK_CLOSED, session);
 
         gnc_close_gui_component_by_session (session);
+        gnc_state_save (session);
         gnc_clear_current_session();
         qof_event_resume ();
     }
@@ -646,9 +648,9 @@ gnc_post_file_open (const char * filename, gboolean is_readonly)
     gint32 port = 0;
 
 
-    ENTER(" ");
+    ENTER("filename %s", filename);
 RESTART:
-    if (!filename) return FALSE;
+    if (!filename || (*filename == '\0')) return FALSE;
 
     /* Convert user input into a normalized uri
      * Note that the normalized uri for internal use can have a password */
@@ -687,7 +689,7 @@ RESTART:
     if (gnc_uri_is_file_protocol(protocol))
     {
         gchar *default_dir = g_path_get_dirname(path);
-        gnc_set_default_directory (GCONF_DIR_OPEN_SAVE, default_dir);
+        gnc_set_default_directory (GNC_PREFS_GROUP_OPEN_SAVE, default_dir);
         g_free(default_dir);
     }
 
@@ -701,11 +703,15 @@ RESTART:
 
     /* -------------- BEGIN CORE SESSION CODE ------------- */
     /* -- this code is almost identical in FileOpen and FileSaveAs -- */
-    current_session = gnc_get_current_session();
-    qof_session_call_close_hooks(current_session);
-    gnc_hook_run(HOOK_BOOK_CLOSED, current_session);
-    gnc_close_gui_component_by_session (current_session);
-    gnc_clear_current_session();
+    if (gnc_current_session_exist())
+    {
+        current_session = gnc_get_current_session();
+        qof_session_call_close_hooks(current_session);
+        gnc_hook_run(HOOK_BOOK_CLOSED, current_session);
+        gnc_close_gui_component_by_session (current_session);
+        gnc_state_save (current_session);
+        gnc_clear_current_session();
+    }
 
     /* load the accounts from the users datafile */
     /* but first, check to make sure we've got a session going. */
@@ -723,7 +729,7 @@ RESTART:
         if (g_file_test (filename, G_FILE_TEST_IS_DIR))
             directory = g_strdup (filename);
         else
-            directory = gnc_get_default_directory (GCONF_DIR_OPEN_SAVE);
+            directory = gnc_get_default_directory (GNC_PREFS_GROUP_OPEN_SAVE);
 
         filename = gnc_file_dialog (NULL, NULL, directory,
                                     GNC_FILE_DIALOG_OPEN);
@@ -1023,7 +1029,7 @@ gnc_file_open (void)
         g_free ( filepath );
     }
     else
-        default_dir = gnc_get_default_directory(GCONF_DIR_OPEN_SAVE);
+        default_dir = gnc_get_default_directory(GNC_PREFS_GROUP_OPEN_SAVE);
 
     newfile = gnc_file_dialog (_("Open"), NULL, default_dir, GNC_FILE_DIALOG_OPEN);
     g_free ( last );
@@ -1072,7 +1078,7 @@ gnc_file_export (void)
         g_free ( filepath );
     }
     else
-        default_dir = gnc_get_default_directory(GCONF_DIR_EXPORT);
+        default_dir = gnc_get_default_directory(GNC_PREFS_GROUP_EXPORT);
 
     filename = gnc_file_dialog (_("Save"), NULL, default_dir,
                                 GNC_FILE_DIALOG_SAVE);
@@ -1137,7 +1143,7 @@ gnc_file_do_export(const char * filename)
     {
         /* Remember the directory as the default. */
         gchar *default_dir = g_path_get_dirname(path);
-        gnc_set_default_directory (GCONF_DIR_OPEN_SAVE, default_dir);
+        gnc_set_default_directory (GNC_PREFS_GROUP_OPEN_SAVE, default_dir);
         g_free(default_dir);
 
         /* Prevent user to store file in GnuCash' private configuration
@@ -1308,7 +1314,7 @@ gnc_file_save_as (void)
         g_free ( filepath );
     }
     else
-        default_dir = gnc_get_default_directory(GCONF_DIR_OPEN_SAVE);
+        default_dir = gnc_get_default_directory(GNC_PREFS_GROUP_OPEN_SAVE);
 
     filename = gnc_file_dialog (_("Save"), NULL, default_dir,
                                 GNC_FILE_DIALOG_SAVE);
@@ -1375,7 +1381,7 @@ gnc_file_do_save_as (const char* filename)
     {
         /* Remember the directory as the default. */
         gchar *default_dir = g_path_get_dirname(path);
-        gnc_set_default_directory (GCONF_DIR_OPEN_SAVE, default_dir);
+        gnc_set_default_directory (GNC_PREFS_GROUP_OPEN_SAVE, default_dir);
         g_free(default_dir);
 
         /* Prevent user to store file in GnuCash' private configuration
@@ -1554,6 +1560,7 @@ gnc_file_quit (void)
     qof_session_call_close_hooks(session);
     gnc_hook_run(HOOK_BOOK_CLOSED, session);
     gnc_close_gui_component_by_session (session);
+    gnc_state_save (session);
     gnc_clear_current_session();
 
     qof_event_resume ();

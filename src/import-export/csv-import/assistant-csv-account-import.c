@@ -41,7 +41,7 @@
 #include "assistant-csv-account-import.h"
 #include "csv-account-import.h"
 
-#define GCONF_SECTION "dialogs/import/csv"
+#define GNC_PREFS_GROUP "dialogs.import.csv"
 #define ASSISTANT_CSV_IMPORT_CM_CLASS "assistant-csv-account-import"
 
 /* This static indicates the debugging module that this .o belongs to.  */
@@ -95,19 +95,19 @@ static gchar *mnemonic_escape (const gchar *source)
     q = dest = g_malloc (strlen (source) * 2 + 1);
 
     while (*p)
-      {
+    {
         switch (*p)
-          {
-          case '_':
+        {
+        case '_':
             *q++ = '_';
             *q++ = '_';
             break;
-          default:
+        default:
             *q++ = *p;
             break;
-          }
+        }
         p++;
-      }
+    }
     *q = 0;
     return dest;
 }
@@ -275,7 +275,7 @@ void load_settings (CsvImportInfo *info)
     info->error = "";
 
     /* The default directory for the user to select files. */
-    info->starting_dir = gnc_get_default_directory(GCONF_SECTION);
+    info->starting_dir = gnc_get_default_directory(GNC_PREFS_GROUP);
 }
 
 
@@ -420,7 +420,7 @@ csv_import_assistant_finish_page_prepare (GtkAssistant *assistant,
     g_free(text);
 
     /* Save the Window size and directory */
-    gnc_set_default_directory(GCONF_SECTION, info->starting_dir);
+    gnc_set_default_directory(GNC_PREFS_GROUP, info->starting_dir);
 
     /* Enable the Assistant Buttons */
     gtk_assistant_set_page_complete (assistant, page, TRUE);
@@ -539,7 +539,7 @@ csv_import_close_handler (gpointer user_data)
     g_free(info->file_name);
     g_string_free(info->regexp, TRUE);
 
-    gnc_save_window_size(GCONF_SECTION, GTK_WINDOW(info->window));
+    gnc_save_window_size(GNC_PREFS_GROUP, GTK_WINDOW(info->window));
     gtk_widget_destroy (info->window);
 }
 
@@ -643,7 +643,7 @@ csv_import_assistant_create (CsvImportInfo *info)
     g_signal_connect (G_OBJECT(window), "destroy",
                       G_CALLBACK (csv_import_assistant_destroy_cb), info);
 
-    gnc_restore_window_size (GCONF_SECTION, GTK_WINDOW(info->window));
+    gnc_restore_window_size (GNC_PREFS_GROUP, GTK_WINDOW(info->window));
 
     gtk_builder_connect_signals(builder, info);
     g_object_unref(G_OBJECT(builder));
@@ -672,8 +672,8 @@ gnc_file_csv_account_import(void)
     csv_import_assistant_create (info);
 
     gnc_register_gui_component (ASSISTANT_CSV_IMPORT_CM_CLASS,
-				NULL, csv_import_close_handler,
-				info);
+                                NULL, csv_import_close_handler,
+                                info);
 
     gtk_widget_show_all (info->window);
 

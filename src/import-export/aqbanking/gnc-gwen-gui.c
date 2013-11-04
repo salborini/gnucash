@@ -38,9 +38,9 @@
 #include "dialog-utils.h"
 #include "gnc-ab-utils.h"
 #include "gnc-component-manager.h"
-#include "gnc-gconf-utils.h"
 #include "gnc-gwen-gui.h"
 #include "gnc-session.h"
+#include "gnc-prefs.h"
 #include "gnc-ui.h"
 #include "gnc-plugin-aqbanking.h"
 #include "md5.h"
@@ -56,9 +56,9 @@
 #endif
 
 #define GWEN_GUI_CM_CLASS "dialog-hbcilog"
-#define GCONF_SECTION_CONNECTION GCONF_SECTION_AQBANKING "/connection_dialog"
-#define KEY_CLOSE_ON_FINISH "close_on_finish"
-#define KEY_REMEMBER_PIN "remember_pin"
+#define GNC_PREFS_GROUP_CONNECTION GNC_PREFS_GROUP_AQBANKING ".connection-dialog"
+#define GNC_PREF_CLOSE_ON_FINISH   "close-on-finish"
+#define GNC_PREF_REMEMBER_PIN      "remember-pin"
 
 #ifdef USING_GWENHYWFAR_GTK2_GUI
 # include <gwen-gui-gtk2/gtk2_gui.h>
@@ -103,15 +103,14 @@ void gnc_GWEN_Gui_shutdown(void)
 void
 gnc_GWEN_Gui_set_close_flag(gboolean close_when_finished)
 {
-    gnc_gconf_set_bool(
-        GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH,
-        close_when_finished,
-        NULL);
+    gnc_prefs_set_bool(
+        GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH,
+        close_when_finished);
 }
 gboolean
 gnc_GWEN_Gui_get_close_flag()
 {
-    return gnc_gconf_get_bool(GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH, NULL);
+    return gnc_prefs_get_bool (GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH);
 }
 
 gboolean
@@ -296,7 +295,7 @@ gnc_GWEN_Gui_log_init(void)
 #ifdef USING_GWENHYWFAR_GTK2_GUI
             Gtk2_Gui_new()
 #else
-        GWEN_Gui_new()
+            GWEN_Gui_new()
 #endif
             ;
 
@@ -392,10 +391,9 @@ gnc_GWEN_Gui_shutdown(void)
 void
 gnc_GWEN_Gui_set_close_flag(gboolean close_when_finished)
 {
-    gnc_gconf_set_bool(
-        GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH,
-        close_when_finished,
-        NULL);
+    gnc_prefs_set_bool(
+        GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH,
+        close_when_finished);
 
     if (full_gui)
     {
@@ -412,7 +410,7 @@ gnc_GWEN_Gui_set_close_flag(gboolean close_when_finished)
 gboolean
 gnc_GWEN_Gui_get_close_flag()
 {
-    return gnc_gconf_get_bool(GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH, NULL);
+    return gnc_prefs_get_bool (GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH);
 }
 
 gboolean
@@ -433,7 +431,7 @@ gnc_GWEN_Gui_show_dialog()
         }
         gtk_toggle_button_set_active(
             GTK_TOGGLE_BUTTON(gui->close_checkbutton),
-            gnc_gconf_get_bool(GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH, NULL));
+            gnc_prefs_get_bool (GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH));
 
         show_dialog(gui, FALSE);
 
@@ -547,7 +545,7 @@ setup_dialog(GncGWENGui *gui)
 
     gtk_toggle_button_set_active(
         GTK_TOGGLE_BUTTON(gui->close_checkbutton),
-        gnc_gconf_get_bool(GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH, NULL));
+        gnc_prefs_get_bool (GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH));
 
     component_id = gnc_register_gui_component(GWEN_GUI_CM_CLASS, NULL,
                    cm_close_handler, gui);
@@ -614,14 +612,14 @@ reset_dialog(GncGWENGui *gui)
     if (gui->parent)
         gtk_window_set_transient_for(GTK_WINDOW(gui->dialog),
                                      GTK_WINDOW(gui->parent));
-    gnc_restore_window_size(GCONF_SECTION_CONNECTION, GTK_WINDOW(gui->dialog));
+    gnc_restore_window_size(GNC_PREFS_GROUP_CONNECTION, GTK_WINDOW(gui->dialog));
 
     gui->keep_alive = TRUE;
     gui->state = INIT;
     gui->min_loglevel = GWEN_LoggerLevel_Verbous;
 
-    cache_passwords = gnc_gconf_get_bool(GCONF_SECTION_AQBANKING,
-                                         KEY_REMEMBER_PIN, NULL);
+    cache_passwords = gnc_prefs_get_bool(GNC_PREFS_GROUP_AQBANKING,
+                                         GNC_PREF_REMEMBER_PIN);
     enable_password_cache(gui, cache_passwords);
 
     if (!gui->accepted_certs)
@@ -719,13 +717,12 @@ hide_dialog(GncGWENGui *gui)
     gnc_plugin_aqbanking_set_logwindow_visible(FALSE);
 
     /* Remember whether the dialog is to be closed when finished */
-    gnc_gconf_set_bool(
-        GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH,
-        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui->close_checkbutton)),
-        NULL);
+    gnc_prefs_set_bool(
+        GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH,
+        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui->close_checkbutton)));
 
     /* Remember size and position of the dialog */
-    gnc_save_window_size(GCONF_SECTION_CONNECTION, GTK_WINDOW(gui->dialog));
+    gnc_save_window_size(GNC_PREFS_GROUP_CONNECTION, GTK_WINDOW(gui->dialog));
 
     /* Do not serve as GUI anymore */
     gui->state = HIDDEN;
@@ -1060,8 +1057,8 @@ get_input(GncGWENGui *gui, guint32 flags, const gchar *title, const gchar *text,
             remember_pin = gtk_toggle_button_get_active(
                                GTK_TOGGLE_BUTTON(remember_pin_checkbutton));
             enable_password_cache(gui, remember_pin);
-            gnc_gconf_set_bool(GCONF_SECTION_AQBANKING, KEY_REMEMBER_PIN,
-                               remember_pin, NULL);
+            gnc_prefs_set_bool(GNC_PREFS_GROUP_AQBANKING, GNC_PREF_REMEMBER_PIN,
+                               remember_pin);
         }
 
         internal_input = gtk_entry_get_text(GTK_ENTRY(input_entry));
@@ -1618,10 +1615,9 @@ ggg_close_toggled_cb(GtkToggleButton *button, gpointer user_data)
 
     ENTER("gui=%p", gui);
 
-    gnc_gconf_set_bool(
-        GCONF_SECTION_AQBANKING, KEY_CLOSE_ON_FINISH,
-        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)),
-        NULL);
+    gnc_prefs_set_bool(
+        GNC_PREFS_GROUP_AQBANKING, GNC_PREF_CLOSE_ON_FINISH,
+        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)));
 
     LEAVE(" ");
 }

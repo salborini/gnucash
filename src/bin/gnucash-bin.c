@@ -42,12 +42,12 @@
 #include "top-level.h"
 #include "gfec.h"
 #include "gnc-commodity.h"
-#include "gnc-core-prefs.h"
+#include "gnc-prefs.h"
+#include "gnc-gsettings.h"
 #include "gnc-main-window.h"
 #include "gnc-splash.h"
 #include "gnc-gnome-utils.h"
 #include "gnc-plugin-file-history.h"
-#include "gnc-gconf-utils.h"
 #include "dialog-new-user.h"
 #include "gnc-session.h"
 #include "engine-helpers-guile.h"
@@ -70,7 +70,7 @@ static QofLogModule log_module = GNC_MOD_GUI;
 static int is_development_version = TRUE;
 #else
 static int is_development_version = FALSE;
-#define GNUCASH_SCM 0
+#define GNUCASH_SCM ""
 #endif
 
 /* Command-line option variables */
@@ -80,7 +80,7 @@ static int          extra            = 0;
 static gchar      **log_flags        = NULL;
 static gchar       *log_to_filename  = NULL;
 static int          nofile           = 0;
-static const gchar *gconf_path       = NULL;
+static const gchar *gsettings_prefix = NULL;
 static const char  *add_quotes_file  = NULL;
 static char        *namespace_regexp = NULL;
 static const char  *file_to_load     = NULL;
@@ -120,11 +120,11 @@ static GOptionEntry options[] =
         N_("Do not load the last file opened"), NULL
     },
     {
-        "gconf-path", '\0', 0, G_OPTION_ARG_STRING, &gconf_path,
-        N_("Set the prefix path for gconf queries"),
+        "gsettings-prefix", '\0', 0, G_OPTION_ARG_STRING, &gsettings_prefix,
+        N_("Set the prefix for gsettings schemas for gsettings queries. This can be useful to have a different settings tree while debugging."),
         /* Translators: Argument description for autohelp; see
            http://developer.gnome.org/doc/API/2.0/glib/glib-Commandline-option-parser.html */
-        N_("GCONFPATH")
+        N_("GSETTINGSPREFIX")
     },
     {
         "add-price-quotes", '\0', 0, G_OPTION_ARG_STRING, &add_quotes_file,
@@ -157,7 +157,6 @@ gnc_print_unstable_message(void)
             _("To find the last stable version, please refer to http://www.gnucash.org"));
 }
 
-#ifndef MAC_INTEGRATION
 static gchar  *environment_expand(gchar *param)
 {
     gchar *search_start;
@@ -310,10 +309,13 @@ environment_override()
             for ( j = 0; j < val_count; j++ )
             {
                 gchar *expanded = environment_expand (val_list[j]);
-                new_val = g_build_path (G_SEARCHPATH_SEPARATOR_S, tmp_val, expanded, NULL);
-                g_free (tmp_val);
-                g_free(expanded);
-                tmp_val = new_val;
+                if (expanded && strlen(expanded))
+                {
+                    new_val = g_build_path (G_SEARCHPATH_SEPARATOR_S, tmp_val, expanded, NULL);
+                    g_free (tmp_val);
+                    g_free(expanded);
+                    tmp_val = new_val;
+                }
             }
             g_strfreev (val_list);
 
@@ -333,7 +335,7 @@ environment_override()
     g_key_file_free(keyfile);
 }
 
-#else /* MAC_INTEGRATION */
+#ifdef MAC_INTEGRATION
 static void
 set_mac_locale()
 {
@@ -408,9 +410,9 @@ set_mac_locale()
 	    if ([elements count] > 1) {
 		if ([[elements objectAtIndex: 0] isEqualToString: @"zh"]) {
 		    if ([[elements objectAtIndex: 1] isEqualToString: @"Hans"])
-			this_lang = [NSString stringWithString: @"zh_CN"];
+			this_lang = @"zh_CN";
 		    else
-			this_lang = [NSString stringWithString: @"zh_TW"];
+			this_lang = @"zh_TW";
 		}
 		else
 		  this_lang = [elements componentsJoinedByString: @"_"];
@@ -562,21 +564,21 @@ gnc_parse_command_line(int *argc, char ***argv)
         exit(0);
     }
 
-    gnc_core_prefs_set_debugging(debugging);
-    gnc_core_prefs_set_extra(extra);
+    gnc_prefs_set_debugging(debugging);
+    gnc_prefs_set_extra(extra);
 
-    if (!gconf_path)
+    if (!gsettings_prefix)
     {
-        const char *path = g_getenv("GNC_GCONF_PATH");
-        if (path)
-            gconf_path = path;
+        const char *prefix = g_getenv("GNC_GSETTINGS_PREFIX");
+        if (prefix)
+            gsettings_prefix = prefix;
         else
-            gconf_path = GCONF_PATH;
+            gsettings_prefix = GSET_SCHEMA_PREFIX;
     }
-    gnc_gconf_set_path_prefix(g_strdup(gconf_path));
+    gnc_gsettings_set_prefix(g_strdup(gsettings_prefix));
 
     if (namespace_regexp)
-        gnc_core_prefs_set_namespace_regexp(namespace_regexp);
+        gnc_prefs_set_namespace_regexp(namespace_regexp);
 
     if (args_remaining)
         file_to_load = args_remaining[0];
@@ -719,6 +721,10 @@ inner_main (void *closure, int argc, char **argv)
     main_mod = scm_c_resolve_module("gnucash main");
     scm_set_current_module(main_mod);
 
+    /* GnuCash switched to gsettings to store its preferences in version 2.5.6
+     * Migrate the user's preferences from gconf if needed */
+    gnc_gsettings_migrate_from_gconf();
+
     load_gnucash_modules();
 
     /* Load the config before starting up the gui. This insures that
@@ -751,8 +757,7 @@ inner_main (void *closure, int argc, char **argv)
         gnc_file_open_file(fn, /*open_readonly*/ FALSE);
         g_free(fn);
     }
-    else if (gnc_gconf_get_bool("dialogs/new_user", "first_startup", &error)
-             && !error)
+    else if (gnc_prefs_get_bool(GNC_PREFS_GROUP_NEW_USER, GNC_PREF_FIRST_STARTUP))
     {
         gnc_destroy_splash_screen();
         gnc_ui_new_user_dialog();
@@ -791,7 +796,7 @@ gnc_log_init()
 
     gnc_log_default();
 
-    if (gnc_core_prefs_is_debugging_enabled())
+    if (gnc_prefs_is_debugging_enabled())
     {
         qof_log_set_level("", QOF_LOG_INFO);
         qof_log_set_level("qof", QOF_LOG_INFO);
@@ -855,9 +860,8 @@ main(int argc, char ** argv)
      */
 #ifdef MAC_INTEGRATION
     set_mac_locale();
-#else
-    environment_override();
 #endif
+    environment_override();
 #ifdef HAVE_GETTEXT
     {
         gchar *localedir = gnc_path_get_localedir();
