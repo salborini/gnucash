@@ -643,7 +643,7 @@ void gnc_price_parse_data_free(GncPriceParseData* parse_data)
     /* All non-NULL pointers have been initialized and must be freed. */
 
     if (parse_data->raw_mapping != NULL)
-	g_mapped_file_free(parse_data->raw_mapping);
+	g_mapped_file_unref(parse_data->raw_mapping);
 
     if (parse_data->file_str.begin != NULL)
 	g_free(parse_data->file_str.begin);
