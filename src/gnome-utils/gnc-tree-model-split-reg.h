@@ -142,7 +142,7 @@ typedef struct
 
     gint                         sort_depth;            /**< This is the row the sort direction is based on. */
     gint                         sort_col;              /**< This is the column the sort direction is based on. */
-    gint                         sort_direction;        /**< This is the direction of sort, 1 for ascending or -1 rest */
+    GtkSortType                  sort_direction;        /**< This is the direction of sort */
 
     gboolean                     use_accounting_labels; /**< whether to use accounting Labels */
     gboolean                     separator_changed;     /**< whether the separator has changed */ 
@@ -216,9 +216,6 @@ void gnc_tree_model_split_reg_destroy (GncTreeModelSplitReg *model);
 /** Sets the user data and callback hooks for the register. */
 void gnc_tree_model_split_reg_set_data (GncTreeModelSplitReg *model, gpointer user_data,
                                   SRGetParentCallback2 get_parent);
-
-/** Sets the default query for the register. */
-void gnc_tree_model_split_reg_default_query (GncTreeModelSplitReg *model, Account *default_account, Query *query);
 
 /** Update the query for the register. */
 void gnc_tree_model_split_reg_update_query (GncTreeModelSplitReg *model, Query *query);

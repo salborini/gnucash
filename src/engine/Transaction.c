@@ -177,6 +177,7 @@ const char *void_reason_str = "void-reason";
 const char *void_time_str = "void-time";
 const char *void_former_notes_str = "void-former-notes";
 const char *trans_is_closing_str = "book_closing";
+const char *assoc_uri_str = "assoc_uri";
 
 /* KVP entry for date-due value */
 #define TRANS_DATE_DUE_KVP       "trans-date-due"
@@ -1856,6 +1857,7 @@ xaccTransSetDatePostedGDate (Transaction *trans, GDate date)
         kvp_value_delete(kvp_value);
     }
 
+    /* mark dirty and commit handled by SetDateInternal */
     xaccTransSetDateInternal(trans, &trans->date_posted,
                              gdate_to_timespec(date));
     set_gains_date_dirty (trans);
@@ -2006,6 +2008,17 @@ xaccTransSetDescription (Transaction *trans, const char *desc)
     xaccTransCommitEdit(trans);
 }
 
+void
+xaccTransSetAssociation (Transaction *trans, const char *assoc)
+{
+    if (!trans || !assoc) return;
+    xaccTransBeginEdit(trans);
+
+    kvp_frame_set_str (trans->inst.kvp_data, assoc_uri_str, assoc);
+    qof_instance_set_dirty(QOF_INSTANCE(trans));
+    xaccTransCommitEdit(trans);
+}
+
 static void
 qofTransSetNotes (Transaction *trans, const char *notes)
 {
@@ -2087,6 +2100,13 @@ const char *
 xaccTransGetDescription (const Transaction *trans)
 {
     return trans ? trans->description : NULL;
+}
+
+const char *
+xaccTransGetAssociation (const Transaction *trans)
+{
+    return trans ?
+           kvp_frame_get_string (trans->inst.kvp_data, assoc_uri_str) : NULL;
 }
 
 const char *
@@ -2461,13 +2481,13 @@ xaccTransReverse (Transaction *orig)
         xaccSplitSetAmount(s, gnc_numeric_neg(xaccSplitGetAmount(s)));
         xaccSplitSetValue(s, gnc_numeric_neg(xaccSplitGetValue(s)));
         xaccSplitSetReconcile(s, NREC);
-        qof_instance_set_dirty(QOF_INSTANCE(trans));
     });
 
     /* Now update the original with a pointer to the new one */
     kvp_val = kvp_value_new_guid(xaccTransGetGUID(trans));
     kvp_frame_set_slot_nc(orig->inst.kvp_data, TRANS_REVERSED_BY, kvp_val);
 
+    qof_instance_set_dirty(QOF_INSTANCE(trans));
     xaccTransCommitEdit(trans);
     return trans;
 }
@@ -2686,6 +2706,11 @@ gboolean xaccTransRegister (void)
             TRANS_NOTES, QOF_TYPE_STRING,
             (QofAccessFunc)xaccTransGetNotes,
             (QofSetterFunc)qofTransSetNotes
+        },
+        {
+            TRANS_ASSOCIATION, QOF_TYPE_STRING,
+            (QofAccessFunc)xaccTransGetAssociation,
+            (QofSetterFunc)xaccTransSetAssociation
         },
         {
             TRANS_IS_CLOSING, QOF_TYPE_BOOLEAN,

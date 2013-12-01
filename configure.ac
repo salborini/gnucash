@@ -20,7 +20,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.7], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.5.9], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 
@@ -331,6 +331,7 @@ update to latest  darwin])
     ;;
   darwin*)
     platform=darwin
+    AC_DEFINE(PLATFORM_OSX,1,[Running on OSX, either X11 or Quartz])
     AC_MSG_RESULT($platform)
     AC_MSG_CHECKING(For GDK-Quartz)
     platform=osx
@@ -420,49 +421,40 @@ AC_CHECK_FUNCS(gethostid link)
 
 
 ### --------------------------------------------------------------------------
-### Guile version checks (should this be something other than the Gnome check?)
+### Guile version checks
 
-# If the user has given these values, cache them to override the
-# detected values.
-if test "x$GUILE_LIBS" != x; then
-  saved_GUILE_LIBS="$GUILE_LIBS"
-fi
-if test "x$GUILE_INCS" != x; then
-  saved_GUILE_INCS="$GUILE_INCS"
-fi
-GUILE_LIBS=""
-
-# Look up GUILE_CFLAGS and GUILE_LIBS, and version check
-PKG_CHECK_MODULES(GUILE, [guile-1.8 >= 1.8.5], , [
-  PKG_CHECK_MODULES(GUILE, [guile-2.0 >= 2.0.0], , [AC_MSG_ERROR([
+# - check minimum version
+# - determine GUILE_CFLAGS and GUILE_LIBS
+# - test if guile module (www main) is present on the system
+# Note: systems that install both guile 1.8 and guile 2 use different
+#       names for the 1.8 and 2.0 autoconf macros to avoid conflicts.
+#       So the tests below will check for known macro names in the order
+#       that we assume will always result in the proper macros being called
+#       for the guile version that has been detected.
+gnc_have_guile_www=no
+PKG_CHECK_MODULES(GUILE,
+                  [guile-1.8 >= 1.8.5],
+                  [m4_ifdef([GUILE1_8_PROGS],
+                            [ GUILE1_8_PROGS
+                              GUILE1_8_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)]) ],
+                            [ GUILE_PROGS
+                              GUILE_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)]) ])
+                  ], [
+  PKG_CHECK_MODULES(GUILE,
+                  [guile-2.0 >= 2.0.0],
+                  [m4_ifdef([GUILE_PROGS],
+                            [ GUILE_PROGS
+                              GUILE_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)]) ],
+                            [ AC_MSG_ERROR([ guile 2 is found on your system, but appears
+    to export different autoconf macros than what we expected. Please report this as a bug
+    in GnuCash, so we can fix this for your platform.]) ])
+                  ],
+                  [AC_MSG_ERROR([
     guile does not appear to be installed correctly, or is not in the
     correct version range.  Perhaps you have not installed the guile
     development packages?  Gnucash requires at least version 1.8.5 to build.
   ])])
 ])
-# Look up GUILE executable
-AC_PATH_PROG(GUILE, guile)
-
-GUILE_INCS="${GUILE_CFLAGS}"
-if test "x$saved_GUILE_LIBS" != x; then
-  GUILE_LIBS="$saved_GUILE_LIBS"
-fi
-if test "x$saved_GUILE_INCS" != x; then
-  GUILE_INCS="$saved_GUILE_INCS"
-fi
-
-AS_SCRUB_INCLUDE(GUILE_INCS)
-AC_SUBST(GUILE_INCS)
-AC_SUBST(GUILE_LIBS)
-AC_SUBST(GUILE)
-
-### --------------------------------------------------------------------------
-### See if we need guile-www
-
-gnc_have_guile_www=no
-
-AC_MSG_CHECKING([if guile needs our copy of (guile www)])
-GUILE_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)])
 
 AM_CONDITIONAL(GNC_HAVE_GUILE_WWW, test "${gnc_have_guile_www}" = yes)
 
@@ -971,7 +963,7 @@ then
   AC_SUBST(GDK_PIXBUF_LIBS)
 
    # checks for goffice
-  PKG_CHECK_MODULES(GOFFICE, libgoffice-0.8 >= 0.7.0, [goffice=1], [AC_MSG_ERROR([Cannot find libgoffice.>= 0.5.1])])
+  PKG_CHECK_MODULES(GOFFICE, libgoffice-0.8 >= 0.7.0, [goffice=1], [AC_MSG_ERROR([Cannot find libgoffice.>= 0.7.0])])
   AS_SCRUB_INCLUDE(GOFFICE_CFLAGS)
   AC_SUBST(GOFFICE_CFLAGS)
   AC_SUBST(GOFFICE_LIBS)
@@ -1262,9 +1254,7 @@ AC_MSG_RESULT($warnFLAGS)
 ### makefiles, so that we don't have an opportunity to adjust them
 ### there.
 
-chmod u+x ${srcdir}/src/gnc-test-env
 chmod u+x ${srcdir}/src/bin/generate-gnc-script
-chmod u+x ${srcdir}/src/bin/overrides/gnucash-make-guids
 
 ### --------------------------------------------------------------------------
 ### Makefile creation
@@ -1441,12 +1431,35 @@ AC_CONFIG_FILES(
   packaging/win32/gnucash.iss
   src/bin/gnucash.rc
   src/app-utils/migratable-prefs.xml
+  src/engine/iso-currencies-to-c
   src/gnome/gnucash.desktop.in
-
+  dnl # GSettings schema files
+  src/business/business-gnome/gschemas/org.gnucash.dialogs.business.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.checkprinting.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.commodities.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.reconcile.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.sxs.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.dialogs.totd.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.window.pages.account.tree.gschema.xml.in
+  src/gnome/gschemas/org.gnucash.window.pages.gschema.xml.in
+  src/gnome-utils/gschemas/org.gnucash.history.gschema.xml.in
+  src/gnome-utils/gschemas/org.gnucash.warnings.gschema.xml.in
+  src/import-export/aqbanking/gschemas/org.gnucash.dialogs.import.hbci.gschema.xml.in
+  src/import-export/csv-export/gschemas/org.gnucash.dialogs.export.csv.gschema.xml.in
+  src/import-export/csv-import/gschemas/org.gnucash.dialogs.import.csv.gschema.xml.in
+  src/import-export/gschemas/org.gnucash.dialogs.import.generic.gschema.xml.in
+  src/import-export/ofx/gschemas/org.gnucash.dialogs.import.ofx.gschema.xml.in
+  src/import-export/qif-import/gschemas/org.gnucash.dialogs.import.qif.gschema.xml.in
   dnl # Please read doc/build-system before adding *anything* here
   ,
-  dnl # commands go here, but we don't have any right now
+  dnl # init-commands go here
 )
+# A few files need extra actions at creation time
+AC_CONFIG_FILES([src/gnc-test-env], [chmod u+x src/gnc-test-env])
+AC_CONFIG_FILES([src/bin/overrides/gnucash-make-guids], [chmod u+x src/bin/overrides/gnucash-make-guids])
+
 AC_OUTPUT
 
 

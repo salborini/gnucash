@@ -226,6 +226,12 @@ void gnc_state_save (const QofSession *session)
 {
     GError *error = NULL;
 
+    if (!qof_session_get_url(session))
+    {
+        DEBUG("No file associated with session - skip state saving");
+        return;
+    }
+
     gnc_state_set_base (session);
 
     /* Write it all out to disk */
@@ -246,11 +252,53 @@ GKeyFile *gnc_state_get_current (void)
 {
     if (!state_file)
     {
-        PWARN ("No pre-existing state found, creating new one");
+        PINFO ("No pre-existing state found, creating new one");
         state_file = g_key_file_new ();
     }
 
     return state_file;
+
+}
+
+gint gnc_state_drop_sections_for (const gchar *partial_name)
+{
+    gchar **groups;
+    gint found_count = 0, dropped_count = 0;
+    gsize i, num_groups;
+    GError *error = NULL;
+
+    if (!state_file)
+    {
+        PWARN ("No pre-existing state found, ignoring drop request");
+        return 0;
+    }
+
+    ENTER("");
+
+    groups = g_key_file_get_groups (state_file, &num_groups);
+    for (i = 0; i < num_groups; i++)
+    {
+        if (g_strstr_len (groups[i], -1, partial_name))
+        {
+            DEBUG ("Section \"%s\" matches \"%s\", removing", groups[i], partial_name);
+            found_count++;
+            if (!g_key_file_remove_group (state_file, groups[i], &error))
+            {
+                PWARN ("Warning: unable to remove section %s.\n  %s",
+                        groups[i],
+                        error->message);
+                g_error_free (error);
+            }
+            else
+                dropped_count++;
+
+        }
+    }
+    g_strfreev (groups);
+
+    LEAVE("Found %i sections matching \"%s\", successfully removed %i",
+            found_count, partial_name, dropped_count);
+    return dropped_count;
 
 }
 

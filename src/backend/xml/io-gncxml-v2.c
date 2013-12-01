@@ -99,6 +99,12 @@ struct file_backend
 const gchar *gnc_v2_xml_version_string = GNC_V2_STRING;
 extern const gchar *gnc_v2_book_version_string;        /* see gnc-book-xml-v2 */
 
+/* Forward declarations */
+static FILE *try_gz_open (const char *filename, const char *perms, gboolean use_gzip,
+                          gboolean compress);
+static gboolean is_gzipped_file(const gchar *name);
+static gboolean wait_for_gzip(FILE *file);
+
 void
 run_callback(sixtp_gdv2 *data, const char *type)
 {
@@ -418,6 +424,10 @@ gnc_counter_end_handler(gpointer data_for_children,
     {
         sixdata->counter.budgets_total = val;
     }
+    else if (g_strcmp0(type, "price") == 0)
+    {
+        sixdata->counter.prices_total = val;
+    }
     else
     {
         struct file_backend be_data;
@@ -482,10 +492,12 @@ file_rw_feedback (sixtp_gdv2 *gd, const char *type)
     counter = &gd->counter;
     loaded = counter->transactions_loaded + counter->accounts_loaded +
              counter->books_loaded + counter->commodities_loaded +
-             counter->schedXactions_loaded + counter->budgets_loaded;
+             counter->schedXactions_loaded + counter->budgets_loaded +
+             counter->prices_loaded;
     total = counter->transactions_total + counter->accounts_total +
             counter->books_total + counter->commodities_total +
-            counter->schedXactions_total + counter->budgets_total;
+            counter->schedXactions_total + counter->budgets_total +
+            counter->prices_total;
     if (total == 0)
         total = 1;
 
@@ -774,8 +786,38 @@ qof_session_load_from_xml_file_v2_full(
     }
     else
     {
-        retval = gnc_xml_parse_file(top_parser, fbe->fullpath,
-                                    generic_callback, gd, book);
+        /* Even though libxml2 knows how to decompress zipped files, we do it 
+           ourself since as of version 2.9.1 it has a bug that causes it to fail
+           to decompress certain files.  
+           See https://bugzilla.gnome.org/show_bug.cgi?id=712528 for more info */
+        gchar *filename = fbe->fullpath;
+#ifdef G_OS_WIN32
+        filename = g_win32_locale_filename_from_utf8(fbe->fullpath);
+        if (filename)
+        {
+#endif
+            FILE *file;
+            gboolean is_compressed = is_gzipped_file(filename);
+            file = try_gz_open(filename, "r", is_compressed, FALSE);
+            if (file == NULL)
+            {
+                PWARN("Unable to open file %s", filename);
+                retval = FALSE;
+            }
+            else
+            {
+                retval = gnc_xml_parse_fd(top_parser, file,
+                                          generic_callback, gd, book);
+                fclose(file);
+                if (is_compressed)
+                    wait_for_gzip(file);
+            }
+#ifdef G_OS_WIN32
+            g_free(filename);
+        }
+        else
+            retval = FALSE;
+#endif
     }
 
     if (!retval)
@@ -999,6 +1041,7 @@ write_book(FILE *out, QofBook *book, sixtp_gdv2 *gd)
                       g_list_length(gnc_book_get_schedxactions(book)->sx_list),
                       "budget", qof_collection_count(
                           qof_book_get_collection(book, GNC_ID_BUDGET)),
+                      "price", gnc_pricedb_get_num_prices(gnc_pricedb_get_db(book)), 
                       NULL))
         return FALSE;
 
@@ -1083,20 +1126,55 @@ static gboolean
 write_pricedb(FILE *out, QofBook *book, sixtp_gdv2 *gd)
 {
     xmlNodePtr node;
+    xmlNodePtr parent;
+    xmlOutputBufferPtr outbuf;
 
-    node = gnc_pricedb_dom_tree_create(gnc_pricedb_get_db(book));
+    parent = gnc_pricedb_dom_tree_create(gnc_pricedb_get_db(book));
 
-    if (!node)
+    if (!parent)
     {
         return TRUE;
     }
 
-    xmlElemDump(out, NULL, node);
-    xmlFreeNode(node);
-
-    if (ferror(out) || fprintf(out, "\n") < 0)
+    /* Write out the parent pricedb tag then loop to write out each price.
+       We do it this way instead of just calling xmlElemDump so that we can
+       increment the progress bar as we go. */
+       
+    if (fprintf( out, "<%s version=\"%s\">\n", parent->name, 
+                 xmlGetProp(parent, (xmlChar*) "version")) < 0)
         return FALSE;
+        
+    /* We create our own output buffer so we can call xmlNodeDumpOutput to get
+       the indendation correct. */
+    outbuf = xmlOutputBufferCreateFile(out, NULL);
+    if (outbuf == NULL)
+    {
+        xmlFreeNode(parent);
+        return FALSE;
+    }
+       
+    for (node = parent->children; node; node = node->next)
+    {
+        /* Write two spaces since xmlNodeDumpOutput doesn't indent the first line */
+        xmlOutputBufferWrite(outbuf, 2, "  ");
+        xmlNodeDumpOutput(outbuf, NULL, node, 1, 1, NULL);
+        /* It also doesn't terminate the last line */
+        xmlOutputBufferWrite(outbuf, 1, "\n");
+        if (ferror(out)) 
+            break;
+        gd->counter.prices_loaded += 1;
+        run_callback(gd, "prices");
+    }
+    
+    xmlOutputBufferClose(outbuf);
+    
+    if (ferror(out) || fprintf(out, "</%s>\n", parent->name) < 0)
+    {
+        xmlFreeNode(parent);
+        return FALSE;
+    }
 
+    xmlFreeNode(parent);
     return TRUE;
 }
 
@@ -1282,6 +1360,7 @@ gnc_book_write_to_xml_filehandle_v2(QofBook *book, FILE *out)
         g_list_length(gnc_book_get_schedxactions(book)->sx_list);
     gd->counter.budgets_total = qof_collection_count(
                                     qof_book_get_collection(book, GNC_ID_BUDGET));
+    gd->counter.prices_total = gnc_pricedb_get_num_prices(gnc_pricedb_get_db(book));
 
     if (!write_book(out, book, gd)
             || fprintf(out, "</" GNC_V2_STRING ">\n\n") < 0)

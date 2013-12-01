@@ -15,7 +15,7 @@ AM_CPPFLAGS = \
   -DTEST_MYSQL_URL=\"${TEST_MYSQL_URL}\" \
   -DTEST_PGSQL_URL=\"${TEST_PGSQL_URL}\" \
   ${GLIB_CFLAGS} \
-  ${GUILE_INCS}
+  ${GUILE_CFLAGS}
 
 LDADD = ${top_builddir}/src/test-core/libtest-core.la \
         ${top_builddir}/src/gnc-module/libgnc-module.la \
@@ -41,7 +41,7 @@ TESTS_ENVIRONMENT = \
   GNC_ACCOUNT_PATH=${top_srcdir}/accounts/C \
   SRCDIR=${srcdir} \
   ${gnc_dbd_dir_override} \
-  $(shell ${top_srcdir}/src/gnc-test-env ${GNC_TEST_DEPS})
+  $(shell ${top_builddir}/src/gnc-test-env ${GNC_TEST_DEPS})
 
 EXTRA_DIST += \
     test-dbi-stuff.h \

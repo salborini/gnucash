@@ -4,7 +4,7 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/test-core \
   -I${top_srcdir}/src/libqof/qof \
   -I${top_srcdir}/src/gnc-module \
-  ${GUILE_INCS} \
+  ${GUILE_CFLAGS} \
   ${GLIB_CFLAGS}
 
 LDADD = \
@@ -51,8 +51,9 @@ GNC_TEST_DEPS = --gnc-module-dir ${top_builddir}/src/engine \
 
 TESTS_ENVIRONMENT = \
   GUILE_WARN_DEPRECATED=no \
+  GUILE="${GUILE}" \
   GNC_BUILDDIR=`\cd ${top_builddir} && pwd` \
-  $(shell ${top_srcdir}/src/gnc-test-env --no-exports ${GNC_TEST_DEPS})
+  $(shell ${top_builddir}/src/gnc-test-env --no-exports ${GNC_TEST_DEPS})
 
 
 check_PROGRAMS = test-link-module

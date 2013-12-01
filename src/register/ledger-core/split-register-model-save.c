@@ -425,7 +425,7 @@ gnc_split_register_save_amount_values (SRSaveData *sd, SplitRegister *reg)
       * amount.
       */
     amtconv = convrate = gnc_split_register_get_rate_cell (reg, RATE_CELL);
-    if (gnc_split_register_needs_conv_rate (reg, sd->trans, acc))
+    if (acc && gnc_split_register_needs_conv_rate (reg, sd->trans, acc))
     {
 
         /* If we are in an expanded register and the xfer_acc->comm !=
@@ -683,6 +683,7 @@ gnc_template_register_save_xfrm_cell (BasicCell * cell,
 
     /* set the actual account to the fake account for these templates */
     xaccAccountInsertSplit (template_acc, sd->split);
+    qof_instance_set_dirty (QOF_INSTANCE (sd->split));
 }
 
 static void
@@ -760,6 +761,7 @@ gnc_template_register_save_debcred_cell (BasicCell * cell,
     DEBUG ("kvp_frame  after: %s\n", kvp_frame_to_string (kvpf));
 
     /* set the amount to an innocuous value */
+    /* Note that this marks the split dirty */
     xaccSplitSetValue (sd->split, gnc_numeric_create (0, 1));
 
     sd->handled_dc = TRUE;
@@ -791,6 +793,7 @@ gnc_template_register_save_shares_cell (BasicCell * cell,
     DEBUG ("kvp_frame  after: %s\n", kvp_frame_to_string (kvpf));
 
     /* set the shares to an innocuous value */
+    /* Note that this marks the split dirty */
     xaccSplitSetSharePriceAndAmount (sd->split,
                                      gnc_numeric_create (0, 1),
                                      gnc_numeric_create (0, 1));

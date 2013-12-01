@@ -10,7 +10,7 @@ AM_CPPFLAGS = \
   -I${top_srcdir}/src/gnc-module \
   -I${top_srcdir}/src/libqof/qof \
   -I${top_srcdir}/src/test-core \
-  ${GUILE_INCS} \
+  ${GUILE_CFLAGS} \
   ${GLIB_CFLAGS}
 
 TESTS = \
@@ -48,7 +48,8 @@ GNC_TEST_DEPS = \
 
 TESTS_ENVIRONMENT = \
   GUILE_WARN_DEPRECATED=no \
-  $(shell ${top_srcdir}/src/gnc-test-env --no-exports ${GNC_TEST_DEPS})
+  GUILE="${GUILE}" \
+  $(shell ${top_builddir}/src/gnc-test-env --no-exports ${GNC_TEST_DEPS})
 
 check_PROGRAMS = \
   test-load-c \

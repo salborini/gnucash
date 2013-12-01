@@ -530,6 +530,9 @@ xaccFreeSplit (Split *split)
 
     split->date_reconciled.tv_sec = 0;
     split->date_reconciled.tv_nsec = 0;
+    if (split->inst.kvp_data)
+        kvp_frame_delete(split->inst.kvp_data);
+    split->inst.kvp_data = NULL;
 
     // Is this right?
     if (split->gains_split) split->gains_split->gains_split = NULL;
@@ -1940,10 +1943,10 @@ xaccSplitVoid(Split *split)
     kvp_frame_set_gnc_numeric(frame, void_former_val_str,
                               xaccSplitGetValue(split));
 
+    /* Marking dirty handled by SetAmount etc. */
     xaccSplitSetAmount (split, zero);
     xaccSplitSetValue (split, zero);
     xaccSplitSetReconcile(split, VREC);
-
 }
 
 void
@@ -1956,6 +1959,7 @@ xaccSplitUnvoid(Split *split)
     xaccSplitSetReconcile(split, NREC);
     kvp_frame_set_slot(frame, void_former_amt_str, NULL);
     kvp_frame_set_slot(frame, void_former_val_str, NULL);
+    qof_instance_set_dirty (QOF_INSTANCE (split));
 }
 
 /********************************************************************\

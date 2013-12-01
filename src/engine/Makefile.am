@@ -10,7 +10,7 @@ AM_CPPFLAGS = \
 	-I${top_srcdir}/src/gnc-module \
 	-I${top_srcdir}/src/libqof/qof \
 	${GLIB_CFLAGS} \
-	${GUILE_INCS}
+	${GUILE_CFLAGS}
 
 libgncmod_engine_la_SOURCES = \
   Account.c \
@@ -130,6 +130,7 @@ noinst_HEADERS = \
 noinst_SCRIPTS = iso-currencies-to-c
 
 libgncmod_engine_la_LDFLAGS = -avoid-version
+libgncmod_engine_la_CFLAGS = -Wno-invalid-source-encoding
 
 libgncmod_engine_la_LIBADD = \
   ../gnc-module/libgnc-module.la \
@@ -206,8 +207,8 @@ swig-engine.c: engine.i $(top_srcdir)/src/base-typemaps.i \
 endif
 
 iso-4217-currencies.c: iso-4217-currencies.scm iso-currencies-to-c
-	-chmod u+x ${srcdir}/iso-currencies-to-c
-	${srcdir}/iso-currencies-to-c "${srcdir}"
+	-chmod u+x ./iso-currencies-to-c
+	./iso-currencies-to-c "${srcdir}"
 
 BUILT_SOURCES = iso-4217-currencies.c
 
