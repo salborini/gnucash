@@ -906,6 +906,7 @@ gnc_plugin_page_register_ui_update (gpointer various, GncPluginPageRegister *pag
     GtkAction *action;
     gboolean expanded, voided;
     Transaction *trans;
+    const char *uri;
 
     /* Set 'Split Transaction' */
     priv = GNC_PLUGIN_PAGE_REGISTER_GET_PRIVATE(page);
@@ -930,6 +931,12 @@ gnc_plugin_page_register_ui_update (gpointer various, GncPluginPageRegister *pag
     action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE(page),
                                          "UnvoidTransactionAction");
     gtk_action_set_sensitive (GTK_ACTION(action), voided);
+
+    /* Set 'ExecAssociated' */
+    uri = xaccTransGetAssociation(trans);
+    action = gnc_plugin_page_get_action (GNC_PLUGIN_PAGE(page),
+                                         "ExecAssociatedTransactionAction");
+    gtk_action_set_sensitive (GTK_ACTION(action), uri ? TRUE:FALSE);
 
     /* If we are in a readonly book, make any modifying action inactive */
     if (qof_book_is_readonly(gnc_get_current_book()))
@@ -2616,15 +2623,15 @@ report_helper (GNCLedgerDisplay *ledger, Split *split, Query *query)
     g_return_val_if_fail (scm_is_procedure (func), -1);
 
     tmp = gnc_split_register_get_credit_string (reg);
-    arg = scm_from_locale_string (tmp ? tmp : _("Credit"));
+    arg = scm_from_utf8_string (tmp ? tmp : _("Credit"));
     args = scm_cons (arg, args);
 
     tmp = gnc_split_register_get_debit_string (reg);
-    arg = scm_from_locale_string (tmp ? tmp : _("Debit"));
+    arg = scm_from_utf8_string (tmp ? tmp : _("Debit"));
     args = scm_cons (arg, args);
 
     str = gnc_reg_get_name (ledger, FALSE);
-    arg = scm_from_locale_string (str ? str : "");
+    arg = scm_from_utf8_string (str ? str : "");
     args = scm_cons (arg, args);
     g_free (str);
 
@@ -2696,6 +2703,7 @@ gnc_plugin_page_register_cmd_print_check (GtkAction *action,
     Transaction   * trans;
     GList         * splits = NULL, *item;
     GNCLedgerDisplayType ledger_type;
+    Account       * account;
 
     ENTER("(action %p, plugin_page %p)", action, plugin_page);
 
@@ -2706,14 +2714,30 @@ gnc_plugin_page_register_cmd_print_check (GtkAction *action,
     ledger_type = gnc_ledger_display_type(priv->ledger);
     if (ledger_type == LD_SINGLE || ledger_type == LD_SUBACCOUNT)
     {
+        account  = gnc_plugin_page_register_get_account (plugin_page);
         split    = gnc_split_register_get_current_split(reg);
         trans    = xaccSplitGetParent(split);
 
         if (split && trans)
         {
-            splits = g_list_append(splits, split);
-            gnc_ui_print_check_dialog_create(plugin_page, splits);
-            g_list_free(splits);
+            if (xaccSplitGetAccount(split) == account)
+            {
+                splits = g_list_append(splits, split);
+                gnc_ui_print_check_dialog_create(plugin_page, splits);
+                g_list_free(splits);
+            }
+            else
+            {
+                /* This split is not for the account shown in this register.  Get the
+                   split that anchors the transaction to the registor */
+                split = gnc_split_register_get_current_trans_split(reg, NULL);
+                if (split)
+                {
+                    splits = g_list_append(splits, split);
+                    gnc_ui_print_check_dialog_create(plugin_page, splits);
+                    g_list_free(splits);
+                }
+            }           
         }
     }
     else if (ledger_type == LD_GL && reg->type == SEARCH_LEDGER)
@@ -3439,6 +3463,7 @@ gnc_plugin_page_register_cmd_associate_file_transaction (GtkAction *action,
 
     priv = GNC_PLUGIN_PAGE_REGISTER_GET_PRIVATE(plugin_page);
     gsr_default_associate_handler_file(priv->gsr, NULL);
+    gnc_plugin_page_register_ui_update (NULL, plugin_page);
     LEAVE(" ");
 
 }
@@ -3455,6 +3480,7 @@ gnc_plugin_page_register_cmd_associate_location_transaction (GtkAction *action,
 
     priv = GNC_PLUGIN_PAGE_REGISTER_GET_PRIVATE(plugin_page);
     gsr_default_associate_handler_location(priv->gsr, NULL);
+    gnc_plugin_page_register_ui_update (NULL, plugin_page);
     LEAVE(" ");
 
 }

@@ -249,3 +249,4 @@ gnucash.creator
 gnucash.creator.user
 gnucash.files
 gnucash.includes
+*.xcodeproj

@@ -1,15 +1,19 @@
 %module sw_core_utils
 %{
+#include <config.h>
+#include <gnc-environment.h>
 #include <gnc-glib-utils.h>
 #include <gnc-prefs.h>
 #include <gnc-path.h>
 #include <gnc-filepath-utils.h>
 #include <gnc-locale-utils.h>
 #include <glib.h>
+const gchar *gnc_version(void);
 %}
 #if defined(SWIGGUILE)
 %{
-#include <guile-mappings.h>
+#include "guile-mappings.h"
+
 SCM scm_init_sw_core_utils_module (void);
 %}
 #endif
@@ -25,7 +29,12 @@ void
 #endif
 %import "base-typemaps.i"
 
+%include <gnc-environment.h>
 %include <gnc-prefs.h>
+%inline %{
+const gchar *gnc_version(void)
+{ return VERSION; }
+%}
 
 %newobject gnc_path_get_bindir;
 gchar * gnc_path_get_bindir(void);

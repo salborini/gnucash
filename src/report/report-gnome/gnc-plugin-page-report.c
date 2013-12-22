@@ -765,7 +765,7 @@ gnc_plugin_page_report_save_page (GncPluginPage *plugin_page,
 
         key_name = g_strdup_printf(SCHEME_OPTIONS_N, id);
         text = gnc_scm_strip_comments(scm_text);
-        g_key_file_set_string(key_file, group_name, key_name, text);
+        g_key_file_set_value(key_file, group_name, key_name, text);
         g_free(text);
         g_free(key_name);
     }
@@ -778,7 +778,7 @@ gnc_plugin_page_report_save_page (GncPluginPage *plugin_page,
     }
 
     text = gnc_scm_strip_comments(scm_text);
-    g_key_file_set_string(key_file, group_name, SCHEME_OPTIONS, text);
+    g_key_file_set_value(key_file, group_name, SCHEME_OPTIONS, text);
     g_free(text);
     LEAVE(" ");
 }
@@ -825,7 +825,7 @@ gnc_plugin_page_report_recreate_page (GtkWidget *window,
     {
         if (strncmp(keys[i], SCHEME_OPTIONS, strlen(SCHEME_OPTIONS)) != 0)
             continue;
-        option_string = g_key_file_get_string(key_file, group_name,
+        option_string = g_key_file_get_value(key_file, group_name,
                                               keys[i], &error);
         if (error)
         {
@@ -847,7 +847,7 @@ gnc_plugin_page_report_recreate_page (GtkWidget *window,
 
         if (final_id == SCM_BOOL_F)
         {
-            if (strcmp(keys[i], SCHEME_OPTIONS) == 0)
+            if (g_strcmp0(keys[i], SCHEME_OPTIONS) == 0)
             {
                 final_id = scm_id;
             }
@@ -1349,7 +1349,7 @@ gnc_get_export_type_choice (SCM export_types)
             break;
         }
 
-        name = gnc_scm_to_locale_string (scm);
+        name = gnc_scm_to_utf8_string (scm);
         choices = g_list_prepend (choices, name);
     }
 
@@ -1398,7 +1398,7 @@ gnc_get_export_filename (SCM choice)
     if (choice == SCM_BOOL_T)
         type = g_strdup (html_type);
     else
-        type = gnc_scm_to_locale_string(SCM_CAR (choice));
+        type = gnc_scm_to_utf8_string(SCM_CAR (choice));
 
     /* %s is the type of what is about to be saved, e.g. "HTML". */
     title = g_strdup_printf (_("Save %s To File"), type);

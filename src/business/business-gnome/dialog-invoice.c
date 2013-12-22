@@ -651,7 +651,7 @@ gnc_invoice_window_print_invoice(GncInvoice *invoice)
     g_return_if_fail (scm_is_procedure (func));
 
     arg = SWIG_NewPointerObj(invoice, SWIG_TypeQuery("_p__gncInvoice"), 0);
-    arg2 = scm_from_locale_string(reportname);
+    arg2 = scm_from_utf8_string(reportname);
     args = scm_cons2 (arg, arg2, args);
 
     /* scm_gc_protect_object(func); */
@@ -830,19 +830,24 @@ gnc_invoice_post(InvoiceWindow *iw, struct post_invoice_params *post_params)
         GNCPrice *convprice;
         gnc_commodity *account_currency = (gnc_commodity*)key;
         gnc_numeric *amount = (gnc_numeric*)value;
+        Timespec pricedate;
 
-        if (show_dialog)
-        {
-            gnc_info_dialog(iw_get_window(iw), "%s", text);
-            show_dialog = FALSE;
-        }
-
-        convprice = gncInvoiceGetPrice(invoice, account_currency);
-        if (convprice == NULL)
+        convprice = gncInvoiceGetPrice (invoice, account_currency);
+        if (convprice)
+            pricedate = gnc_price_get_time (convprice);
+        if (!convprice || !timespec_equal (&postdate, &pricedate))
         {
             XferDialog *xfer;
             gnc_numeric exch_rate;
-            Timespec date;
+
+            /* Explain to the user we're about to ask for an exchange rate.
+             * Only show this dialog once, right before the first xfer dialog pops up.
+             */
+            if (show_dialog)
+            {
+                gnc_info_dialog(iw_get_window(iw), "%s", text);
+                show_dialog = FALSE;
+            }
 
             /* Note some twisted logic here:
              * We ask the exchange rate
@@ -860,6 +865,7 @@ gnc_invoice_post(InvoiceWindow *iw, struct post_invoice_params *post_params)
             xfer = gnc_xfer_dialog (iw_get_window(iw), acc);
             gnc_xfer_dialog_is_exchange_dialog(xfer, &exch_rate);
             gnc_xfer_dialog_select_to_currency(xfer, account_currency);
+            gnc_xfer_dialog_set_date (xfer, timespecToTime64 (postdate));
             /* Even if amount is 0 ask for an exchange rate. It's required
              * for the transaction generating code. Use an amount of 1 in
              * that case as the dialog won't allow to specify an exchange
@@ -885,9 +891,7 @@ gnc_invoice_post(InvoiceWindow *iw, struct post_invoice_params *post_params)
                 gnc_price_begin_edit (convprice);
                 gnc_price_set_commodity (convprice, account_currency);
                 gnc_price_set_currency (convprice, gncInvoiceGetCurrency (invoice));
-                date.tv_sec = gnc_time (NULL);
-                date.tv_nsec = 0;
-                gnc_price_set_time (convprice, date);
+                gnc_price_set_time (convprice, postdate);
                 gnc_price_set_source (convprice, "user:invoice-post");
 
                 /* Yes, magic strings are evil but I can't find any defined constants

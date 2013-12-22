@@ -20,9 +20,10 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.9], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.5.10], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
+AC_CONFIG_MACRO_DIR([macros])
 
 #Change this in development versions when changing anything that
 #affects stored data structures. Reset to zero when bumping version.
@@ -82,7 +83,7 @@ AC_DEFINE_UNQUOTED(GNUCASH_LATEST_STABLE_SERIES, "$GNUCASH_LATEST_STABLE_SERIES"
     [Most recent stable GnuCash series])
 
 dnl Set of available languages.
-ALL_LINGUAS="bg ca cs da de el en_GB es_NI es eu fa fi fr he hu it ja ko lt lv nb ne nl pl pt_BR pt ro ru rw sk sv ta tr uk vi zh_CN zh_TW"
+ALL_LINGUAS="ar bg ca cs da de el en_GB es_NI es eu fa fi fr he hu it ja ko lt lv nb ne nl pl pt_BR pt ro ru rw sk sv ta tr uk vi zh_CN zh_TW"
 
 GETTEXT_PACKAGE=gnucash
 AC_SUBST(GETTEXT_PACKAGE)
@@ -201,10 +202,6 @@ if test $? = 0 -o "x${BUILDING_FROM_SCM}" = "xyes" ; then
     fi
     AC_MSG_RESULT(${GIT_CMD})
   fi
-
-  # We need at least version 1.3.31 of SWIG because
-  # that's when SWIG doesn't barf on the "inline" keyword in C headers anymore
-  AC_PROG_SWIG(1.3.31)
 else
   AC_MSG_RESULT(no)
   BUILDING_FROM_SCM=no
@@ -448,6 +445,7 @@ AC_CHECK_FUNCS(gethostid link)
 #       So the tests below will check for known macro names in the order
 #       that we assume will always result in the proper macros being called
 #       for the guile version that has been detected.
+gnc_have_guile_2=no
 gnc_have_guile_www=no
 PKG_CHECK_MODULES(GUILE,
                   [guile-1.8 >= 1.8.5],
@@ -461,6 +459,7 @@ PKG_CHECK_MODULES(GUILE,
                   [guile-2.0 >= 2.0.0],
                   [m4_ifdef([GUILE_PROGS],
                             [ GUILE_PROGS
+                              gnc_have_guile_2=yes
                               GUILE_MODULE_AVAILABLE(gnc_have_guile_www,[(www main)]) ],
                             [ AC_MSG_ERROR([ guile 2 is found on your system, but appears
     to export different autoconf macros than what we expected. Please report this as a bug
@@ -473,8 +472,35 @@ PKG_CHECK_MODULES(GUILE,
   ])])
 ])
 
+AM_CONDITIONAL(GNC_HAVE_GUILE_2, test "${gnc_have_guile_2}" = yes)
 AM_CONDITIONAL(GNC_HAVE_GUILE_WWW, test "${gnc_have_guile_www}" = yes)
 
+
+### --------------------------------------------------------------------------
+### SWIG version checks (only when building from SCM)
+#
+# We need at least version 1.3.31 of SWIG because
+# that's when SWIG doesn't barf on the "inline" keyword in C headers anymore
+# In addition, guile 2 support only landed in SWIG 2.0.10
+if test "${BUILDING_FROM_SCM}" = yes
+then
+  if test "${gnc_have_guile_2}" = yes
+  then
+    AX_PKG_SWIG(2.0.10, [],
+                [AC_MSG_ERROR([
+    You are building from ${SCM_TYPE} but swig was not found or too old.
+    To build gnucash with guile 2 you need at least swig version 2.0.10.
+    If that version is not available for your platform, you can try to
+    build against guile 1.8, which also works with older versions of swig.
+  ])])
+  else
+    AX_PKG_SWIG(1.3.31, [],
+                [AC_MSG_ERROR([
+    You are building from ${SCM_TYPE} but swig was not found or too old.
+    To build gnucash with guile 1.8 you need at least swig version 1.3.31.
+  ])])
+  fi
+fi
 ### --------------------------------------------------------------------------
 ### LIBXML -- GNOME_XML_LIB is defined by GNOME_XML_CHECK
 
@@ -754,7 +780,7 @@ then
   AC_SUBST(AQBANKING_LIBS)
   AC_SUBST(AQBANKING_CFLAGS)
   _COMPONENTS="$_COMPONENTS aqbanking"
-  MIGRATABLE_PREFS_AQBANKING="$srcdir/src/import-export/aqbanking/migratable-prefs-aqbanking.xml"
+  MIGRATABLE_PREFS_AQBANKING="$srcdir/src/import-export/aqb/migratable-prefs-aqbanking.xml"
 fi
 AM_CONDITIONAL([WITH_AQBANKING], [test x${want_aqbanking} = xyes])
 AC_SUBST_FILE([MIGRATABLE_PREFS_AQBANKING])
@@ -1004,7 +1030,7 @@ then
       ;;
 
     webkit)
-      PKG_CHECK_MODULES(WEBKIT, webkit-1.0 >= "1.0")
+      PKG_CHECK_MODULES(WEBKIT, webkit-1.0 >= "1.2")
       case "$platform" in
         win32)
           # 1.1.90 has both functions
@@ -1372,21 +1398,21 @@ AC_CONFIG_FILES(
   src/import-export/Makefile
   src/import-export/test/Makefile
   src/import-export/ofx/gschemas/Makefile
-  src/import-export/qif-import/Makefile
+  src/import-export/qif-imp/Makefile
   src/import-export/qif/Makefile
   src/import-export/qif/test/Makefile
-  src/import-export/qif-import/gschemas/Makefile
-  src/import-export/qif-import/test/Makefile
+  src/import-export/qif-imp/gschemas/Makefile
+  src/import-export/qif-imp/test/Makefile
   src/import-export/gschemas/Makefile
   src/import-export/ofx/Makefile
   src/import-export/ofx/test/Makefile
-  src/import-export/csv-import/Makefile
-  src/import-export/csv-import/gschemas/Makefile
-  src/import-export/csv-export/Makefile
-  src/import-export/csv-export/gschemas/Makefile
+  src/import-export/csv-imp/Makefile
+  src/import-export/csv-imp/gschemas/Makefile
+  src/import-export/csv-exp/Makefile
+  src/import-export/csv-exp/gschemas/Makefile
   src/import-export/log-replay/Makefile
-  src/import-export/aqbanking/Makefile
-  src/import-export/aqbanking/gschemas/Makefile
+  src/import-export/aqb/Makefile
+  src/import-export/aqb/gschemas/Makefile
   src/import-export/price-csv/Makefile
   src/libqof/Makefile
   src/libqof/qof/Makefile
@@ -1463,12 +1489,12 @@ AC_CONFIG_FILES(
   src/gnome/gschemas/org.gnucash.window.pages.gschema.xml.in
   src/gnome-utils/gschemas/org.gnucash.history.gschema.xml.in
   src/gnome-utils/gschemas/org.gnucash.warnings.gschema.xml.in
-  src/import-export/aqbanking/gschemas/org.gnucash.dialogs.import.hbci.gschema.xml.in
-  src/import-export/csv-export/gschemas/org.gnucash.dialogs.export.csv.gschema.xml.in
-  src/import-export/csv-import/gschemas/org.gnucash.dialogs.import.csv.gschema.xml.in
+  src/import-export/aqb/gschemas/org.gnucash.dialogs.import.hbci.gschema.xml.in
+  src/import-export/csv-exp/gschemas/org.gnucash.dialogs.export.csv.gschema.xml.in
+  src/import-export/csv-imp/gschemas/org.gnucash.dialogs.import.csv.gschema.xml.in
   src/import-export/gschemas/org.gnucash.dialogs.import.generic.gschema.xml.in
   src/import-export/ofx/gschemas/org.gnucash.dialogs.import.ofx.gschema.xml.in
-  src/import-export/qif-import/gschemas/org.gnucash.dialogs.import.qif.gschema.xml.in
+  src/import-export/qif-imp/gschemas/org.gnucash.dialogs.import.qif.gschema.xml.in
   dnl # Please read doc/build-system before adding *anything* here
   ,
   dnl # init-commands go here
