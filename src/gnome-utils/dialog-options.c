@@ -1176,15 +1176,33 @@ gnc_options_dialog_append_page(GNCOptionWin * propertybox,
 /********************************************************************\
  * gnc_options_dialog_build_contents                                *
  *   builds an options dialog given a property box and an options   *
- *   database                                                       *
+ *   database and make the dialog visible                           *
  *                                                                  *
  * Args: propertybox - gnome property box to use                    *
  *       odb         - option database to use                       *
  * Return: nothing                                                  *
 \********************************************************************/
 void
-gnc_options_dialog_build_contents(GNCOptionWin *propertybox,
-                                  GNCOptionDB  *odb)
+gnc_options_dialog_build_contents (GNCOptionWin *propertybox,
+                                   GNCOptionDB  *odb)
+{
+    gnc_options_dialog_build_contents_full (propertybox, odb, TRUE);
+}
+
+/********************************************************************\
+ * gnc_options_dialog_build_contents                                *
+ *   builds an options dialog given a property box and an options   *
+ *   database and make the dialog visible depending on the          *
+ *   show_dialog flag                                               *
+ *                                                                  *
+ * Args: propertybox - gnome property box to use                    *
+ *       odb         - option database to use                       *
+ *       show_dialog - should dialog be made visible or not         *
+ * Return: nothing                                                  *
+\********************************************************************/
+void
+gnc_options_dialog_build_contents_full (GNCOptionWin *propertybox,
+                                        GNCOptionDB  *odb, gboolean show_dialog)
 {
     GNCOptionSection *section;
     gchar *default_section_name;
@@ -1252,7 +1270,8 @@ gnc_options_dialog_build_contents(GNCOptionWin *propertybox,
         gtk_notebook_set_current_page(GTK_NOTEBOOK(propertybox->notebook), default_page);
     }
     gnc_options_dialog_changed_internal(propertybox->dialog, FALSE);
-    gtk_widget_show(propertybox->dialog);
+    if (show_dialog)
+        gtk_widget_show(propertybox->dialog);
 }
 
 GtkWidget *
@@ -2522,9 +2541,6 @@ static gboolean gnc_option_set_ui_value_budget(
     GNCOption *option, gboolean use_default, GtkWidget *widget, SCM value)
 {
     GncBudget *bgt;
-    GtkComboBox *cb;
-    GtkTreeModel *tm;
-    GtkTreeIter iter;
 
 //    if (!scm_is_null(value)) {
     if (value != SCM_BOOL_F)
@@ -2534,10 +2550,14 @@ static gboolean gnc_option_set_ui_value_budget(
                            "Option Value not a wcp.", value);
 
         bgt = SWIG_MustGetPtr(value, SWIG_TypeQuery("GncBudget *"), 4, 0);
-        cb = GTK_COMBO_BOX(widget);
-        tm = gtk_combo_box_get_model(cb);
-        if (gnc_tree_model_budget_get_iter_for_budget(tm, &iter, bgt))
-            gtk_combo_box_set_active_iter(cb, &iter);
+        if (bgt)
+        {
+            GtkComboBox *cb = GTK_COMBO_BOX(widget);
+            GtkTreeModel *tm = gtk_combo_box_get_model(cb);
+            GtkTreeIter iter;
+            if (gnc_tree_model_budget_get_iter_for_budget(tm, &iter, bgt))
+                gtk_combo_box_set_active_iter(cb, &iter);
+        }
     }
 
 

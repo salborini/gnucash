@@ -202,7 +202,7 @@ set_default GUILE_PATCH `pwd`/guile-1.8.8.patch
 set_default OPENSSL_URL "http://www.openssl.org/source/openssl-0.9.8j.tar.gz"
 set_default OPENSSL_DIR $GLOBAL_DIR\\openssl
 
-GNUTLS_VERSION="2.8.6"
+GNUTLS_VERSION="2.10.1"
 set_default GNUTLS_URL "http://josefsson.org/gnutls4win/gnutls-${GNUTLS_VERSION}.zip"
 set_default GNUTLS_DIR $GLOBAL_DIR\\gnutls
 
@@ -274,7 +274,7 @@ set_default ZLIB_URL                "$GNOME_WIN32_DEPS_URL/zlib_1.2.5-2_win32.zi
 set_default ZLIB_DEV_URL            "$GNOME_WIN32_DEPS_URL/zlib-dev_1.2.5-2_win32.zip"
 set_default GNOME_DIR $GLOBAL_DIR\\gnome
 
-set_default SWIG_URL "$SF_MIRROR/swig/swigwin-1.3.36.zip"
+set_default SWIG_URL "$SF_MIRROR/swig/swigwin-2.0.11.zip"
 set_default SWIG_DIR $GLOBAL_DIR\\swig
 
 set_default PCRE_BIN_URL "$SF_MIRROR/gnuwin32/pcre-7.0-bin.zip"
@@ -339,45 +339,23 @@ set_default OPENSP_URL "$SF_MIRROR/openjade/OpenSP-1.5.2.tar.gz"
 set_default OPENSP_DIR $GLOBAL_DIR\\opensp
 set_default OPENSP_PATCH `pwd`/opensp-1.5.2.patch
 
-LIBOFX_VERSION="0.9.8"
+LIBOFX_VERSION="0.9.9"
 set_default LIBOFX_URL "$SF_MIRROR/libofx/libofx-${LIBOFX_VERSION}.tar.gz"
 set_default LIBOFX_DIR $GLOBAL_DIR\\libofx
 #set_default LIBOFX_PATCH `pwd`/libofx-x.x.x.patch
 
 ## online banking: gwenhywfar+aqbanking
-set_default AQBANKING5 yes
-# If sticking to aqbanking4, make sure to enable the QtCore4.dll et al
-# in gnucash.iss.in again because in aqbanking4 those DLLs are still
-# needed.
-
-if [ "$AQBANKING5" = "yes" ]; then
-    GWENHYWFAR_VERSION="4.8.0beta"
-    set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=71&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
-else
-    GWENHYWFAR_VERSION="3.11.3"
-    set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=31&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
-    #set_default GWENHYWFAR_PATCH `pwd`/gwenhywfar-x.x.x.patch
-fi
+GWENHYWFAR_VERSION="4.9.0beta"
+set_default GWENHYWFAR_URL "http://www2.aquamaniac.de/sites/download/download.php?package=01&release=72&file=01&dummy=gwenhywfar-${GWENHYWFAR_VERSION}.tar.gz"
 set_default GWENHYWFAR_DIR $GLOBAL_DIR\\gwenhywfar
 
-KTOBLZCHECK_VERSION="1.43"
+KTOBLZCHECK_VERSION="1.44"
 set_default KTOBLZCHECK_URL "$SF_MIRROR/ktoblzcheck/ktoblzcheck-${KTOBLZCHECK_VERSION}.tar.gz"
 # ktoblzcheck is being installed into GWENHYWFAR_DIR
 
-if [ "$AQBANKING5" = "yes" ]; then
-    AQBANKING_VERSION="5.1.0beta"
-    set_default AQBANKING_URL "http://www2.aquamaniac.de/sites/download/download.php?package=03&release=103&file=01&dummy=aqbanking-${AQBANKING_VERSION}.tar.gz"
-    set_default AQBANKING_WITH_QT no
-else
-    AQBANKING_VERSION="4.2.4"
-    set_default AQBANKING_URL "http://www2.aquamaniac.de/sites/download/download.php?package=03&release=50&file=01&dummy=aqbanking-${AQBANKING_VERSION}.tar.gz"
-    set_default AQBANKING_PATCH `pwd`/aqbanking-4.2.4-r2132.patch
-    set_default AQBANKING_WITH_QT yes
-fi
+AQBANKING_VERSION="5.3.0beta"
+set_default AQBANKING_URL "http://www2.aquamaniac.de/sites/download/download.php?package=03&release=105&file=01&dummy=aqbanking-${AQBANKING_VERSION}.tar.gz"
 set_default AQBANKING_DIR $GLOBAL_DIR\\aqbanking
-# If set to yes, download Qt from http://www.trolltech.com/developer/downloads/qt/windows,
-# install it and set QTDIR in custom.sh, like "QTDIR=/c/Qt/4.2.3".
-set_default QT_WIN_SRC_URL "ftp://ftp.qt.nokia.com/qt/source/qt-all-opensource-src-4.5.3.zip"
 
 set_default SQLITE3_URL "http://sqlite.org/sqlite-amalgamation-3.6.1.tar.gz"
 set_default SQLITE3_DIR $GLOBAL_DIR\\sqlite3

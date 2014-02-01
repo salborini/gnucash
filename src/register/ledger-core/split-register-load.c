@@ -239,6 +239,89 @@ static void add_quickfill_completions(TableLayout *layout, Transaction *trans,
     }
 }
 
+static Split*
+create_blank_split (Account *default_account, SRInfo *info)
+{
+    Transaction *new_trans;
+    gboolean currency_from_account = TRUE;
+    Split *blank_split = NULL;
+    /* Determine the proper currency to use for this transaction.
+     * if default_account != NULL and default_account->commodity is
+     * a currency, then use that.  Otherwise use the default currency.
+     */
+    gnc_commodity * currency = gnc_account_or_default_currency(default_account, &currency_from_account);
+
+    if (default_account != NULL && !currency_from_account)
+    {
+	/* If we don't have a currency then pop up a warning dialog */
+	gnc_info_dialog(NULL, "%s",
+			_("Could not determine the account currency. "
+			  "Using the default currency provided by your system."));
+    }
+
+    gnc_suspend_gui_refresh ();
+
+    new_trans = xaccMallocTransaction (gnc_get_current_book ());
+
+    xaccTransBeginEdit (new_trans);
+    xaccTransSetCurrency (new_trans, currency);
+    xaccTransSetDatePostedSecsNormalized(new_trans, info->last_date_entered);
+    blank_split = xaccMallocSplit (gnc_get_current_book ());
+    xaccSplitSetParent(blank_split, new_trans);
+    /* We don't want to commit this transaction yet, because the split
+       doesn't even belong to an account yet.  But, we don't want to
+       set this transaction as the pending transaction either, because
+       we want to pretend that it hasn't been changed.  We depend on
+       some other code (somewhere) to commit this transaction if we
+       really edit it, even though it's not marked as the pending
+       transaction. */
+
+    info->blank_split_guid = *xaccSplitGetGUID (blank_split);
+    info->blank_split_edited = FALSE;
+    info->auto_complete = FALSE;
+    DEBUG("created new blank_split=%p", blank_split);
+
+    gnc_resume_gui_refresh ();
+    return blank_split;
+}
+
+static void
+change_account_separator (SRInfo *info, Table *table, SplitRegister *reg)
+{
+    info->separator_changed = FALSE;
+
+    /* set the completion character for the xfer cells */
+    gnc_combo_cell_set_complete_char(
+	(ComboCell *) gnc_table_layout_get_cell(table->layout, MXFRM_CELL),
+	gnc_get_account_separator());
+
+    gnc_combo_cell_set_complete_char(
+	(ComboCell *) gnc_table_layout_get_cell(table->layout, XFRM_CELL),
+	gnc_get_account_separator());
+
+    /* set the confirmation callback for the reconcile cell */
+    gnc_recn_cell_set_confirm_cb(
+	(RecnCell *) gnc_table_layout_get_cell(table->layout, RECN_CELL),
+	gnc_split_register_recn_cell_confirm, reg);
+}
+
+static void
+update_info (SRInfo *info, SplitRegister *reg)
+{
+    /* Set up the hint transaction, split, transaction split, and column. */
+    info->cursor_hint_trans = gnc_split_register_get_current_trans (reg);
+    info->cursor_hint_split = gnc_split_register_get_current_split (reg);
+    info->cursor_hint_trans_split =
+        gnc_split_register_get_current_trans_split (reg, NULL);
+    info->cursor_hint_cursor_class =
+        gnc_split_register_get_current_cursor_class (reg);
+    info->hint_set_by_traverse = FALSE;
+    info->traverse_to_new = FALSE;
+    info->exact_traversal = FALSE;
+    info->first_pass = FALSE;
+    info->reg_loaded = TRUE;
+}
+
 void
 gnc_split_register_load (SplitRegister *reg, GList * slist,
                          Account *default_account)
@@ -297,52 +380,12 @@ gnc_split_register_load (SplitRegister *reg, GList * slist,
     /* make sure we have a blank split */
     if (blank_split == NULL)
     {
-        Transaction *new_trans;
-        gboolean currency_from_account = TRUE;
-
-        /* Determine the proper currency to use for this transaction.
-         * if default_account != NULL and default_account->commodity is
-         * a currency, then use that.  Otherwise use the default currency.
-         */
-        gnc_commodity * currency = gnc_account_or_default_currency(default_account, &currency_from_account);
-
-        if (default_account != NULL && !currency_from_account)
-        {
-            /* If we don't have a currency then pop up a warning dialog */
-            gnc_info_dialog(NULL, "%s",
-                            _("Could not determine the account currency. "
-                              "Using the default currency provided by your system."));
-        }
-
-        gnc_suspend_gui_refresh ();
-
-        new_trans = xaccMallocTransaction (gnc_get_current_book ());
-
-        xaccTransBeginEdit (new_trans);
-        xaccTransSetCurrency (new_trans, currency);
-        xaccTransSetDatePostedSecsNormalized(new_trans, info->last_date_entered);
-        blank_split = xaccMallocSplit (gnc_get_current_book ());
-        xaccSplitSetParent(blank_split, new_trans);
-        /* We don't want to commit this transaction yet, because the split
-           doesn't even belong to an account yet.  But, we don't want to
-           set this transaction as the pending transaction either, because
-           we want to pretend that it hasn't been changed.  We depend on
-           some other code (somewhere) to commit this transaction if we
-           really edit it, even though it's not marked as the pending
-           transaction. */
-
-        /* Wouldn't it be a bug to open this transaction if there was already a
-           pending transaction? */
-        g_assert(pending_trans == NULL);
-
-        info->blank_split_guid = *xaccSplitGetGUID (blank_split);
-        info->blank_split_edited = FALSE;
-        info->auto_complete = FALSE;
-        DEBUG("created new blank_split=%p", blank_split);
-
-        gnc_resume_gui_refresh ();
+	/* Wouldn't it be a bug to open the new transaction if there was
+	 * already a pending transaction?
+	*/
+	g_assert(pending_trans == NULL);
+	blank_split = create_blank_split (default_account, info);
     }
-
     blank_trans = xaccSplitGetParent (blank_split);
 
     DEBUG("blank_split=%p, blank_trans=%p, pending_trans=%p",
@@ -439,23 +482,7 @@ gnc_split_register_load (SplitRegister *reg, GList * slist,
     }
 
     if (info->separator_changed)
-    {
-        info->separator_changed = FALSE;
-
-        /* set the completion character for the xfer cells */
-        gnc_combo_cell_set_complete_char(
-            (ComboCell *) gnc_table_layout_get_cell(table->layout, MXFRM_CELL),
-            gnc_get_account_separator());
-
-        gnc_combo_cell_set_complete_char(
-            (ComboCell *) gnc_table_layout_get_cell(table->layout, XFRM_CELL),
-            gnc_get_account_separator());
-
-        /* set the confirmation callback for the reconcile cell */
-        gnc_recn_cell_set_confirm_cb(
-            (RecnCell *) gnc_table_layout_get_cell(table->layout, RECN_CELL),
-            gnc_split_register_recn_cell_confirm, reg);
-    }
+	change_account_separator (info, table, reg);
 
     table->model->dividing_row_upper = -1;
     table->model->dividing_row = -1;
@@ -503,7 +530,8 @@ gnc_split_register_load (SplitRegister *reg, GList * slist,
 	 * pending_trans, then it's another register's blank split and
 	 * we don't want to see it.
 	 */
-	else if (xaccTransCountSplits (trans) < 2)
+	else if (xaccTransCountSplits (trans) == 1 &&
+		 xaccSplitGetAccount (split) == NULL)
 	    continue;
 
 
@@ -663,23 +691,11 @@ gnc_split_register_load (SplitRegister *reg, GList * slist,
             if (find_split == gnc_split_register_get_current_split (reg))
                 gnc_table_restore_current_cursor (table, cursor_buffer);
         }
-
-        gnc_cursor_buffer_destroy (cursor_buffer);
-        cursor_buffer = NULL;
     }
+    gnc_cursor_buffer_destroy (cursor_buffer);
+    cursor_buffer = NULL;
 
-    /* Set up the hint transaction, split, transaction split, and column. */
-    info->cursor_hint_trans = gnc_split_register_get_current_trans (reg);
-    info->cursor_hint_split = gnc_split_register_get_current_split (reg);
-    info->cursor_hint_trans_split =
-        gnc_split_register_get_current_trans_split (reg, NULL);
-    info->cursor_hint_cursor_class =
-        gnc_split_register_get_current_cursor_class (reg);
-    info->hint_set_by_traverse = FALSE;
-    info->traverse_to_new = FALSE;
-    info->exact_traversal = FALSE;
-    info->first_pass = FALSE;
-    info->reg_loaded = TRUE;
+    update_info (info, reg);
 
     gnc_split_register_set_cell_fractions(
         reg, gnc_split_register_get_current_split (reg));

@@ -20,7 +20,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Autoconf initialization
 AC_PREREQ(2.60)
-AC_INIT([GnuCash], [2.5.10], [gnucash-devel@gnucash.org])
+AC_INIT([GnuCash], [2.6.1], [gnucash-devel@gnucash.org])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR(src/engine/Transaction.h)
 AC_CONFIG_MACRO_DIR([macros])
@@ -184,12 +184,10 @@ fi
 
 # test whether we are building directly from svn/svk/git/bzr
 AC_MSG_CHECKING(if building from an scm managed directory)
-savedir="$PWD"
-cd "${srcdir}"
-./util/gnc-scm-info -r . >/dev/null 2>&1
+"$srcdir/util/gnc-scm-info" -r "$srcdir" >/dev/null 2>&1
 if test $? = 0 -o "x${BUILDING_FROM_SCM}" = "xyes" ; then
   BUILDING_FROM_SCM=yes
-  SCM_TYPE=$(./util/gnc-scm-info -t .)
+  SCM_TYPE=$("$srcdir/util/gnc-scm-info" -t "$srcdir")
   AC_MSG_RESULT($SCM_TYPE)
 
   if test "x${SCM_TYPE}" = "xgit"; then
@@ -229,7 +227,6 @@ the tarball you downloaded is broken.
 
     ])])
 fi
-cd "${savedir}"
 AM_CONDITIONAL(BUILDING_FROM_SCM, test "x$BUILDING_FROM_SCM" = "xyes")
 AC_SUBST(SCM_TYPE)
 AC_SUBST(GIT_CMD)
@@ -479,28 +476,54 @@ AM_CONDITIONAL(GNC_HAVE_GUILE_WWW, test "${gnc_have_guile_www}" = yes)
 ### --------------------------------------------------------------------------
 ### SWIG version checks (only when building from SCM)
 #
-# We need at least version 1.3.31 of SWIG because
-# that's when SWIG doesn't barf on the "inline" keyword in C headers anymore
-# In addition, guile 2 support only landed in SWIG 2.0.10
+# In order to build against guile 2 or build the dist we need at least
+# version 2.0.10 of SWIG, because that's the first version that supports
+# guile 2.
+#
+# For a guile 1.8 build we accept an older version, but wont allow you
+# to build the dist because we need to apply a patch to the swig
+# generated files that needs to go into the release tarball. At that
+# point we don't know yet which version of guile will be used together
+# with that tarball so we have to prepare the tarball for guile 2
+# compatibility.
+#
 if test "${BUILDING_FROM_SCM}" = yes
 then
-  if test "${gnc_have_guile_2}" = yes
-  then
-    AX_PKG_SWIG(2.0.10, [],
-                [AC_MSG_ERROR([
+    AX_PKG_SWIG(2.0.10, [gnc_have_swig_2_0_10=yes], [gnc_have_swig_2_0_10=no])
+
+    if test "${gnc_have_guile_2}" = yes
+    then
+        if test "${gnc_have_swig_2_0_10}" = no
+        then
+            AC_MSG_ERROR([
     You are building from ${SCM_TYPE} but swig was not found or too old.
-    To build gnucash with guile 2 you need at least swig version 2.0.10.
-    If that version is not available for your platform, you can try to
-    build against guile 1.8, which also works with older versions of swig.
-  ])])
-  else
-    AX_PKG_SWIG(1.3.31, [],
+    To build gnucash you need at least swig version 2.0.10.
+            ])
+        fi
+    else  # using guile 1.8
+        if test "${gnc_have_swig_2_0_10}" = no
+        then
+            AX_PKG_SWIG(1.3.31, [],
                 [AC_MSG_ERROR([
     You are building from ${SCM_TYPE} but swig was not found or too old.
     To build gnucash with guile 1.8 you need at least swig version 1.3.31.
-  ])])
-  fi
+            ])])
+        fi
+    fi
+
+    # If we get here then we have an okay version to build locally.
+    # Check if we can build dist (which always requires swig 2.0.10)
+    if test "${gnc_have_swig_2_0_10}" = no
+    then
+        AC_MSG_WARN([You don't have SWIG 2.0.10 so you will not be able to "make dist"])
+    fi
+    AM_CONDITIONAL([SWIG_DIST_FAIL], test "${gnc_have_swig_2_0_10}" != yes)
+else
+    # When building from tarball, all the prerequisites to build dist are already
+    # met so make sure it's allowed
+    AM_CONDITIONAL([SWIG_DIST_FAIL], test yes != yes)
 fi
+
 ### --------------------------------------------------------------------------
 ### LIBXML -- GNOME_XML_LIB is defined by GNOME_XML_CHECK
 

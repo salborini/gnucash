@@ -28,10 +28,12 @@ swig-unittest-support-guile.c: unittest-support.i $(top_srcdir)/src/base-typemap
 	$(SWIG) -guile $(SWIG_ARGS) -Linkage module \
 	-I${top_srcdir}/src \
 	${AM_CPPFLAGS} -o $@ $<
-if GNC_HAVE_GUILE_2
+if ! OS_WIN32
+if ! SWIG_DIST_FAIL
 	if ! `grep "define scm_from_utf8_string" $@ > /dev/null 2>&1`; then \
 	  patch $@ $(top_srcdir)/src/swig-utf8.patch; \
 	fi
+endif
 endif
 
 swig-unittest-support-python.c: unittest-support.i $(top_srcdir)/src/base-typemaps.i

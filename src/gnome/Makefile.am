@@ -72,8 +72,9 @@ gnomeapp_DATA = $(gnomeapp_in_files:.desktop.in=.desktop)
 appicondir = $(datadir)/pixmaps
 
 appdatadir = $(datadir)/appdata
-appdata_files = gnucash.appdata.xml
-appdata_DATA = $(appdata_files)
+appdata_in_files = gnucash.appdata.xml.in
+appdata_DATA = $(appdata_in_files:.xml.in=.xml)
+@INTLTOOL_XML_RULE@
 
 noinst_HEADERS = \
   assistant-acct-period.h \
@@ -115,17 +116,19 @@ if BUILDING_FROM_SCM
 swig-gnome.c: gnome.i dialog-progress.h ${top_srcdir}/src/base-typemaps.i
 	$(SWIG) -guile $(SWIG_ARGS) -Linkage module \
 	-I${top_srcdir}/src -o $@ $<
-if GNC_HAVE_GUILE_2
+if ! OS_WIN32
+if ! SWIG_DIST_FAIL
 	if ! `grep "define scm_from_utf8_string" $@ > /dev/null 2>&1`; then \
 	  patch $@ $(top_srcdir)/src/swig-utf8.patch; \
 	fi
+endif
 endif
 endif
 
 EXTRA_DIST = \
   gnome.i \
   $(gnomeapp_in_files) \
-  $(appdata_files)
+  $(appdata_in_files)
 
 AM_CPPFLAGS = \
   -I${top_srcdir}/src \
@@ -156,7 +159,7 @@ AM_CPPFLAGS = \
 # The line below breaks automake 1.5.  
 ##OMIT_DEPENDENCIES = gnc-dir.h
 
-CLEANFILES = gnucash.desktop
+CLEANFILES = gnucash.desktop gnucash.appdata.xml
 MAINTAINERCLEANFILES = swig-gnome.c
 
 AM_CPPFLAGS += -DG_LOG_DOMAIN=\"gnc.gui\"

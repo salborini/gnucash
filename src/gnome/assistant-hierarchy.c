@@ -33,6 +33,7 @@
 
 #include "gnc-account-merge.h"
 #include "dialog-new-user.h"
+#include "dialog-options.h"
 #include "dialog-utils.h"
 #include "dialog-file-access.h"
 #include "assistant-hierarchy.h"
@@ -41,6 +42,7 @@
 #include "gnc-currency-edit.h"
 #include "gnc-exp-parser.h"
 #include "gnc-general-select.h"
+#include "gnc-gnome-utils.h"
 #include "gnc-prefs.h"
 #include "gnc-hooks.h"
 #include "gnc-component-manager.h"
@@ -98,6 +100,9 @@ typedef struct
     gboolean account_list_added;
     gboolean use_defaults;
     gboolean new_book;  /* presumably only used for new book creation but we check*/
+
+    GNCOptionDB *options;
+    GNCOptionWin *optionwin;
 
     GncHierarchyAssistantFinishedCallback when_completed;
 
@@ -439,28 +444,21 @@ account_categories_tree_view_prepare (hierarchy_data  *data)
 void on_prepare (GtkAssistant  *assistant, GtkWidget *page,
                  hierarchy_data  *data)
 {
-    switch (gtk_assistant_get_current_page(assistant))
-    {
-    case 2:
-        /* Current page is account selection */
+    const int selection_page = data->new_book ? 3 : 2;
+    const int final_page = data->new_book ? 4 : 3;
+    const int current_page = gtk_assistant_get_current_page (assistant);
+
+    if (current_page == selection_page)
         on_choose_account_categories_prepare(data);
-        break;
-    case 3:
-        /* Current page is final account page */
+
+    if (current_page == final_page)
         on_final_account_prepare (data);
-        break;
-    }
 }
 
 void
 on_choose_account_categories_prepare (hierarchy_data  *data)
 {
     GtkTextBuffer* buffer;
-
-    /* Before creating transactions, if this is a new book, let user specify
-     * book options, since they affect how transactions are created */
-    if (data->new_book)
-        data->new_book = gnc_new_book_option_display ();
 
     if (!data->account_list_added)
     {
@@ -997,11 +995,33 @@ on_cancel (GtkAssistant      *gtkassistant,
            hierarchy_data  *data)
 {
     gnc_suspend_gui_refresh ();
+    if (data->new_book)
+        gtk_dialog_response(GTK_DIALOG(gnc_options_dialog_widget (data->optionwin)), GTK_RESPONSE_CANCEL);
     delete_hierarchy_dialog (data);
     delete_our_account_tree (data);
-    gncp_new_user_finish ();
     g_free(data);
     gnc_resume_gui_refresh ();
+}
+
+static void
+finish_book_options_helper(GNCOptionWin * optionwin,
+                          gpointer user_data)
+{
+    GNCOptionDB * options = user_data;
+    kvp_frame *slots = qof_book_get_slots (gnc_get_current_book ());
+    gboolean use_split_action_for_num_before =
+        qof_book_use_split_action_for_num_field (gnc_get_current_book ());
+    gboolean use_split_action_for_num_after;
+
+    if (!options) return;
+
+    gnc_option_db_commit (options);
+    gnc_option_db_save_to_kvp (options, slots, TRUE);
+    qof_book_kvp_changed (gnc_get_current_book());
+    use_split_action_for_num_after =
+        qof_book_use_split_action_for_num_field (gnc_get_current_book ());
+    if (use_split_action_for_num_before != use_split_action_for_num_after)
+        gnc_book_option_num_field_source_change_cb (use_split_action_for_num_after);
 }
 
 static void
@@ -1036,6 +1056,10 @@ on_finish (GtkAssistant  *gtkassistant,
 
     }
 
+    /* Set book options based on the user's choices */
+    if (data->new_book)
+        finish_book_options_helper(data->optionwin, data->options);
+
     // delete before we suspend GUI events, and then muck with the model,
     // because the model doesn't seem to handle this correctly.
     if (data->initial_category)
@@ -1043,6 +1067,8 @@ on_finish (GtkAssistant  *gtkassistant,
     delete_hierarchy_dialog (data);
 
     gnc_suspend_gui_refresh ();
+    if (data->new_book)
+        gtk_dialog_response(GTK_DIALOG(gnc_options_dialog_widget (data->optionwin)), GTK_RESPONSE_CANCEL);
 
     account_trees_merge(gnc_get_current_root_account(), data->our_account_tree);
 
@@ -1062,6 +1088,58 @@ on_finish (GtkAssistant  *gtkassistant,
     }
 
     LEAVE (" ");
+}
+
+/********************************************************
+ * For a new book the assistant will also allow the user
+ * to set default book options, because this impacts how
+ * transactions are created.
+ * Ideally, the book options code can cleanly provide us
+ * with a page to insert in the assistant and be done with
+ * it. Unfortunately this is not possible without a serious
+ * rewrite of the options dialog code.
+ * So instead the following hack is used:
+ * we create the complete dialog, but only use the notebook
+ * part of it to create a new page.
+ * To make sure this dialog is cleaned up properly
+ * when the assistant closes, the close callback is set up anyway
+ * and at the finish we'll send a "close" response signal to the
+ * dialog to make it clean up after itself.
+ */
+static void
+book_options_dialog_close_cb(GNCOptionWin * optionwin,
+                               gpointer user_data)
+{
+    GNCOptionDB * options = user_data;
+
+    gnc_options_dialog_destroy(optionwin);
+    gnc_option_db_destroy(options);
+}
+
+static void
+assistant_instert_book_options_page (hierarchy_data *data)
+{
+    kvp_frame *slots = qof_book_get_slots (gnc_get_current_book ());
+    GtkWidget *vbox = gtk_vbox_new (FALSE, 0);
+
+    data->options = gnc_option_db_new_for_type (QOF_ID_BOOK);
+    gnc_option_db_load_from_kvp (data->options, slots);
+    gnc_option_db_clean (data->options);
+
+    data->optionwin = gnc_options_dialog_new_modal (TRUE, _("New Book Options"));
+    gnc_options_dialog_build_contents_full (data->optionwin, data->options, FALSE);
+
+    gnc_options_dialog_set_close_cb (data->optionwin,
+                                     book_options_dialog_close_cb,
+                                     (gpointer)data->options);
+    gnc_options_dialog_set_new_book_option_values (data->options);
+
+    gtk_widget_reparent (gnc_options_dialog_notebook (data->optionwin), vbox);
+    gtk_widget_show_all (vbox);
+    gtk_assistant_insert_page (GTK_ASSISTANT(data->dialog), vbox, 2);
+    gtk_assistant_set_page_title (GTK_ASSISTANT(data->dialog), vbox, _("New Book Options"));
+    gtk_assistant_set_page_complete (GTK_ASSISTANT(data->dialog), vbox, TRUE);
+
 }
 
 static GtkWidget *
@@ -1127,6 +1205,10 @@ gnc_create_hierarchy_assistant (gboolean use_defaults, GncHierarchyAssistantFini
     data->category_description = GTK_TEXT_VIEW(gtk_builder_get_object (builder, "account_types_description"));
     data->account_list_added = FALSE;
 
+    /* Book options page - only on new books */
+    if (data->new_book)
+        assistant_instert_book_options_page (data);
+
     /* Final Accounts Page */
     data->final_account_tree_container = GTK_WIDGET(gtk_builder_get_object (builder, "final_account_tree_box"));
     data->final_account_tree = NULL;
@@ -1160,11 +1242,8 @@ gnc_ui_hierarchy_assistant_with_callback(gboolean use_defaults,
 }
 
 static void
-create_account_page(void)
+after_assistant(void)
 {
-    GncPluginPage *page;
-    page = gnc_plugin_page_account_tree_new();
-    gnc_main_window_open_page(NULL, page);
     qof_book_mark_session_dirty(gnc_get_current_book());
     gnc_ui_file_access_for_save_as();
 }
@@ -1174,7 +1253,7 @@ gnc_ui_hierarchy_assistant_hook (void)
 {
     if (gnc_prefs_get_bool(GNC_PREFS_GROUP, GNC_PREF_SHOW_ON_NEW_FILE))
     {
-        gnc_ui_hierarchy_assistant_with_callback(TRUE, create_account_page);
+        gnc_ui_hierarchy_assistant_with_callback(TRUE, after_assistant);
     }
 }
 

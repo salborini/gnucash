@@ -200,10 +200,6 @@
            (gnc:html-piechart-button-3-legend-urls piechart)))
          (data 
           (ensure-positive-numbers (gnc:html-piechart-data piechart)))
-         (labels 
-          (catenate-escaped-strings (gnc:html-piechart-labels piechart)))
-         (colors 
-          (catenate-escaped-strings (gnc:html-piechart-colors piechart)))
          ; Use a unique chart-id for each chart. This prevents chart
          ; clashed on multi-column reports
          (chart-id (string-append "chart-" (number->string (random 999999)))))
@@ -229,7 +225,7 @@
                 (for-each 
                  (lambda (datum label)
                    (push "  data.push(['")
-                   (push label)
+                   (push (jqplot-escape-string label))
                    (push "',")
                    (push datum)
                    (push "]);\n"))
@@ -247,11 +243,13 @@
             (if title
               (begin 
                 (push "  options.title = \"")
-                (push title) (push "\";\n")))
+                (push (jqplot-escape-string title))
+                (push "\";\n")))
             (if subtitle
               (begin 
                 (push "  options.title += \" (")
-                (push subtitle) (push ")\";\n")))
+                (push (jqplot-escape-string subtitle))
+                (push ")\";\n")))
 
             (push "$.jqplot.config.enablePlugins = true;\n")
             (push "var plot = $.jqplot('")(push chart-id)(push "', [data], options);\n")

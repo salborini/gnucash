@@ -241,7 +241,7 @@ static void
 gnc_restore_all_state (gpointer session, gpointer unused)
 {
     GKeyFile *keyfile = NULL;
-    gchar *file_guid;
+    gchar *file_guid = NULL;
     GError *error = NULL;
 
     keyfile = gnc_state_load (session);
@@ -259,6 +259,15 @@ gnc_restore_all_state (gpointer session, gpointer unused)
 
     /* If no state file was found, keyfile will be empty
      * In that case, let's load the default state */
+    if (!g_key_file_has_group (keyfile, STATE_FILE_TOP))
+    {
+        gnc_main_window_restore_default_state(NULL);
+        LEAVE("no state file");
+        goto cleanup;
+    }
+
+    /* report any other keyfile read error as a warning
+     * but still load default state */
     file_guid = g_key_file_get_string(keyfile, STATE_FILE_TOP,
                                       STATE_FILE_BOOK_GUID, &error);
     if (error)

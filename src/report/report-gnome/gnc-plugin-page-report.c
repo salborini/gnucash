@@ -889,12 +889,10 @@ static void
 gnc_plugin_page_report_name_changed (GncPluginPage *page, const gchar *name)
 {
     GncPluginPageReportPrivate *priv;
-    static gint count = 1, max_count = 10;
     const gchar *old_name;
 
     g_return_if_fail(GNC_IS_PLUGIN_PAGE_REPORT(page));
     g_return_if_fail(name != NULL);
-    g_return_if_fail(count++ <= max_count);
 
     ENTER("page %p, name %s", page, name);
     priv = GNC_PLUGIN_PAGE_REPORT_GET_PRIVATE(page);
@@ -1035,7 +1033,7 @@ static GtkActionEntry report_actions[] =
     },
     {
         "ReportSaveAsAction", GTK_STOCK_SAVE_AS, N_("Save Report As..."), "<control><alt><shift>s",
-        N_("Add the current report's configuration to the `Custom Reports' menu. "
+        N_("Add the current report's configuration to the `Preconfigured Reports' menu. "
         "The report will be saved in the file ~/.gnucash/saved-reports-2.4. "),
         G_CALLBACK(gnc_plugin_page_report_save_as_cb)
     },
@@ -1476,7 +1474,7 @@ gnc_plugin_page_report_save_as_cb( GtkAction *action, GncPluginPageReport *repor
     save_func = scm_c_eval_string("gnc:report-to-template-new");
     rpt_id = scm_call_1(save_func, priv->cur_report);
 
-    /* Open Custom Reports dialog to allow user to change the name */
+    /* Open Preconfigured Reports dialog to allow user to change the name */
     if (!scm_is_null (rpt_id))
     {
         GncPluginPage *reportPage = GNC_PLUGIN_PAGE (report);
